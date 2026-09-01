@@ -168,6 +168,55 @@ export type DealResponse = {
 };
 
 // ---------------------------------------------------------------------------
+// Phase 3 types
+// ---------------------------------------------------------------------------
+
+export type DealDetailResponse = DealResponse & {
+  lot: LotSummary;
+  demand: DemandSummary;
+  counterparty: CounterpartySummary | null;
+};
+
+export type DisputeCreate = { reason: string };
+
+export type DisputeResponse = {
+  id: number;
+  deal_id: number;
+  raised_by: number;
+  reason: string;
+  status: string;
+  created_at: string;
+};
+
+export type HistoryResponse = {
+  lots: LotResponse[];
+  demands: DemandResponse[];
+  deals: DealDetailResponse[];
+};
+
+export type PriceTrendPoint = { date: string; avg_modal_price: number };
+
+export type DisputeSummary = {
+  id: number;
+  deal_id: number;
+  raised_by: number;
+  reason: string;
+  status: string;
+  created_at: string;
+};
+
+export type AdminDashboardResponse = {
+  total_lots: number;
+  open_lots: number;
+  total_demands: number;
+  open_demands: number;
+  total_deals: number;
+  open_disputes_count: number;
+  price_trend_summary: PriceTrendPoint[];
+  dispute_queue: DisputeSummary[];
+};
+
+// ---------------------------------------------------------------------------
 // Core fetch helpers
 // ---------------------------------------------------------------------------
 
@@ -194,6 +243,25 @@ export async function postJson<T>(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Request failed: ${res.status} ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export async function patchJson<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body ?? {}),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -338,4 +406,58 @@ export function declineOffer(
   token: string,
 ): Promise<{ detail: string }> {
   return postJson(`/api/offers/${offerId}/decline`, {}, token);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 fetch functions
+// ---------------------------------------------------------------------------
+
+export function listMyDeals(token: string): Promise<DealDetailResponse[]> {
+  return getJson("/api/deals/mine", token);
+}
+
+export function getDealById(
+  dealId: number | string,
+  token: string,
+): Promise<DealDetailResponse> {
+  return getJson(`/api/deals/${dealId}`, token);
+}
+
+export function advanceDeal(
+  dealId: number | string,
+  token: string,
+): Promise<DealDetailResponse> {
+  return patchJson(`/api/deals/${dealId}/advance`, {}, token);
+}
+
+export function getDealDisputes(
+  dealId: number | string,
+  token: string,
+): Promise<DisputeResponse[]> {
+  return getJson(`/api/deals/${dealId}/disputes`, token);
+}
+
+export function raiseDisputeOnDeal(
+  dealId: number | string,
+  body: DisputeCreate,
+  token: string,
+): Promise<DisputeResponse> {
+  return postJson(`/api/deals/${dealId}/disputes`, body, token);
+}
+
+export function closeDispute(
+  disputeId: number,
+  token: string,
+): Promise<DisputeResponse> {
+  return patchJson(`/api/disputes/${disputeId}/close`, {}, token);
+}
+
+export function getMyHistory(token: string): Promise<HistoryResponse> {
+  return getJson("/api/history", token);
+}
+
+export function getAdminDashboard(
+  token: string,
+): Promise<AdminDashboardResponse> {
+  return getJson("/api/admin/dashboard", token);
 }

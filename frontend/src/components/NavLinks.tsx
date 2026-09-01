@@ -51,6 +51,22 @@ export function NavLinks() {
           {t("myDemands")}
         </Link>
       )}
+      {(user.role === "farmer" || user.role === "buyer") && (
+        <Link
+          href="/history"
+          className="text-sm font-medium text-[var(--color-brand)] hover:underline"
+        >
+          {t("history")}
+        </Link>
+      )}
+      {user.role === "admin" && (
+        <Link
+          href="/admin"
+          className="text-sm font-medium text-[var(--color-brand)] hover:underline"
+        >
+          {t("admin")}
+        </Link>
+      )}
       <span className="text-sm text-[var(--color-text)] opacity-60">
         {user.name}
       </span>
