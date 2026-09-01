@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { SellWaitSignalResponse } from "@/lib/api";
 import { renderWithIntl, screen } from "@/test/render";
+
+// The gauge renders the recommendation label a second time (as an SVG-adjacent
+// caption); stub it so assertions target the card's own heading unambiguously.
+vi.mock("./SignalGaugeChart", () => ({ SignalGaugeChart: () => null }));
 
 import { SellWaitSignalCard } from "./SellWaitSignalCard";
 

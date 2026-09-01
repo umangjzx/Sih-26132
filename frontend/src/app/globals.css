@@ -46,6 +46,13 @@
   --shadow-lg: 0 12px 32px -8px rgba(20, 40, 28, 0.16);
 
   --radius: 1rem;
+
+  /* chart palette (accessible, distinct hues) */
+  --chart-green: #1f7a45;
+  --chart-amber: #b8791b;
+  --chart-red: #c8452f;
+  --chart-blue: #1d6fa5;
+  --chart-purple: #7c3aed;
 }
 
 @theme inline {

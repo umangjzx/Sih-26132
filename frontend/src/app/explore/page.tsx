@@ -5,49 +5,54 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  Bar,
+  BarChart,
+  Cell,
 } from "recharts";
 
 import { Card, EmptyState, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
 import { fetchPublicOverview, type PublicOverview } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
 
-function MoverList({
+function MoverChart({
   title,
   icon,
   rows,
+  isGainer,
 }: {
   title: string;
   icon: string;
   rows: { crop: string; avg_modal_price: number; change_7d_pct: number }[];
+  isGainer: boolean;
 }) {
   return (
     <Card>
       <SectionHeader icon={icon} title={title} />
-      <ul className="flex flex-col gap-1.5">
-        {rows.map((r) => (
-          <li key={r.crop} className="flex items-center justify-between text-sm">
-            <span className="font-medium">{r.crop}</span>
-            <span className="flex items-center gap-2">
-              <span className="text-[var(--ink-soft)]">₹{r.avg_modal_price}</span>
-              <span
-                className={`flex items-center gap-0.5 font-bold ${
-                  r.change_7d_pct >= 0 ? "text-[var(--green-600)]" : "text-[var(--red-500)]"
-                }`}
-              >
-                <Icon name={r.change_7d_pct >= 0 ? "arrowUp" : "arrowDown"} size={13} />
-                {Math.abs(r.change_7d_pct)}%
-              </span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div className="h-48 w-full mt-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 30, left: -20, bottom: 0 }}>
+            <XAxis type="number" hide />
+            <YAxis dataKey="crop" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 12, fill: "var(--ink-soft)", fontWeight: 500 }} />
+            <Tooltip
+              cursor={{ fill: "rgba(0,0,0,0.02)" }}
+              formatter={(value) => [`${Math.abs(Number(value))}%`, isGainer ? "Gain" : "Loss"]}
+              contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "var(--shadow-md)" }}
+            />
+            <Bar dataKey="change_7d_pct" radius={4} barSize={20} isAnimationActive={false}>
+              {rows.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={isGainer ? "var(--green-600)" : "var(--red-500)"} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </Card>
   );
 }
@@ -116,20 +121,27 @@ export default function ExplorePage() {
           <SectionHeader icon="chart" title={t("statewideTrend")} />
           <div className="h-52 w-full" role="img" aria-label={t("statewideTrend")}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={24} />
-                <YAxis tick={{ fontSize: 11 }} width={52} />
-                <Tooltip contentStyle={{ fontSize: 13, borderRadius: 10 }} />
-                <Line
+              <AreaChart data={chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--green-600)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--green-600)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--ink-soft)" }} axisLine={false} minTickGap={24} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--ink-soft)" }} axisLine={false} width={52} />
+                <Tooltip contentStyle={{ fontSize: 13, borderRadius: 10, border: "none", boxShadow: "var(--shadow-md)" }} />
+                <Area
                   type="monotone"
                   dataKey="avg"
                   stroke="var(--green-600)"
                   strokeWidth={2.5}
-                  dot={false}
+                  fillOpacity={1}
+                  fill="url(#colorAvg)"
                   isAnimationActive={false}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
@@ -137,8 +149,8 @@ export default function ExplorePage() {
 
       {(data.gainers.length > 0 || data.losers.length > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <MoverList title={t("gainers")} icon="arrowUp" rows={data.gainers} />
-          <MoverList title={t("losers")} icon="arrowDown" rows={data.losers} />
+          <MoverChart title={t("gainers")} icon="arrowUp" rows={data.gainers} isGainer={true} />
+          <MoverChart title={t("losers")} icon="arrowDown" rows={data.losers.map(r => ({ ...r, change_7d_pct: Math.abs(r.change_7d_pct) }))} isGainer={false} />
         </div>
       )}
 

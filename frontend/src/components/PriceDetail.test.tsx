@@ -9,15 +9,16 @@ vi.mock("@/lib/api", () => ({
   fetchNearby: vi.fn(),
   fetchBestMarkets: vi.fn(),
 }));
-vi.mock("recharts", () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Line: () => null,
-  CartesianGrid: () => null,
-  XAxis: () => null,
-  YAxis: () => null,
-  Tooltip: () => null,
-}));
+vi.mock("recharts", () => {
+  const Wrap = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+  const Nil = () => null;
+  return {
+    ResponsiveContainer: Wrap,
+    LineChart: Wrap, AreaChart: Wrap, BarChart: Wrap, PieChart: Wrap,
+    Line: Nil, Area: Nil, Bar: Nil, Pie: Nil, Cell: Nil,
+    CartesianGrid: Nil, XAxis: Nil, YAxis: Nil, Tooltip: Nil, Legend: Nil, ReferenceLine: Nil,
+  };
+});
 
 import * as api from "@/lib/api";
 import { PriceDetail } from "./PriceDetail";

@@ -13,7 +13,7 @@ import {
 } from "@/lib/api";
 import type { CropMarketState } from "@/lib/useCropMarket";
 import { BestMarketPanel } from "./intel";
-import { NearbyMarketsTable } from "./NearbyMarketsTable";
+import { MarketComparisonChart } from "./MarketComparisonChart";
 import { PriceTrendChart } from "./PriceTrendChart";
 import { Card, SectionHeader, Skeleton } from "./ui";
 
@@ -125,7 +125,16 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
           )}
 
           <BestMarketPanel data={best} />
-          {nearby.length > 0 && <NearbyMarketsTable markets={nearby} />}
+          {nearby.length > 0 && last && (
+            <Card>
+              <SectionHeader icon="map" title="Nearby Markets Comparison" />
+              <MarketComparisonChart
+                markets={nearby}
+                currentMarket={cm.market}
+                currentPrice={last.modal_price}
+              />
+            </Card>
+          )}
         </>
       )}
     </div>

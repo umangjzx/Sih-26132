@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import type { SellWaitSignalResponse } from "@/lib/api";
-import { Icon } from "./ui";
+import { SignalGaugeChart } from "./SignalGaugeChart";
 
 const theme: Record<
   SellWaitSignalResponse["recommendation"],
@@ -41,15 +41,15 @@ export function SellWaitSignalCard({ signal }: { signal: SellWaitSignalResponse 
       className={`al-card overflow-hidden border p-0 ${s.wrap}`}
       aria-live="polite"
     >
-      <div className="flex items-center gap-4 border-b border-black/5 p-5 sm:p-6">
-        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/70 ${s.accent}`}>
-          <Icon name={s.icon} size={26} />
-        </span>
-        <div>
+      <div className="flex flex-col sm:flex-row items-center gap-6 border-b border-black/5 p-5 sm:p-6">
+        <div className="w-full sm:w-1/2 flex-shrink-0 pt-4 max-w-[200px]">
+          <SignalGaugeChart recommendation={signal.recommendation} />
+        </div>
+        <div className="w-full sm:w-1/2 text-center sm:text-left">
           <div className={`text-xs font-bold uppercase tracking-widest ${s.accent} opacity-80`}>
             {t("title")}
           </div>
-          <div className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <div className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl mt-2">
             {label}
           </div>
         </div>

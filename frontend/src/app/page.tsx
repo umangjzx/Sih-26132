@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { CropMarketPicker } from "@/components/CropMarketPicker";
+import { SignalGaugeChart } from "@/components/SignalGaugeChart";
 import { Card, Icon, SectionHeader } from "@/components/ui";
 import {
   fetchPublicOverview,
@@ -117,20 +118,16 @@ function HomeInner() {
           </div>
 
           {rec && rt && (
-            <div className={`mt-4 flex items-center gap-3 rounded-xl px-4 py-3 ${rt.cls}`}>
-              <Icon name={rt.icon} size={22} className="shrink-0" />
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-widest opacity-75">
-                  {ts("title")}
-                </div>
-                <div className="font-heading text-xl font-extrabold">{recLabel}</div>
+            <div className="mt-6 pt-6 border-t border-[var(--line)] relative">
+              <SignalGaugeChart recommendation={rec.recommendation} />
+              <div className="mt-6 text-center">
+                <Link
+                  href={`/advisor?crop=${cm.crop}&market=${cm.market}`}
+                  className="inline-flex items-center gap-1 text-sm font-bold text-[var(--green-700)] hover:underline"
+                >
+                  {t("seeWhy")} <Icon name="arrowRight" size={14} />
+                </Link>
               </div>
-              <Link
-                href={`/advisor?crop=${cm.crop}&market=${cm.market}`}
-                className="ml-auto text-sm font-semibold underline"
-              >
-                {t("seeWhy")}
-              </Link>
             </div>
           )}
         </Card>
