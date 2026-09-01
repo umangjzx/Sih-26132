@@ -4,6 +4,7 @@ import { Space_Grotesk, DM_Sans, Noto_Sans_Devanagari } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NavLinks } from "@/components/NavLinks";
+import { NotificationBell } from "@/components/NotificationBell";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import "./globals.css";
 
@@ -41,8 +42,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <span className="text-xl font-bold tracking-tight text-[var(--color-brand)] font-heading">
                   AgriLink
                 </span>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <NavLinks />
+                  <NotificationBell />
                   <LanguageSwitcher />
                 </div>
               </div>

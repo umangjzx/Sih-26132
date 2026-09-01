@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
+import { NearbyResources } from "@/components/NearbyResources";
 import { createLot, listMyLots, type LotCreate, type LotResponse } from "@/lib/api";
 
 const DRAFT_KEY = "agrilink.lot_draft";
@@ -275,6 +276,11 @@ export default function FarmerPage() {
           </ul>
         )}
       </section>
+
+      <NearbyResources
+        district={user?.district}
+        crop={lots[0]?.crop ?? (form.crop || undefined)}
+      />
     </div>
   );
 }

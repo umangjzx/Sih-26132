@@ -155,6 +155,86 @@ export default function AdminPage() {
           </div>
         )}
       </section>
+
+      {/* v1.1 analytics */}
+      {data.district_price_gaps?.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold opacity-80">
+            District price-realisation gap (vs state average)
+          </h2>
+          <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
+            <table className="w-full min-w-[360px] text-left text-sm">
+              <thead className="bg-[var(--color-border)]/40">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">District</th>
+                  <th className="px-3 py-2 font-semibold">Avg modal ₹</th>
+                  <th className="px-3 py-2 font-semibold">Gap vs state</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.district_price_gaps.slice(0, 12).map((g) => (
+                  <tr key={g.district} className="border-t border-[var(--color-border)]">
+                    <td className="px-3 py-2 font-medium">{g.district}</td>
+                    <td className="px-3 py-2">₹{g.avg_modal_price}</td>
+                    <td
+                      className={`px-3 py-2 font-semibold ${
+                        g.gap_vs_state_pct < 0 ? "text-[var(--color-wait)]" : "text-[var(--color-sell)]"
+                      }`}
+                    >
+                      {g.gap_vs_state_pct > 0 ? "+" : ""}
+                      {g.gap_vs_state_pct}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {data.price_anomalies?.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold opacity-80">
+            Price anomalies (latest modal vs its 7-day average)
+          </h2>
+          <ul className="flex flex-col gap-1.5">
+            {data.price_anomalies.map((an) => (
+              <li
+                key={`${an.crop}-${an.market}`}
+                className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-white/50 px-3 py-2 text-sm"
+              >
+                <span>
+                  <span className="font-semibold">{an.crop}</span> · {an.market}
+                </span>
+                <span
+                  className={`font-bold ${
+                    an.deviation_pct >= 0 ? "text-[var(--color-sell)]" : "text-[var(--color-wait)]"
+                  }`}
+                >
+                  ₹{an.modal_price} ({an.deviation_pct >= 0 ? "+" : ""}
+                  {an.deviation_pct}% vs ₹{an.avg_7d})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {data.disputes_by_district && Object.keys(data.disputes_by_district).length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold opacity-80">Disputes by district</h2>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(data.disputes_by_district).map(([d, n]) => (
+              <span
+                key={d}
+                className="rounded-full border border-[var(--color-border)] bg-white/50 px-3 py-1 text-sm"
+              >
+                {d}: <span className="font-bold">{n}</span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

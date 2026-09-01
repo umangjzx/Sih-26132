@@ -22,19 +22,32 @@ export function NavLinks() {
     router.replace("/login");
   }
 
+  const exploreLink = (
+    <Link
+      href="/explore"
+      className="text-sm font-medium text-[var(--color-brand)] hover:underline"
+    >
+      {t("explore")}
+    </Link>
+  );
+
   if (!isAuthenticated || !user) {
     return (
-      <Link
-        href="/login"
-        className="rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:bg-[var(--color-brand-dark)] transition-all duration-200"
-      >
-        {t("login")}
-      </Link>
+      <nav className="flex items-center gap-3">
+        {exploreLink}
+        <Link
+          href="/login"
+          className="rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:bg-[var(--color-brand-dark)] transition-all duration-200"
+        >
+          {t("login")}
+        </Link>
+      </nav>
     );
   }
 
   return (
     <nav className="flex items-center gap-3">
+      {exploreLink}
       {user.role === "farmer" && (
         <Link
           href="/farmer"
@@ -52,12 +65,20 @@ export function NavLinks() {
         </Link>
       )}
       {(user.role === "farmer" || user.role === "buyer") && (
-        <Link
-          href="/history"
-          className="text-sm font-medium text-[var(--color-brand)] hover:underline"
-        >
-          {t("history")}
-        </Link>
+        <>
+          <Link
+            href="/history"
+            className="text-sm font-medium text-[var(--color-brand)] hover:underline"
+          >
+            {t("history")}
+          </Link>
+          <Link
+            href="/alerts"
+            className="text-sm font-medium text-[var(--color-brand)] hover:underline"
+          >
+            {t("alerts")}
+          </Link>
+        </>
       )}
       {user.role === "admin" && (
         <Link

@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 vi.mock("@/lib/api", () => ({
   listMyLots: vi.fn().mockResolvedValue([]),
   createLot: vi.fn().mockResolvedValue({ id: 1, crop: "Onion", quantity_kg: 500, quality_grade: "A", expected_price: 2400, available_from: "2026-10-01", location: "Pune", status: "open", farmer_id: 1, photo_url: null }),
+  fetchStorageNearby: vi.fn().mockResolvedValue([]),
+  fetchFpoNearby: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("next/navigation", () => ({

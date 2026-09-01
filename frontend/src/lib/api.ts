@@ -205,6 +205,19 @@ export type DisputeSummary = {
   created_at: string;
 };
 
+export type DistrictPriceGap = {
+  district: string;
+  avg_modal_price: number;
+  gap_vs_state_pct: number;
+};
+export type PriceAnomaly = {
+  crop: string;
+  market: string;
+  modal_price: number;
+  avg_7d: number;
+  deviation_pct: number;
+};
+
 export type AdminDashboardResponse = {
   total_lots: number;
   open_lots: number;
@@ -214,6 +227,9 @@ export type AdminDashboardResponse = {
   open_disputes_count: number;
   price_trend_summary: PriceTrendPoint[];
   dispute_queue: DisputeSummary[];
+  district_price_gaps: DistrictPriceGap[];
+  disputes_by_district: Record<string, number>;
+  price_anomalies: PriceAnomaly[];
 };
 
 // ---------------------------------------------------------------------------
