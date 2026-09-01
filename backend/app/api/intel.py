@@ -137,9 +137,13 @@ def fpo_nearby(
     district: str | None = None,
     crop: str | None = None,
     state: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
     limit: int = Query(8, ge=1, le=30),
 ) -> list[dict]:
-    return ref.nearby_fpos(district=district, crop=crop, limit=limit, state=state)
+    return ref.nearby_fpos(
+        district=district, crop=crop, limit=limit, state=state, lat=lat, lon=lon
+    )
 
 
 # --------------------------------------------------------------------------- #

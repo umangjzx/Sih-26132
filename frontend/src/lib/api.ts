@@ -669,11 +669,24 @@ export function fetchMsp(crop: string, market?: string): Promise<MspInfo> {
 export function fetchCalendar(crop: string): Promise<CropCalendar> {
   return getJson(`/api/calendar?${qs({ crop })}`);
 }
-export function fetchStorageNearby(district: string, state?: string): Promise<ColdStorage[]> {
-  return getJson(`/api/storage/nearby?${qs({ district, state })}`);
+export function fetchStorageNearby(
+  district: string,
+  state?: string,
+  coords?: { lat?: number; lon?: number },
+): Promise<ColdStorage[]> {
+  return getJson(
+    `/api/storage/nearby?${qs({ district, state, lat: coords?.lat, lon: coords?.lon })}`,
+  );
 }
-export function fetchFpoNearby(district: string, crop?: string, state?: string): Promise<FpoInfo[]> {
-  return getJson(`/api/fpo/nearby?${qs({ district, crop, state })}`);
+export function fetchFpoNearby(
+  district: string,
+  crop?: string,
+  state?: string,
+  coords?: { lat?: number; lon?: number },
+): Promise<FpoInfo[]> {
+  return getJson(
+    `/api/fpo/nearby?${qs({ district, crop, state, lat: coords?.lat, lon: coords?.lon })}`,
+  );
 }
 export function fetchBestMarkets(
   crop: string,

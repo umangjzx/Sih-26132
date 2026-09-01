@@ -136,11 +136,24 @@ def test_location_resolve_needs_input(db):
         app.dependency_overrides.clear()
 
 
-def test_storage_fpo_empty_outside_maharashtra(db):
+def test_storage_fpo_state_scoped(db):
+    """v1.2: the directory now covers the major producing states, not just MH.
+    Each response is scoped to the requested state."""
     client = _client(db)
     try:
-        assert client.get("/api/storage/nearby", params={"district": "Ludhiana", "state": "Punjab"}).json() == []
-        assert client.get("/api/fpo/nearby", params={"district": "Ludhiana", "state": "Punjab"}).json() == []
-        assert len(client.get("/api/storage/nearby", params={"district": "Pune", "state": "Maharashtra"}).json()) > 0
+        pb_storage = client.get("/api/storage/nearby", params={"state": "Punjab"}).json()
+        assert len(pb_storage) > 0
+        assert {f["state"] for f in pb_storage} == {"Punjab"}
+
+        pb_fpo = client.get("/api/fpo/nearby", params={"state": "Punjab"}).json()
+        assert len(pb_fpo) > 0
+        assert {f["state"] for f in pb_fpo} == {"Punjab"}
+
+        mh = client.get("/api/storage/nearby", params={"district": "Pune", "state": "Maharashtra"}).json()
+        assert len(mh) > 0
+        assert {f["state"] for f in mh} == {"Maharashtra"}
+
+        # a state with no curated entries yet -> empty, not an error
+        assert client.get("/api/fpo/nearby", params={"state": "Sikkim"}).json() == []
     finally:
         app.dependency_overrides.clear()

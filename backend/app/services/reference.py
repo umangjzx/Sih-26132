@@ -8,18 +8,19 @@ AGMARKNET price feed:
                  tomato, most vegetables) have NO MSP — we say so explicitly.
   * CALENDAR   — Maharashtra sowing / harvest / peak-arrival windows per crop.
   * COLD_STORAGE — representative WDRA-style cold storage & warehouse facilities
-                 with district + coordinates + capacity.
-  * FPOS       — representative Farmer Producer Organisations with district,
-                 focus crops and size.
+                 with state + district + coordinates + capacity.
+  * FPOS       — representative Farmer Producer Organisations with state,
+                 district, coordinates, focus crops and size.
 
-The cold-storage and FPO lists are a curated demo sample (the equivalent
-data.gov.in resources are not reliably API-accessible); everything is real
-Maharashtra geography and plausible scale.
+The cold-storage and FPO lists are a curated sample (the equivalent data.gov.in
+resources are not reliably API-accessible): a detailed Maharashtra set plus a
+national sample covering the major producing states, all real district geography
+and plausible scale. MSP is all-India; the crop calendar stays Maharashtra-tuned.
 """
 
 from datetime import date
 
-from app.services.geo import DISTRICT_CENTROIDS, haversine_km
+from app.services.geo import DISTRICT_CENTROIDS, STATE_CENTROIDS, haversine_km
 
 # --------------------------------------------------------------------------- #
 # MSP — ₹ per quintal. None-valued crops are market-driven (no MSP).
@@ -173,6 +174,37 @@ COLD_STORAGE: list[dict] = [
 ]
 
 
+# All-India sample (v1.2) — representative registered warehouses / cold stores in
+# the major producing states, real district geography and plausible scale. Same
+# "curated sample, not a live API" caveat as the Maharashtra list.
+_INDIA_COLD_STORAGE: list[dict] = [
+    {"name": "Jalandhar Potato Cold Store", "type": "cold_storage", "state": "Punjab", "district": "Jalandhar", "lat": 31.3260, "lon": 75.5762, "capacity_tonnes": 12000, "crops": "Potato, Peas"},
+    {"name": "Ludhiana CWC Warehouse", "type": "warehouse", "state": "Punjab", "district": "Ludhiana", "lat": 30.9010, "lon": 75.8573, "capacity_tonnes": 18000, "crops": "Wheat, Paddy, Maize"},
+    {"name": "Karnal Grain Warehouse", "type": "warehouse", "state": "Haryana", "district": "Karnal", "lat": 29.6857, "lon": 76.9905, "capacity_tonnes": 15000, "crops": "Wheat, Basmati, Paddy"},
+    {"name": "Sonipat Cold Chain", "type": "cold_storage", "state": "Haryana", "district": "Sonipat", "lat": 28.9931, "lon": 77.0151, "capacity_tonnes": 8000, "crops": "Vegetables, Mushroom"},
+    {"name": "Agra Potato Cold Store", "type": "cold_storage", "state": "Uttar Pradesh", "district": "Agra", "lat": 27.1767, "lon": 78.0081, "capacity_tonnes": 20000, "crops": "Potato"},
+    {"name": "Lucknow FCI Godown", "type": "warehouse", "state": "Uttar Pradesh", "district": "Lucknow", "lat": 26.8467, "lon": 80.9462, "capacity_tonnes": 22000, "crops": "Wheat, Paddy, Pulses"},
+    {"name": "Varanasi Vegetable Cold Store", "type": "cold_storage", "state": "Uttar Pradesh", "district": "Varanasi", "lat": 25.3176, "lon": 82.9739, "capacity_tonnes": 6000, "crops": "Vegetables, Green peas"},
+    {"name": "Indore Soybean Warehouse", "type": "warehouse", "state": "Madhya Pradesh", "district": "Indore", "lat": 22.7196, "lon": 75.8577, "capacity_tonnes": 25000, "crops": "Soybean, Wheat, Gram"},
+    {"name": "Bhopal Central Warehouse", "type": "warehouse", "state": "Madhya Pradesh", "district": "Bhopal", "lat": 23.2599, "lon": 77.4126, "capacity_tonnes": 16000, "crops": "Wheat, Pulses, Oilseed"},
+    {"name": "Rajkot Groundnut Warehouse", "type": "warehouse", "state": "Gujarat", "district": "Rajkot", "lat": 22.3039, "lon": 70.8022, "capacity_tonnes": 14000, "crops": "Groundnut, Cotton, Cumin"},
+    {"name": "Deesa Potato Cold Store", "type": "cold_storage", "state": "Gujarat", "district": "Banaskantha", "lat": 24.2585, "lon": 72.1907, "capacity_tonnes": 18000, "crops": "Potato"},
+    {"name": "Kota Coriander Warehouse", "type": "warehouse", "state": "Rajasthan", "district": "Kota", "lat": 25.2138, "lon": 75.8648, "capacity_tonnes": 12000, "crops": "Coriander, Soybean, Wheat"},
+    {"name": "Jaipur Agro Cold Store", "type": "cold_storage", "state": "Rajasthan", "district": "Jaipur", "lat": 26.9124, "lon": 75.7873, "capacity_tonnes": 9000, "crops": "Vegetables, Mustard, Guar"},
+    {"name": "Kolar Tomato Cold Store", "type": "cold_storage", "state": "Karnataka", "district": "Kolar", "lat": 13.1367, "lon": 78.1292, "capacity_tonnes": 7000, "crops": "Tomato, Mango"},
+    {"name": "Hubballi APMC Warehouse", "type": "warehouse", "state": "Karnataka", "district": "Dharwad", "lat": 15.3647, "lon": 75.1240, "capacity_tonnes": 13000, "crops": "Cotton, Chilli, Groundnut"},
+    {"name": "Guntur Chilli Cold Store", "type": "cold_storage", "state": "Andhra Pradesh", "district": "Guntur", "lat": 16.3067, "lon": 80.4365, "capacity_tonnes": 30000, "crops": "Chilli, Cotton, Turmeric"},
+    {"name": "Warangal Paddy Warehouse", "type": "warehouse", "state": "Telangana", "district": "Warangal", "lat": 17.9689, "lon": 79.5941, "capacity_tonnes": 20000, "crops": "Paddy, Maize, Cotton"},
+    {"name": "Erode Turmeric Warehouse", "type": "warehouse", "state": "Tamil Nadu", "district": "Erode", "lat": 11.3410, "lon": 77.7172, "capacity_tonnes": 10000, "crops": "Turmeric, Banana"},
+    {"name": "Hooghly Potato Cold Store", "type": "cold_storage", "state": "West Bengal", "district": "Hooghly", "lat": 22.9089, "lon": 88.3960, "capacity_tonnes": 22000, "crops": "Potato, Vegetables"},
+    {"name": "Samastipur Maize Warehouse", "type": "warehouse", "state": "Bihar", "district": "Samastipur", "lat": 25.8560, "lon": 85.7799, "capacity_tonnes": 11000, "crops": "Maize, Wheat, Litchi"},
+    {"name": "Cuttack Rice Warehouse", "type": "warehouse", "state": "Odisha", "district": "Cuttack", "lat": 20.4625, "lon": 85.8828, "capacity_tonnes": 12000, "crops": "Paddy, Pulses"},
+]
+
+# Every Maharashtra entry gets an explicit state tag, then the national sample.
+COLD_STORAGE = [{**e, "state": e.get("state", "Maharashtra")} for e in COLD_STORAGE] + _INDIA_COLD_STORAGE
+
+
 # --------------------------------------------------------------------------- #
 # Farmer Producer Organisations (curated demo sample).
 # --------------------------------------------------------------------------- #
@@ -204,33 +236,87 @@ FPOS: list[dict] = [
     {"name": "Nandurbar Tribal Farmers FPC", "district": "Nandurbar", "crops": "Chilli, Papaya, Maize", "members": 2200, "contact": "nandurbar-fpc@example-fpo.in"},
 ]
 
+# All-India sample (v1.2) — representative FPOs in the major producing states.
+_INDIA_FPOS: list[dict] = [
+    {"name": "Malwa Kisan Producer Co.", "state": "Punjab", "district": "Ludhiana", "lat": 30.9010, "lon": 75.8573, "crops": "Wheat, Paddy, Maize", "members": 3200, "contact": "malwa-fpc@example-fpo.in"},
+    {"name": "Doaba Potato Growers FPC", "state": "Punjab", "district": "Jalandhar", "lat": 31.3260, "lon": 75.5762, "crops": "Potato, Peas", "members": 1800, "contact": "doaba-potato@example-fpo.in"},
+    {"name": "Karnal Basmati Producer Co.", "state": "Haryana", "district": "Karnal", "lat": 29.6857, "lon": 76.9905, "crops": "Basmati, Wheat", "members": 2600, "contact": "karnal-basmati@example-fpo.in"},
+    {"name": "Awadh Farmers Producer Co.", "state": "Uttar Pradesh", "district": "Lucknow", "lat": 26.8467, "lon": 80.9462, "crops": "Wheat, Paddy, Pulses", "members": 4100, "contact": "awadh-fpc@example-fpo.in"},
+    {"name": "Braj Potato Growers FPC", "state": "Uttar Pradesh", "district": "Agra", "lat": 27.1767, "lon": 78.0081, "crops": "Potato", "members": 2300, "contact": "braj-potato@example-fpo.in"},
+    {"name": "Malwa Soybean Producer Co.", "state": "Madhya Pradesh", "district": "Indore", "lat": 22.7196, "lon": 75.8577, "crops": "Soybean, Wheat, Gram", "members": 5200, "contact": "malwa-soy@example-fpo.in"},
+    {"name": "Narmada Valley Farmers FPC", "state": "Madhya Pradesh", "district": "Narmadapuram", "lat": 22.7500, "lon": 77.7300, "crops": "Wheat, Tur, Cotton", "members": 2900, "contact": "narmada-fpc@example-fpo.in"},
+    {"name": "Saurashtra Groundnut FPC", "state": "Gujarat", "district": "Rajkot", "lat": 22.3039, "lon": 70.8022, "crops": "Groundnut, Cotton", "members": 3400, "contact": "saurashtra-gn@example-fpo.in"},
+    {"name": "Banas Potato Producer Co.", "state": "Gujarat", "district": "Banaskantha", "lat": 24.1700, "lon": 72.4300, "crops": "Potato, Fennel", "members": 2100, "contact": "banas-potato@example-fpo.in"},
+    {"name": "Hadoti Spice Growers FPC", "state": "Rajasthan", "district": "Kota", "lat": 25.2138, "lon": 75.8648, "crops": "Coriander, Soybean", "members": 1900, "contact": "hadoti-spice@example-fpo.in"},
+    {"name": "Kolar Horticulture FPC", "state": "Karnataka", "district": "Kolar", "lat": 13.1367, "lon": 78.1292, "crops": "Tomato, Mango", "members": 1600, "contact": "kolar-hort@example-fpo.in"},
+    {"name": "North Karnataka Cotton FPC", "state": "Karnataka", "district": "Dharwad", "lat": 15.3647, "lon": 75.1240, "crops": "Cotton, Chilli, Groundnut", "members": 2800, "contact": "nk-cotton@example-fpo.in"},
+    {"name": "Guntur Chilli Producer Co.", "state": "Andhra Pradesh", "district": "Guntur", "lat": 16.3067, "lon": 80.4365, "crops": "Chilli, Cotton, Turmeric", "members": 4300, "contact": "guntur-chilli@example-fpo.in"},
+    {"name": "Telangana Paddy Farmers FPC", "state": "Telangana", "district": "Warangal", "lat": 17.9689, "lon": 79.5941, "crops": "Paddy, Maize, Cotton", "members": 3700, "contact": "ts-paddy@example-fpo.in"},
+    {"name": "Kongu Turmeric Producer Co.", "state": "Tamil Nadu", "district": "Erode", "lat": 11.3410, "lon": 77.7172, "crops": "Turmeric, Banana", "members": 2200, "contact": "kongu-turmeric@example-fpo.in"},
+    {"name": "Bengal Potato Growers FPC", "state": "West Bengal", "district": "Hooghly", "lat": 22.9089, "lon": 88.3960, "crops": "Potato, Vegetables", "members": 3100, "contact": "bengal-potato@example-fpo.in"},
+    {"name": "Kosi Maize Producer Co.", "state": "Bihar", "district": "Samastipur", "lat": 25.8560, "lon": 85.7799, "crops": "Maize, Wheat, Litchi", "members": 2400, "contact": "kosi-maize@example-fpo.in"},
+    {"name": "Mahanadi Paddy FPC", "state": "Odisha", "district": "Cuttack", "lat": 20.4625, "lon": 85.8828, "crops": "Paddy, Pulses, Vegetables", "members": 2000, "contact": "mahanadi-fpc@example-fpo.in"},
+]
+
+
+def _fpo_with_meta(e: dict) -> dict:
+    """Tag state (default Maharashtra) and backfill lat/lon from the MH district
+    centroid table when the entry doesn't carry explicit coordinates."""
+    out = {**e, "state": e.get("state", "Maharashtra")}
+    if out.get("lat") is None and e["district"] in DISTRICT_CENTROIDS:
+        out["lat"], out["lon"] = DISTRICT_CENTROIDS[e["district"]]
+    return out
+
+
+FPOS = [_fpo_with_meta(e) for e in FPOS] + _INDIA_FPOS
+
 
 # --------------------------------------------------------------------------- #
 # Distance-filtered accessors
 # --------------------------------------------------------------------------- #
 
-def _origin_coords(district: str | None, lat: float | None, lon: float | None) -> tuple[float, float] | None:
+def _state_centroid(state: str | None) -> tuple[float, float] | None:
+    if not state:
+        return None
+    s = state.strip().lower()
+    for k, v in STATE_CENTROIDS.items():
+        if k.lower() == s:
+            return v
+    return None
+
+
+def _origin_coords(
+    district: str | None, lat: float | None, lon: float | None, state: str | None = None
+) -> tuple[float, float] | None:
     if lat is not None and lon is not None:
         return (lat, lon)
     if district and district in DISTRICT_CENTROIDS:
         return DISTRICT_CENTROIDS[district]
-    return None
+    return _state_centroid(state)
 
 
-CURATED_STATE = "Maharashtra"
+def _scoped(rows: list[dict], state: str | None) -> tuple[list[dict], bool]:
+    """Filter to a state when asked. Returns (rows, precise) where precise is
+    False once we've fallen back to a whole-state view (used to relax the
+    distance cap so a state-centroid origin doesn't hide everything)."""
+    if not state:
+        return rows, True
+    s = state.strip().lower()
+    return [r for r in rows if r.get("state", "").lower() == s], False
 
 
 def nearby_cold_storage(
     district: str | None = None, lat: float | None = None, lon: float | None = None,
     max_km: float = 150.0, limit: int = 8, state: str | None = None,
 ) -> list[dict]:
-    if state and state.strip().lower() != CURATED_STATE.lower():
-        return []  # curated facility list is Maharashtra-only for now
-    origin = _origin_coords(district, lat, lon)
+    pool, precise = _scoped(COLD_STORAGE, state)
+    origin = _origin_coords(district, lat, lon, state)
+    has_point = (lat is not None and lon is not None) or (district in DISTRICT_CENTROIDS)
+    cap = max_km if (precise or has_point) else 10_000.0
     out = []
-    for f in COLD_STORAGE:
+    for f in pool:
         d = round(haversine_km(origin, (f["lat"], f["lon"])), 1) if origin else None
-        if d is not None and d > max_km:
+        if d is not None and d > cap:
             continue
         out.append({**f, "distance_km": d})
     out.sort(key=lambda x: (x["distance_km"] is None, x["distance_km"] or 0.0))
@@ -239,16 +325,15 @@ def nearby_cold_storage(
 
 def nearby_fpos(
     district: str | None = None, crop: str | None = None, limit: int = 8,
-    state: str | None = None,
+    state: str | None = None, lat: float | None = None, lon: float | None = None,
 ) -> list[dict]:
-    if state and state.strip().lower() != CURATED_STATE.lower():
-        return []  # curated FPO list is Maharashtra-only for now
-    origin = DISTRICT_CENTROIDS.get(district) if district else None
+    pool, _ = _scoped(FPOS, state)
+    origin = _origin_coords(district, lat, lon, state)
     out = []
-    for f in FPOS:
+    for f in pool:
         if crop and crop.strip().lower() not in f["crops"].lower():
             continue
-        fo = DISTRICT_CENTROIDS.get(f["district"])
+        fo = (f["lat"], f["lon"]) if f.get("lat") is not None else DISTRICT_CENTROIDS.get(f["district"])
         d = round(haversine_km(origin, fo), 1) if (origin and fo) else None
         out.append({**f, "distance_km": d})
     out.sort(key=lambda x: (x["distance_km"] is None, x["distance_km"] or 0.0))

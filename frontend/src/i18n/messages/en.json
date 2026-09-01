@@ -350,9 +350,9 @@
     "stateLabel": "Or pick a state",
     "statePlaceholder": "Select a state",
     "clear": "Reset to Maharashtra",
-    "mhOnlyNote": "The storage & FPO directory currently covers Maharashtra only.",
     "errorDenied": "Location permission was denied.",
     "errorUnsupported": "This device does not support location.",
-    "errorResolve": "Could not resolve that location. Try a place name."
+    "errorResolve": "Could not resolve that location. Try a place name.",
+    "directoryScope": "Directory coverage for {state} is a representative sample for now."
   }
 }

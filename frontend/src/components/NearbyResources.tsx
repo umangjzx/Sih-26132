@@ -19,23 +19,30 @@ export function NearbyResources({
   district,
   crop,
   state,
+  lat,
+  lon,
 }: {
   district?: string;
   crop?: string;
   state?: string;
+  lat?: number | null;
+  lon?: number | null;
 }) {
   const ts = useTranslations("storage");
   const tf = useTranslations("fpo");
   const [storage, setStorage] = useState<ColdStorage[]>([]);
   const [fpos, setFpos] = useState<FpoInfo[]>([]);
 
-  useEffect(() => {
-    if (!district) return;
-    fetchStorageNearby(district, state).then(setStorage).catch(() => setStorage([]));
-    fetchFpoNearby(district, crop, state).then(setFpos).catch(() => setFpos([]));
-  }, [district, crop, state]);
+  const hasPoint = typeof lat === "number" && typeof lon === "number";
 
-  if (!district) return null;
+  useEffect(() => {
+    if (!district && !state && !hasPoint) return;
+    const coords = hasPoint ? { lat: lat as number, lon: lon as number } : undefined;
+    fetchStorageNearby(district ?? "", state, coords).then(setStorage).catch(() => setStorage([]));
+    fetchFpoNearby(district ?? "", crop, state, coords).then(setFpos).catch(() => setFpos([]));
+  }, [district, crop, state, lat, lon, hasPoint]);
+
+  if (!district && !state && !hasPoint) return null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">

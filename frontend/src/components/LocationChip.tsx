@@ -134,10 +134,6 @@ export function LocationChip() {
             </p>
           )}
 
-          {location && location.state !== "Maharashtra" && (
-            <p className="mt-2 text-xs text-[var(--ink-soft)]">{t("mhOnlyNote")}</p>
-          )}
-
           {location && (
             <button
               type="button"
