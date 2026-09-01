@@ -123,19 +123,23 @@ def storage_nearby(
     district: str | None = None,
     lat: float | None = None,
     lon: float | None = None,
+    state: str | None = None,
     max_km: float = Query(150.0, gt=0, le=600),
     limit: int = Query(8, ge=1, le=30),
 ) -> list[dict]:
-    return ref.nearby_cold_storage(district=district, lat=lat, lon=lon, max_km=max_km, limit=limit)
+    return ref.nearby_cold_storage(
+        district=district, lat=lat, lon=lon, max_km=max_km, limit=limit, state=state
+    )
 
 
 @router.get("/fpo/nearby")
 def fpo_nearby(
     district: str | None = None,
     crop: str | None = None,
+    state: str | None = None,
     limit: int = Query(8, ge=1, le=30),
 ) -> list[dict]:
-    return ref.nearby_fpos(district=district, crop=crop, limit=limit)
+    return ref.nearby_fpos(district=district, crop=crop, limit=limit, state=state)
 
 
 # --------------------------------------------------------------------------- #

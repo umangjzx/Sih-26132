@@ -25,6 +25,19 @@ class Settings(BaseSettings):
     # v1.1: indicative road-freight cost, ₹ per quintal per km (shared-truck haulage).
     transport_cost_per_qtl_km: float = 0.4
 
+    # v1.2: which AGMARKNET states the scheduled ingestion pulls. Comma-separated
+    # (e.g. "Maharashtra,Karnataka"), or "ALL" for the whole national feed.
+    ingest_states: str = "Maharashtra"
+    # Free, keyless reverse-geocoder (lat/lon -> state + district).
+    reverse_geocode_url: str = "https://api.bigdatacloud.net/data/reverse-geocode-client"
+
+    @property
+    def ingest_state_list(self) -> list[str] | None:
+        raw = self.ingest_states.strip()
+        if not raw or raw.upper() == "ALL":
+            return None  # no state filter -> whole India
+        return [s.strip() for s in raw.split(",") if s.strip()]
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

@@ -25,9 +25,20 @@ router = APIRouter(prefix="/api", tags=["prices"])
 
 
 @router.get("/options", response_model=list[CropMarketOption])
-def list_options(db: Session = Depends(get_db)) -> list[CropMarketOption]:
-    rows = db.execute(select(PriceCache.crop, PriceCache.market, PriceCache.district).distinct()).all()
-    return [CropMarketOption(crop=r.crop, market=r.market, district=r.district) for r in rows]
+def list_options(
+    state: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[CropMarketOption]:
+    stmt = select(
+        PriceCache.crop, PriceCache.market, PriceCache.district, PriceCache.state
+    ).distinct()
+    if state:
+        stmt = stmt.where(PriceCache.state == state)
+    rows = db.execute(stmt).all()
+    return [
+        CropMarketOption(crop=r.crop, market=r.market, district=r.district, state=r.state or "")
+        for r in rows
+    ]
 
 
 def _fetch_series(db: Session, crop: str, market: str, days: int) -> list[PriceCache]:

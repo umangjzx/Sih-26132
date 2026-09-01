@@ -7,6 +7,7 @@ class CropMarketOption(BaseModel):
     crop: str
     market: str
     district: str
+    state: str = ""
 
 
 class PricePoint(BaseModel):

@@ -11,7 +11,7 @@ from app.services import ingestion
 from app.services.snapshot import load_snapshot_rows
 
 
-def _raise_connect_error(_key):
+def _raise_connect_error(*_args, **_kwargs):
     raise httpx.ConnectError("boom")
 
 
@@ -26,7 +26,7 @@ def _dated_series(market, crop, n):
 
 def test_falls_back_when_live_raises(monkeypatch):
     monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
-    monkeypatch.setattr(ingestion, "fetch_maharashtra_rows", _raise_connect_error)
+    monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", _raise_connect_error)
 
     source, rows = ingestion.resolve_ingestion_rows()
 
@@ -36,7 +36,7 @@ def test_falls_back_when_live_raises(monkeypatch):
 
 def test_falls_back_when_live_empty(monkeypatch):
     monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
-    monkeypatch.setattr(ingestion, "fetch_maharashtra_rows", lambda _key: [])
+    monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", lambda *a, **k: [])
 
     source, rows = ingestion.resolve_ingestion_rows()
 

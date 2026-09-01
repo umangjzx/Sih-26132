@@ -12,8 +12,9 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.geo_cache import GeoCache
-from app.services.geo import DISTRICT_CENTROIDS
+from app.services.geo import DISTRICT_CENTROIDS, nearest_state
 from app.services.market_towns import MARKET_COORDS
 
 logger = logging.getLogger(__name__)
@@ -117,3 +118,77 @@ def geocode(name: str, db: Session) -> dict | None:
     )
     db.commit()
     return result
+
+
+def reverse_geocode(lat: float, lon: float, db: Session) -> dict:
+    """lat/lon -> {state, district, display_name, latitude, longitude, source}.
+
+    Uses the free keyless BigDataCloud reverse-geocoder, cached in ``geo_cache``
+    under a rounded-coordinate key. Falls back to the nearest state centroid.
+    """
+    key = f"@rev:{round(lat, 3)},{round(lon, 3)}"
+    cached = db.execute(select(GeoCache).where(GeoCache.query == key)).scalar_one_or_none()
+    if cached is not None:
+        return {
+            "state": cached.admin1,
+            "district": cached.admin2,
+            "display_name": cached.display_name,
+            "latitude": cached.latitude,
+            "longitude": cached.longitude,
+            "source": "cache",
+        }
+
+    state = ""
+    district = ""
+    display = ""
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            resp = client.get(
+                settings.reverse_geocode_url,
+                params={"latitude": lat, "longitude": lon, "localityLanguage": "en"},
+            )
+            resp.raise_for_status()
+            j = resp.json()
+            state = j.get("principalSubdivision") or ""
+            # BigDataCloud nests admin levels; the deepest one that isn't the
+            # state or the country is usually the district.
+            names = [
+                a["name"]
+                for a in j.get("localityInfo", {}).get("administrative", [])
+                if a.get("name")
+            ]
+            district = next(
+                (n for n in reversed(names) if n and n not in (state, "India")),
+                j.get("city") or j.get("locality") or "",
+            )
+            display = ", ".join(x for x in (j.get("city") or j.get("locality"), district, state) if x)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Reverse geocode failed (%s); snapping to nearest state", exc)
+
+    if not state:
+        state = nearest_state(lat, lon)
+        display = display or state
+        src = "static"
+    else:
+        src = "bigdatacloud"
+
+    db.add(
+        GeoCache(
+            query=key,
+            latitude=lat,
+            longitude=lon,
+            display_name=display or state,
+            admin1=state,
+            admin2=district,
+            admin3="",
+        )
+    )
+    db.commit()
+    return {
+        "state": state,
+        "district": district,
+        "display_name": display or state,
+        "latitude": lat,
+        "longitude": lon,
+        "source": src,
+    }

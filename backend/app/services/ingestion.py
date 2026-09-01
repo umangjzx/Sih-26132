@@ -59,34 +59,49 @@ def _parse_float(value: str | None) -> float | None:
         return None
 
 
-def fetch_maharashtra_rows(api_key: str) -> list[dict]:
-    """Pages through the live API. Raises on network/HTTP failure so the
-    caller can fall back to fixtures."""
+def _fetch_state(client: httpx.Client, api_key: str, state: str | None) -> list[dict]:
     rows: list[dict] = []
     offset = 0
-    with httpx.Client(timeout=20.0) as client:
-        while True:
-            resp = client.get(
-                BASE_URL,
-                params={
-                    "api-key": api_key,
-                    "format": "json",
-                    "offset": offset,
-                    "limit": PAGE_SIZE,
-                    "filters[state]": "Maharashtra",
-                },
-            )
-            resp.raise_for_status()
-            payload = resp.json()
-            records = payload.get("records", [])
-            if not records:
-                break
-            rows.extend(records)
-            total = int(payload.get("total", len(rows)))
-            offset += len(records)
-            if offset >= total or len(records) < PAGE_SIZE:
-                break
+    while True:
+        params = {
+            "api-key": api_key,
+            "format": "json",
+            "offset": offset,
+            "limit": PAGE_SIZE,
+        }
+        if state:
+            params["filters[state]"] = state
+        resp = client.get(BASE_URL, params=params)
+        resp.raise_for_status()
+        payload = resp.json()
+        records = payload.get("records", [])
+        if not records:
+            break
+        rows.extend(records)
+        total = int(payload.get("total", len(rows)))
+        offset += len(records)
+        if offset >= total or len(records) < PAGE_SIZE:
+            break
     return rows
+
+
+def fetch_agmarknet_rows(api_key: str, states: list[str] | None = None) -> list[dict]:
+    """Pages through the live AGMARKNET feed for the given states (or the whole
+    of India when ``states`` is None). Raises on network/HTTP failure so the
+    caller can fall back to snapshot/fixtures."""
+    rows: list[dict] = []
+    with httpx.Client(timeout=20.0) as client:
+        if not states:
+            rows.extend(_fetch_state(client, api_key, None))
+        else:
+            for state in states:
+                rows.extend(_fetch_state(client, api_key, state))
+    return rows
+
+
+def fetch_maharashtra_rows(api_key: str) -> list[dict]:
+    """Back-compat shim — Maharashtra-only pull."""
+    return fetch_agmarknet_rows(api_key, ["Maharashtra"])
 
 
 def normalize_rows(raw_rows: list[dict]) -> list[dict]:
@@ -141,10 +156,16 @@ def _densest_series_points(rows: list[dict]) -> int:
     return max(counts.values(), default=0)
 
 
-def resolve_ingestion_rows() -> tuple[str, list[dict]]:
+def resolve_ingestion_rows(states: list[str] | None = "__default__") -> tuple[str, list[dict]]:
     """Decide the price-row source and return the rows. Pure: no DB access, no
     side effects, never raises. Order is live -> (dense snapshot) -> synthetic
     fixture (D-04, revised):
+
+    ``states`` selects which AGMARKNET states the live pull covers:
+      * "__default__" (sentinel) -> settings.ingest_state_list (Maharashtra unless
+        overridden; None there means the whole national feed)
+      * an explicit list -> just those states
+      * None -> whole national feed
 
       * "live"     — data.gov.in AGMARKNET resource (D-01), only when a key is
                      configured and the call yields usable normalized rows.
@@ -156,10 +177,12 @@ def resolve_ingestion_rows() -> tuple[str, list[dict]]:
                      the only source with arrival_volume. This is the normal
                      offline path — the bundled snapshot is a small sample.
     """
+    if states == "__default__":
+        states = settings.ingest_state_list
     try:
         if not settings.data_gov_in_api_key:
             raise RuntimeError("DATA_GOV_IN_API_KEY not configured")
-        rows = normalize_rows(fetch_maharashtra_rows(settings.data_gov_in_api_key))
+        rows = normalize_rows(fetch_agmarknet_rows(settings.data_gov_in_api_key, states))
         if not rows:
             raise RuntimeError("live API returned no usable rows")
         return "live", rows
@@ -212,11 +235,13 @@ def merge_arrivals(price_rows: list[dict], arrival_rows: list[dict]) -> list[dic
     return price_rows
 
 
-def run_ingestion(db: Session) -> dict:
+def run_ingestion(db: Session, states: list[str] | None = "__default__") -> dict:
     """Resolves the row source (live -> dense snapshot -> fixture) and upserts into
     PriceCache so the dashboard always has something to show. Then evaluates any
-    standing price alerts against the fresh data (v1.1)."""
-    source, rows = resolve_ingestion_rows()
+    standing price alerts against the fresh data (v1.1).
+
+    ``states`` is passed through to ``resolve_ingestion_rows`` (v1.2)."""
+    source, rows = resolve_ingestion_rows(states)
     # Phase 1: dormant. Wire here when a non-OGD arrivals source lands (PRICE-07).
     count = upsert_price_rows(db, rows)
 

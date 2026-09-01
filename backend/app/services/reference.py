@@ -217,10 +217,15 @@ def _origin_coords(district: str | None, lat: float | None, lon: float | None) -
     return None
 
 
+CURATED_STATE = "Maharashtra"
+
+
 def nearby_cold_storage(
     district: str | None = None, lat: float | None = None, lon: float | None = None,
-    max_km: float = 150.0, limit: int = 8,
+    max_km: float = 150.0, limit: int = 8, state: str | None = None,
 ) -> list[dict]:
+    if state and state.strip().lower() != CURATED_STATE.lower():
+        return []  # curated facility list is Maharashtra-only for now
     origin = _origin_coords(district, lat, lon)
     out = []
     for f in COLD_STORAGE:
@@ -234,7 +239,10 @@ def nearby_cold_storage(
 
 def nearby_fpos(
     district: str | None = None, crop: str | None = None, limit: int = 8,
+    state: str | None = None,
 ) -> list[dict]:
+    if state and state.strip().lower() != CURATED_STATE.lower():
+        return []  # curated FPO list is Maharashtra-only for now
     origin = DISTRICT_CENTROIDS.get(district) if district else None
     out = []
     for f in FPOS:
