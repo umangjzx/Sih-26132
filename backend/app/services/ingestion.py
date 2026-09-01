@@ -3,9 +3,12 @@
 upserts into PriceCache. Never called live on a user request — only from the
 scheduled job in main.py's startup/interval trigger.
 
-The source dataset has no arrival-volume field, so arrival_volume is always
-None on ingested rows; app.services.signal degrades its explanation when
-volume is absent.
+The OGD AGMARKNET price resource carries no arrival-volume field and there is
+no companion arrivals feed, so `arrival_volume` is always None on live/snapshot
+rows and the sell/wait signal's volume factor is powered only by the synthetic
+fixture data (or, in a later phase, a non-OGD arrivals source wired through the
+`fetch_arrivals_rows()` / `merge_arrivals()` seam — PRICE-07). `app.services.signal`
+degrades its explanation when volume is absent.
 """
 
 import logging
@@ -145,10 +148,46 @@ def resolve_ingestion_rows() -> tuple[str, list[dict]]:
     return "fixture", generate_fixture_rows()
 
 
+def fetch_arrivals_rows() -> list[dict]:
+    """Arrivals-volume seam — OFF by default in Phase 1.
+
+    The OGD price resource has no arrivals data and no non-OGD arrivals source is
+    wired yet, so with `ARRIVALS_SOURCE_URL` empty this returns `[]` (and says so
+    once in the log). If a URL is somehow configured we fail loudly rather than
+    silently doing nothing — the actual client is a later phase (PRICE-01/PRICE-07).
+    """
+    if not settings.arrivals_source_url:
+        logger.warning(
+            "No live arrivals source configured (ARRIVALS_SOURCE_URL empty) - "
+            "volume factor runs on fixture/snapshot data only; see PRICE-07"
+        )
+        return []
+    raise NotImplementedError(
+        "ARRIVALS_SOURCE_URL is set but no arrivals client is implemented; wire a "
+        "non-OGD arrivals source here for PRICE-01/PRICE-07"
+    )
+
+
+def merge_arrivals(price_rows: list[dict], arrival_rows: list[dict]) -> list[dict]:
+    """D-03: join arrival volume onto existing price rows, keyed on
+    (market, crop, date). Arrival rows that match nothing are dropped; no new
+    row is ever appended to `price_rows`. Returns `price_rows` (mutated in place)."""
+    index: dict[tuple, dict] = {
+        (row.get("market"), row.get("crop"), row.get("date")): row for row in price_rows
+    }
+    for arrival in arrival_rows:
+        key = (arrival.get("market"), arrival.get("crop"), arrival.get("date"))
+        target = index.get(key)
+        if target is not None:
+            target["arrival_volume"] = arrival.get("arrival_volume")
+    return price_rows
+
+
 def run_ingestion(db: Session) -> dict:
     """Resolves the row source (live -> snapshot -> fixture) and upserts into
     PriceCache so the dashboard always has something to show."""
     source, rows = resolve_ingestion_rows()
+    # Phase 1: dormant. Wire here when a non-OGD arrivals source lands (PRICE-07).
     count = upsert_price_rows(db, rows)
     return {"source": source, "rows_upserted": count}
 
