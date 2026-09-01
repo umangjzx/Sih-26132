@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AgriLink frontend
 
-## Getting Started
+Next.js 16 (App Router, Turbopack) + React 19 + TypeScript, `next-intl` for i18n,
+`recharts` for the price chart, Tailwind v4. Mobile-first, built to wrap unchanged in
+Apache Cordova later — so the price routes are a client-rendered SPA that calls the REST
+API (no Next.js server actions / server-only features on those routes).
 
-First, run the development server:
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd frontend && node node_modules/next/dist/bin/next dev -p 3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use this, **not** `npm run dev` — the wrapper exits code 1 when backgrounded in a non-TTY
+shell on this setup (see `.planning/codebase/CONCERNS.md`). Interactively, `npm run dev`
+is fine.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Production build:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cd frontend && npm run build
+```
 
-## Learn More
+> `npm run build` needs network access the first time — `next/font/google` fetches the
+> Noto Sans / Noto Sans Devanagari files. The dev server works offline.
 
-To learn more about Next.js, take a look at the following resources:
+## Tests
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd frontend && npm run test        # vitest run (one pass)
+cd frontend && npm run test:watch  # watch mode
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> In a shell without `cmd.exe`, run `npx vitest run` directly (or
+> `npm run test --script-shell=bash`).
 
-## Deploy on Vercel
+Suites: `parity.test.ts` (locale key parity), `PriceDashboard.test.tsx` (skeleton→data,
+error→Retry recovery), `SellWaitSignalCard.test.tsx` (each recommendation + its reasons),
+`LanguageSwitcher.test.tsx` (locale change + `localStorage` persistence).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Internationalisation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Locale is **client-only**: stored in `localStorage['agrilink.locale']`, no `/[locale]`
+  routing and no `next-intl` middleware/plugin (keeps the app Cordova/static-export safe).
+- `LocaleProvider` gates render behind a `ready` flag and shows `AppShellSkeleton` until the
+  stored locale resolves — no flash of English on refresh.
+- `src/i18n/messages/en.json` is the **source of truth** for keys. `hi.json` and `mr.json`
+  must cover every key in `en.json`; `src/i18n/messages/parity.test.ts` (part of
+  `npm run test`) fails the build otherwise.
+- Header language switcher: English / हिंदी / मराठी.
+
+## Configuration
+
+`frontend/.env` (optional):
+
+| Variable | Notes |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Base URL of the backend API. Defaults to `http://localhost:8000` when unset |
