@@ -8,6 +8,10 @@ vi.mock("@/lib/api", () => ({
   fetchTrend: vi.fn(),
   fetchSignal: vi.fn(),
   fetchNearby: vi.fn(),
+  fetchWeather: vi.fn(),
+  fetchMsp: vi.fn(),
+  fetchCalendar: vi.fn(),
+  fetchBestMarkets: vi.fn(),
 }));
 
 import * as api from "@/lib/api";
@@ -40,6 +44,10 @@ beforeEach(() => {
   vi.mocked(api.fetchTrend).mockReset().mockResolvedValue(trend);
   vi.mocked(api.fetchSignal).mockReset().mockResolvedValue(signal);
   vi.mocked(api.fetchNearby).mockReset().mockResolvedValue([]);
+  vi.mocked(api.fetchWeather).mockReset().mockRejectedValue(new Error("no weather in test"));
+  vi.mocked(api.fetchMsp).mockReset().mockRejectedValue(new Error("no msp in test"));
+  vi.mocked(api.fetchCalendar).mockReset().mockRejectedValue(new Error("no calendar in test"));
+  vi.mocked(api.fetchBestMarkets).mockReset().mockRejectedValue(new Error("no best in test"));
 });
 
 it("shows skeletons first, then the fetched data", async () => {

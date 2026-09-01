@@ -4,15 +4,24 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  fetchBestMarkets,
+  fetchCalendar,
+  fetchMsp,
   fetchNearby,
   fetchOptions,
   fetchSignal,
   fetchTrend,
+  fetchWeather,
+  type BestMarketResponse,
+  type CropCalendar,
   type CropMarketOption,
+  type MspInfo,
   type NearestMarketComparison,
   type PriceTrendResponse,
   type SellWaitSignalResponse,
+  type WeatherForecast,
 } from "@/lib/api";
+import { BestMarketPanel, CalendarChip, MspBanner, WeatherStrip } from "./intel";
 import { NearbyMarketsTable } from "./NearbyMarketsTable";
 import { PriceTrendChart } from "./PriceTrendChart";
 import { SellWaitSignalCard } from "./SellWaitSignalCard";
@@ -43,6 +52,10 @@ export function PriceDashboard() {
   const [trend, setTrend] = useState<PriceTrendResponse | null>(null);
   const [signal, setSignal] = useState<SellWaitSignalResponse | null>(null);
   const [nearby, setNearby] = useState<NearestMarketComparison[]>([]);
+  const [weather, setWeather] = useState<WeatherForecast | null>(null);
+  const [msp, setMsp] = useState<MspInfo | null>(null);
+  const [calendar, setCalendar] = useState<CropCalendar | null>(null);
+  const [best, setBest] = useState<BestMarketResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -81,6 +94,19 @@ export function PriceDashboard() {
       setTrend(trendRes);
       setSignal(signalRes);
       setNearby(nearbyRes);
+
+      // v1.1 intelligence — independent, best-effort; a failure here must not
+      // blank the core dashboard.
+      const [w, m, c, b] = await Promise.allSettled([
+        fetchWeather(market, { includeAnomaly: true }),
+        fetchMsp(crop, market),
+        fetchCalendar(crop),
+        fetchBestMarkets(crop, market, true),
+      ]);
+      setWeather(w.status === "fulfilled" ? w.value : null);
+      setMsp(m.status === "fulfilled" ? m.value : null);
+      setCalendar(c.status === "fulfilled" ? c.value : null);
+      setBest(b.status === "fulfilled" ? b.value : null);
     } catch {
       setError(true);
     } finally {
@@ -211,7 +237,13 @@ export function PriceDashboard() {
             </p>
           )}
 
+          <MspBanner data={msp} />
+          <CalendarChip data={calendar} />
+
           {signal && <SellWaitSignalCard signal={signal} />}
+
+          <WeatherStrip data={weather} />
+          <BestMarketPanel data={best} />
 
           {nearby.length > 0 && <NearbyMarketsTable markets={nearby} />}
         </>

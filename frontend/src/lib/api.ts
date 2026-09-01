@@ -461,3 +461,200 @@ export function getAdminDashboard(
 ): Promise<AdminDashboardResponse> {
   return getJson("/api/admin/dashboard", token);
 }
+
+// ===========================================================================
+// v1.1 — weather, MSP, calendar, storage/FPO, best market, alerts, public
+// ===========================================================================
+
+export type WeatherDay = {
+  date: string;
+  precip_mm: number;
+  temp_max_c: number | null;
+  wind_kmh: number | null;
+  rain_prob: number | null;
+};
+export type WeatherForecast = {
+  latitude: number;
+  longitude: number;
+  days: WeatherDay[];
+  next3_rain_mm: number | null;
+  sell_bias: number;
+  note: string;
+  source: string;
+  rain_anomaly?: {
+    recent_mm: number | null;
+    normal_mm: number | null;
+    pct_of_normal: number | null;
+    note: string;
+  };
+};
+
+export type MspInfo = {
+  crop: string;
+  has_msp: boolean;
+  msp_price?: number;
+  season?: string;
+  unit?: string;
+  latest_modal_price: number | null;
+  gap_vs_msp?: number;
+  below_msp?: boolean;
+  note?: string;
+};
+
+export type CropCalendar = {
+  crop: string;
+  sow_months: string;
+  harvest_months: string;
+  peak_arrival_months: string;
+  current_phase: string;
+  glut_risk: boolean;
+  note: string;
+};
+
+export type ColdStorage = {
+  name: string;
+  type: string;
+  district: string;
+  lat: number;
+  lon: number;
+  capacity_tonnes: number;
+  crops: string;
+  distance_km: number | null;
+};
+
+export type FpoInfo = {
+  name: string;
+  district: string;
+  crops: string;
+  members: number;
+  contact: string;
+  distance_km: number | null;
+};
+
+export type BestMarketRow = {
+  market: string;
+  district: string;
+  modal_price: number;
+  road_km: number;
+  drive_min: number | null;
+  transport_cost_per_qtl: number;
+  net_price_per_qtl: number;
+  distance_source: string;
+  date: string;
+};
+export type BestMarketResponse = {
+  crop: string;
+  origin: { latitude: number; longitude: number };
+  best: BestMarketRow;
+  here: BestMarketRow | null;
+  ranked: BestMarketRow[];
+  note: string | null;
+};
+
+export type HolidayInfo = { date: string; name: string; in_days: number };
+
+export type PublicOverview = {
+  as_of: string | null;
+  crops: { crop: string; avg_modal_price: number; change_7d_pct: number | null }[];
+  gainers: { crop: string; avg_modal_price: number; change_7d_pct: number }[];
+  losers: { crop: string; avg_modal_price: number; change_7d_pct: number }[];
+  price_trend: { date: string; avg_modal_price: number }[];
+  activity: Record<string, number>;
+};
+
+export type PriceAlert = {
+  id: number;
+  user_id: number;
+  crop: string;
+  market: string;
+  direction: "above" | "below";
+  threshold: number;
+  active: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
+};
+export type PriceAlertCreate = {
+  crop: string;
+  market: string;
+  direction: "above" | "below";
+  threshold: number;
+};
+export type AppNotification = {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+};
+
+const qs = (o: Record<string, string | number | boolean | undefined>) =>
+  new URLSearchParams(
+    Object.entries(o).filter(([, v]) => v !== undefined && v !== "") as [string, string][],
+  ).toString();
+
+export function fetchWeather(
+  market: string,
+  opts: { includeAnomaly?: boolean } = {},
+): Promise<WeatherForecast> {
+  return getJson(`/api/weather/forecast?${qs({ market, include_anomaly: opts.includeAnomaly })}`);
+}
+export function fetchMsp(crop: string, market?: string): Promise<MspInfo> {
+  return getJson(`/api/msp?${qs({ crop, market })}`);
+}
+export function fetchCalendar(crop: string): Promise<CropCalendar> {
+  return getJson(`/api/calendar?${qs({ crop })}`);
+}
+export function fetchStorageNearby(district: string): Promise<ColdStorage[]> {
+  return getJson(`/api/storage/nearby?${qs({ district })}`);
+}
+export function fetchFpoNearby(district: string, crop?: string): Promise<FpoInfo[]> {
+  return getJson(`/api/fpo/nearby?${qs({ district, crop })}`);
+}
+export function fetchBestMarkets(
+  crop: string,
+  market: string,
+  fast = true,
+): Promise<BestMarketResponse> {
+  return getJson(`/api/markets/best?${qs({ crop, market, fast })}`);
+}
+export function fetchHolidays(days = 30): Promise<{ holidays: HolidayInfo[]; note: string | null }> {
+  return getJson(`/api/holidays/upcoming?${qs({ days })}`);
+}
+export function fetchPublicOverview(): Promise<PublicOverview> {
+  return getJson("/api/public/overview");
+}
+
+export function listAlerts(token: string): Promise<PriceAlert[]> {
+  return getJson("/api/alerts", token);
+}
+export function createAlert(body: PriceAlertCreate, token: string): Promise<PriceAlert> {
+  return postJson("/api/alerts", body, token);
+}
+export function toggleAlert(id: number, token: string): Promise<PriceAlert> {
+  return patchJson(`/api/alerts/${id}/toggle`, {}, token);
+}
+export async function deleteAlert(id: number, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/alerts/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok && res.status !== 204) throw new Error(`Request failed: ${res.status}`);
+}
+export function listNotifications(token: string, unreadOnly = false): Promise<AppNotification[]> {
+  return getJson(`/api/notifications?${qs({ unread_only: unreadOnly })}`, token);
+}
+export function notificationUnreadCount(token: string): Promise<{ unread: number }> {
+  return getJson("/api/notifications/unread-count", token);
+}
+export function markNotificationRead(id: number, token: string): Promise<AppNotification> {
+  return patchJson(`/api/notifications/${id}/read`, {}, token);
+}
+export async function markAllNotificationsRead(token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/notifications/read-all`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok && res.status !== 204) throw new Error(`Request failed: ${res.status}`);
+}

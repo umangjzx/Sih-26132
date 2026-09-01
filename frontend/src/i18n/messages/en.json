@@ -13,7 +13,9 @@
     "myLots": "My Lots",
     "myDemands": "My Demands",
     "history": "My History",
-    "admin": "Admin"
+    "admin": "Admin",
+    "explore": "Explore",
+    "alerts": "Alerts"
   },
   "dashboard": {
     "title": "Mandi Price Discovery",
@@ -211,5 +213,109 @@
     "date": "Date",
     "loadError": "Could not load the dashboard",
     "forbidden": "Admin access only"
+  },
+  "weather": {
+    "title": "7-Day Weather",
+    "note": "Weather note",
+    "rain": "Rain",
+    "temp": "Max temp",
+    "wind": "Wind",
+    "rainProb": "Rain chance",
+    "vsNormal": "Rainfall vs 10-year normal",
+    "unavailable": "Weather is unavailable right now"
+  },
+  "msp": {
+    "title": "Minimum Support Price",
+    "noMsp": "{crop} is a market-driven crop with no MSP.",
+    "aboveBy": "Market is above MSP by the shown gap",
+    "belowBy": "Market is below MSP by the shown gap - a procurement centre may pay more",
+    "season": "Season",
+    "mspValue": "MSP",
+    "marketValue": "Market price"
+  },
+  "calendar": {
+    "title": "Crop Calendar",
+    "sow": "Sowing",
+    "harvest": "Harvest",
+    "peak": "Peak arrivals",
+    "phase": "Right now",
+    "glutWarning": "Peak-arrival window - expect statewide price softening",
+    "noCalendar": "No crop calendar for this crop"
+  },
+  "bestmarket": {
+    "title": "Best Market After Transport",
+    "best": "Best net price",
+    "netPrice": "Net / quintal",
+    "roadDistance": "Road distance",
+    "transport": "Transport",
+    "modal": "Modal price",
+    "showAll": "Show all markets",
+    "showLess": "Show fewer",
+    "sellHere": "You are here",
+    "viewNote": "Tip"
+  },
+  "explore": {
+    "title": "Statewide Price Transparency",
+    "subtitle": "Live mandi prices across Maharashtra - no login needed",
+    "asOf": "As of",
+    "marketsReporting": "Markets reporting",
+    "cropsTracked": "Crops tracked",
+    "openLots": "Open lots",
+    "openDemands": "Open demand",
+    "deals": "Deals",
+    "openDisputes": "Open disputes",
+    "gainers": "Top gainers (7 days)",
+    "losers": "Top fallers (7 days)",
+    "statewideTrend": "Statewide average modal price (30 days)",
+    "allCrops": "All crops",
+    "crop": "Crop",
+    "price": "Avg price",
+    "change": "7-day change",
+    "noData": "No statewide data yet"
+  },
+  "alerts": {
+    "title": "Price Alerts",
+    "subtitle": "Get notified when a crop price crosses your target",
+    "create": "Create an alert",
+    "crop": "Crop",
+    "market": "Market",
+    "direction": "When price goes",
+    "above": "above",
+    "below": "below",
+    "threshold": "Target price (Rs/quintal)",
+    "add": "Add alert",
+    "adding": "Adding...",
+    "yourAlerts": "Your alerts",
+    "none": "No alerts yet",
+    "active": "Active",
+    "paused": "Paused",
+    "pause": "Pause",
+    "resume": "Resume",
+    "delete": "Delete",
+    "lastTriggered": "Last fired",
+    "loginRequired": "Log in to manage price alerts"
+  },
+  "storage": {
+    "title": "Storage Near You",
+    "subtitle": "Cold storage and warehouses within reach",
+    "capacity": "Capacity",
+    "distance": "Distance",
+    "type_cold_storage": "Cold storage",
+    "type_warehouse": "Warehouse",
+    "none": "No facilities found nearby"
+  },
+  "fpo": {
+    "title": "Farmer Producer Organisations",
+    "subtitle": "Join an FPO to pool volume and reach bigger buyers",
+    "members": "members",
+    "contact": "Contact",
+    "focus": "Focus crops",
+    "none": "No FPOs found nearby"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "none": "No notifications",
+    "markAllRead": "Mark all read",
+    "unread": "{count} unread"
   }
 }
