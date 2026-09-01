@@ -22,8 +22,8 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 
 Phase: 1 of 4 (Price Discovery & i18n Shell)
 Plan: 0 of TBD in current phase
-Status: Ready to discuss
-Last activity: 2026-09-01 — GSD Core installed and onboarded; PROJECT/REQUIREMENTS/ROADMAP/codebase map written; app confirmed running (frontend :3000, backend :8000, Docker Postgres :5433)
+Status: Discuss complete — ready to plan (/gsd-plan-phase 1)
+Last activity: 2026-09-01 — Phase 1 Discuss done; 1-CONTEXT.md written (D-01..D-22). Decisions: add 2nd AGMARKNET resource for arrivals, adopt Alembic in Phase 1, pytest+vitest focused, Ship = local run + PR (no deploy)
 
 Progress: [░░░░░░░░░░] 0%
 
