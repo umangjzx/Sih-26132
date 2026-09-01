@@ -43,12 +43,16 @@ migrations and focused tests, and ships a green local run + PR.
   variety best-effort — this governs the fixture/snapshot volume population and the
   future `fetch_arrivals_rows()` seam. Volume rows never create price-less rows;
   unmatched volume is dropped.
-- **D-04:** Ingestion stays scheduled-only (never on a user request). Seed/refresh
-  order: **live API → committed Maharashtra CSV snapshot → synthetic fixtures**
-  (`fixtures.generate_fixture_rows`, seed 26132, which carries synthetic
-  `arrival_volume`). The CSV snapshot is a real Maharashtra data.gov.in export
-  (authentic market/commodity names + prices, no arrivals) committed under the backend.
-  Any source missing/failing/empty falls through to the next.
+- **D-04 (REVISED 2026-09-01 after 01-04 green-run):** Ingestion stays scheduled-only.
+  Seed/refresh order: **live API → synthetic fixtures**, with the committed Maharashtra
+  CSV snapshot used *ahead of* fixtures **only when it is dense enough to stand alone**
+  (`_densest_series_points(snapshot) >= SNAPSHOT_MIN_SERIES_POINTS = 7`, the signal's
+  minimum window). The bundled snapshot is a small authentic sample (~38 rows), so the
+  real offline path is fixtures (`fixtures.generate_fixture_rows`, seed 26132) — 90 days
+  across every market+crop and the only source with `arrival_volume`, so signal + nearby
+  are fully populated for the demo. Rationale: the original green-run seeded from the thin
+  snapshot and left `/prices/signal` and `/prices/nearby` empty (success criteria 3 & 4
+  not observably true). The CSV stays in the repo as an authenticity artifact + test input.
 - **D-05:** Gate `POST /api/ingest/run` behind a shared-secret header (env
   `INGEST_TRIGGER_SECRET`) in Phase 1 — cheap protection for a write endpoint before
   real auth exists in Phase 2. 403 without the header.

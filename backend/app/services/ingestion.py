@@ -3,6 +3,13 @@
 upserts into PriceCache. Never called live on a user request — only from the
 scheduled job in main.py's startup/interval trigger.
 
+Source order (D-04, revised 2026-09-01): live API -> synthetic fixtures, with the
+committed CSV snapshot used ahead of fixtures only when it is dense enough to
+drive every dashboard view on its own (>= SNAPSHOT_MIN_SERIES_POINTS dated points
+for some market+crop series). The bundled snapshot is a small authentic sample,
+so in practice the offline path is fixtures — they carry 90 days across every
+market+crop and are the only source with `arrival_volume`.
+
 The OGD AGMARKNET price resource carries no arrival-volume field and there is
 no companion arrivals feed, so `arrival_volume` is always None on live/snapshot
 rows and the sell/wait signal's volume factor is powered only by the synthetic
@@ -29,6 +36,11 @@ logger = logging.getLogger(__name__)
 RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
 BASE_URL = f"https://api.data.gov.in/resource/{RESOURCE_ID}"
 PAGE_SIZE = 1000
+
+# The snapshot is preferred over fixtures only if it can stand alone — i.e. it has
+# at least one market+crop series with enough dated points for the 7-day signal
+# window (app.services.signal.compute_signal needs >= 7).
+SNAPSHOT_MIN_SERIES_POINTS = 7
 
 
 def _parse_date(value: str) -> date | None:
@@ -120,17 +132,29 @@ def upsert_price_rows(db: Session, rows: list[dict]) -> int:
     return len(rows)
 
 
+def _densest_series_points(rows: list[dict]) -> int:
+    """Largest number of dated points any single (market, crop) series has."""
+    counts: dict[tuple, int] = {}
+    for row in rows:
+        key = (row.get("market"), row.get("crop"))
+        counts[key] = counts.get(key, 0) + 1
+    return max(counts.values(), default=0)
+
+
 def resolve_ingestion_rows() -> tuple[str, list[dict]]:
     """Decide the price-row source and return the rows. Pure: no DB access, no
-    side effects, never raises. Order is live -> committed snapshot -> synthetic
-    fixture:
+    side effects, never raises. Order is live -> (dense snapshot) -> synthetic
+    fixture (D-04, revised):
 
       * "live"     — data.gov.in AGMARKNET resource (D-01), only when a key is
                      configured and the call yields usable normalized rows.
       * "snapshot" — the committed Maharashtra CSV export (authentic names/prices,
-                     no arrival volume).
-      * "fixture"  — the synthetic generator (last resort; the only source with
-                     arrival_volume, which the signal's volume factor needs).
+                     no arrival volume), used ahead of fixtures ONLY when it is
+                     dense enough to stand alone (>= SNAPSHOT_MIN_SERIES_POINTS
+                     dated points for some market+crop series).
+      * "fixture"  — the synthetic generator: 90 days across every market+crop and
+                     the only source with arrival_volume. This is the normal
+                     offline path — the bundled snapshot is a small sample.
     """
     try:
         if not settings.data_gov_in_api_key:
@@ -143,8 +167,13 @@ def resolve_ingestion_rows() -> tuple[str, list[dict]]:
         logger.warning("Live ingestion unavailable (%s); using snapshot/fixture data", exc)
 
     snapshot_rows = load_snapshot_rows()
-    if snapshot_rows:
+    if _densest_series_points(snapshot_rows) >= SNAPSHOT_MIN_SERIES_POINTS:
         return "snapshot", snapshot_rows
+    if snapshot_rows:
+        logger.info(
+            "Snapshot present but too sparse (densest series < %d points); using fixtures",
+            SNAPSHOT_MIN_SERIES_POINTS,
+        )
     return "fixture", generate_fixture_rows()
 
 
@@ -184,7 +213,7 @@ def merge_arrivals(price_rows: list[dict], arrival_rows: list[dict]) -> list[dic
 
 
 def run_ingestion(db: Session) -> dict:
-    """Resolves the row source (live -> snapshot -> fixture) and upserts into
+    """Resolves the row source (live -> dense snapshot -> fixture) and upserts into
     PriceCache so the dashboard always has something to show."""
     source, rows = resolve_ingestion_rows()
     # Phase 1: dormant. Wire here when a non-OGD arrivals source lands (PRICE-07).
