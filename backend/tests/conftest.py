@@ -99,6 +99,24 @@ def buyer_user(db):
 
 
 @pytest.fixture()
+def admin_user(db):
+    """A persisted admin User for role-gated dashboard / dispute-close tests (Phase 3)."""
+    user = User(
+        role="admin",
+        name="MSInS Oversight",
+        phone="+910000000009",
+        district="Mumbai City",
+        taluka="Mumbai",
+        kyc_status="verified",
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture()
 def farmer_client(farmer_user, db):
     """TestClient pre-authenticated as the farmer_user.
 
