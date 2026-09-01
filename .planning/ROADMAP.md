@@ -33,10 +33,13 @@ with Apache Cordova. Each phase runs the GSD loop: Discuss → Plan → Execute 
   4. User sees a sell_now / wait / hold recommendation with every driving number shown as a plain-language reason
   5. User switches between English, Hindi, and Marathi from the header; all visible copy translates and the choice persists with no layout break
   6. Pages show skeletons while loading, use ≥44px tap targets, high contrast, and the earthy palette
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: TBD (set during plan-phase)
+- [ ] 01-01-PLAN.md — Adopt Alembic, retire create_all (tracer: migration + app boot end-to-end)
+- [ ] 01-02-PLAN.md — Ingestion resilience (snapshot + arrivals seam), /nearby cap+limit, ingest secret gate, backend pytest suite
+- [ ] 01-03-PLAN.md — i18n no-flash gate, key-parity + terminology, dashboard retry + skeleton a11y, frontend vitest suite
+- [ ] 01-04-PLAN.md — Ship readiness: root/backend/frontend READMEs + verified green local run
 
 ### Phase 2: Auth & Farmer–Buyer Matching
 **Goal**: Farmers/FPOs and buyers log in by phone OTP, create lots and demand, get ranked rule-based matches, and negotiate via offer/counter-offer threads.
@@ -89,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Price Discovery & i18n Shell | 0/TBD | In progress | - |
+| 1. Price Discovery & i18n Shell | 0/4 | In progress | - |
 | 2. Auth & Farmer–Buyer Matching | 0/TBD | Not started | - |
 | 3. Deal Tracking, Disputes & Admin | 0/TBD | Not started | - |
 | 4. Cordova Android Wrap | 0/TBD | Not started | - |
