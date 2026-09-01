@@ -6,7 +6,7 @@
     "retry": "Retry"
   },
   "nav": {
-    "prices": "Mandi Prices",
+    "prices": "Prices",
     "language": "Language",
     "login": "Login",
     "logout": "Logout",
@@ -15,7 +15,9 @@
     "history": "My History",
     "admin": "Admin",
     "explore": "Explore",
-    "alerts": "Alerts"
+    "alerts": "Alerts",
+    "advisor": "Advisor",
+    "directory": "Directory"
   },
   "dashboard": {
     "title": "Mandi Price Discovery",
@@ -317,5 +319,21 @@
     "none": "No notifications",
     "markAllRead": "Mark all read",
     "unread": "{count} unread"
+  },
+  "home": {
+    "heroTitle": "Know your price. Sell at the right time.",
+    "heroSubtitle": "Live mandi prices, an explainable sell-now-or-wait call, weather and MSP context, and verified buyers - for Maharashtra farmers and FPOs.",
+    "seeWhy": "See why",
+    "pricesTitle": "Prices & Markets",
+    "pricesDesc": "Trends, nearby mandis, and the best market after transport cost",
+    "advisorTitle": "Sell / Wait Advisor",
+    "advisorDesc": "The full reasoning: price momentum, weather, MSP, crop calendar",
+    "directoryTitle": "Storage & FPOs",
+    "directoryDesc": "Cold storage, warehouses and producer organisations near you",
+    "exploreTitle": "Explore Maharashtra",
+    "exploreDesc": "Statewide price transparency - no login needed",
+    "snapshotTitle": "Statewide snapshot",
+    "snapshotMore": "Open Explore",
+    "loadError": "Could not load prices right now"
   }
 }

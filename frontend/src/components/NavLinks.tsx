@@ -1,16 +1,27 @@
 "use client";
 
 /**
- * NavLinks — renders auth-aware navigation links in the header.
+ * NavLinks — auth-aware header navigation.
  *
- * Must be a separate "use client" component because it calls useAuth()
- * and useTranslations(), neither of which can be called in a server layout.
+ * "use client" because it calls useAuth() and useTranslations().
  */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+
 import { useAuth } from "@/components/AuthProvider";
+
+function NLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="text-sm font-medium text-[var(--color-brand)] hover:underline"
+    >
+      {children}
+    </Link>
+  );
+}
 
 export function NavLinks() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -22,22 +33,22 @@ export function NavLinks() {
     router.replace("/login");
   }
 
-  const exploreLink = (
-    <Link
-      href="/explore"
-      className="text-sm font-medium text-[var(--color-brand)] hover:underline"
-    >
-      {t("explore")}
-    </Link>
+  const primary = (
+    <>
+      <NLink href="/prices">{t("prices")}</NLink>
+      <NLink href="/advisor">{t("advisor")}</NLink>
+      <NLink href="/explore">{t("explore")}</NLink>
+      <NLink href="/directory">{t("directory")}</NLink>
+    </>
   );
 
   if (!isAuthenticated || !user) {
     return (
-      <nav className="flex items-center gap-3">
-        {exploreLink}
+      <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {primary}
         <Link
           href="/login"
-          className="rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:bg-[var(--color-brand-dark)] transition-all duration-200"
+          className="rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-brand-dark)] hover:shadow-md"
         >
           {t("login")}
         </Link>
@@ -46,54 +57,21 @@ export function NavLinks() {
   }
 
   return (
-    <nav className="flex items-center gap-3">
-      {exploreLink}
-      {user.role === "farmer" && (
-        <Link
-          href="/farmer"
-          className="text-sm font-medium text-[var(--color-brand)] hover:underline"
-        >
-          {t("myLots")}
-        </Link>
-      )}
-      {user.role === "buyer" && (
-        <Link
-          href="/buyer"
-          className="text-sm font-medium text-[var(--color-brand)] hover:underline"
-        >
-          {t("myDemands")}
-        </Link>
-      )}
+    <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {primary}
+      {user.role === "farmer" && <NLink href="/farmer">{t("myLots")}</NLink>}
+      {user.role === "buyer" && <NLink href="/buyer">{t("myDemands")}</NLink>}
       {(user.role === "farmer" || user.role === "buyer") && (
         <>
-          <Link
-            href="/history"
-            className="text-sm font-medium text-[var(--color-brand)] hover:underline"
-          >
-            {t("history")}
-          </Link>
-          <Link
-            href="/alerts"
-            className="text-sm font-medium text-[var(--color-brand)] hover:underline"
-          >
-            {t("alerts")}
-          </Link>
+          <NLink href="/history">{t("history")}</NLink>
+          <NLink href="/alerts">{t("alerts")}</NLink>
         </>
       )}
-      {user.role === "admin" && (
-        <Link
-          href="/admin"
-          className="text-sm font-medium text-[var(--color-brand)] hover:underline"
-        >
-          {t("admin")}
-        </Link>
-      )}
-      <span className="text-sm text-[var(--color-text)] opacity-60">
-        {user.name}
-      </span>
+      {user.role === "admin" && <NLink href="/admin">{t("admin")}</NLink>}
+      <span className="text-sm text-[var(--color-text)] opacity-60">{user.name}</span>
       <button
         onClick={handleLogout}
-        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-md px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm hover:bg-white/90 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
+        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-md"
       >
         {t("logout")}
       </button>
