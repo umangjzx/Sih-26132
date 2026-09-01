@@ -3,6 +3,7 @@
 import { NextIntlClientProvider } from "next-intl";
 import { createContext, useContext, useEffect, useState } from "react";
 
+import { AppShellSkeleton } from "@/components/AppShellSkeleton";
 import { defaultLocale, isLocale, type Locale } from "./config";
 import en from "./messages/en.json";
 import hi from "./messages/hi.json";
@@ -26,13 +27,14 @@ export function useAppLocale(): LocaleContextValue {
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored && isLocale(stored)) {
-      setLocaleState(stored);
-      document.documentElement.lang = stored;
-    }
+    const next: Locale = stored && isLocale(stored) ? stored : defaultLocale;
+    setLocaleState(next);
+    document.documentElement.lang = next;
+    setReady(true);
   }, []);
 
   const setLocale = (next: Locale) => {
@@ -44,7 +46,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   return (
     <LocaleContext.Provider value={{ locale, setLocale }}>
       <NextIntlClientProvider locale={locale} messages={messagesByLocale[locale]} timeZone="Asia/Kolkata">
-        {children}
+        {ready ? children : <AppShellSkeleton />}
       </NextIntlClientProvider>
     </LocaleContext.Provider>
   );

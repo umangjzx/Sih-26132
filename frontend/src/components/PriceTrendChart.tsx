@@ -21,7 +21,7 @@ export function PriceTrendChart({ points }: { points: PricePoint[] }) {
           <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
           <YAxis tick={{ fontSize: 12 }} width={56} />
           <Tooltip
-            formatter={(value: number) => [`₹${value.toFixed(0)}`, t("modalPrice")]}
+            formatter={(value) => [`₹${Number(value).toFixed(0)}`, t("modalPrice")]}
             contentStyle={{ fontSize: 14, borderRadius: 8 }}
           />
           <Line
