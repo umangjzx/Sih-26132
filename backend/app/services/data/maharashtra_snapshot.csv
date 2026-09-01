@@ -1,0 +1,39 @@
+state,district,market,commodity,variety,grade,arrival_date,min_price,max_price,modal_price
+Maharashtra,Pune,Pune,Onion,Local,FAQ,05/08/2026,1300,1850,1600
+Maharashtra,Pune,Pune,Tomato,Local,FAQ,05/08/2026,900,1700,1300
+Maharashtra,Pune,Pune,Potato,Local,FAQ,08/08/2026,1100,1650,1400
+Maharashtra,Nashik,Lasalgaon,Onion,Red,FAQ,06/08/2026,1250,2050,1750
+Maharashtra,Nashik,Lasalgaon,Onion,Red,FAQ,13/08/2026,1400,2200,1900
+Maharashtra,Nashik,Lasalgaon,Onion,Red,FAQ,20/08/2026,1350,2100,1800
+Maharashtra,Nashik,Pimpalgaon,Onion,Red,FAQ,11/08/2026,1300,2150,1820
+Maharashtra,Nashik,Pimpalgaon,Tomato,Hybrid,FAQ,18/08/2026,1000,2000,1500
+Maharashtra,Nashik,Nashik,Soybean,Yellow,FAQ,19/08/2026,4300,4950,4650
+Maharashtra,Solapur,Solapur,Tur,Red,FAQ,07/08/2026,7200,8600,8000
+Maharashtra,Solapur,Solapur,Onion,Local,FAQ,14/08/2026,1200,1900,1550
+Maharashtra,Solapur,Solapur,Bajra,Local,FAQ,21/08/2026,2250,2650,2450
+Maharashtra,Nagpur,Kalamna,Soybean,Yellow,FAQ,09/08/2026,4250,5050,4750
+Maharashtra,Nagpur,Kalamna,Tur,White,FAQ,16/08/2026,7500,9200,8600
+Maharashtra,Nagpur,Nagpur,Cotton,Medium Staple,FAQ,23/08/2026,6800,7900,7400
+Maharashtra,Nagpur,Nagpur,Gram,Desi,FAQ,26/08/2026,4900,5500,5200
+Maharashtra,Ahmednagar,Ahmednagar,Onion,Local,FAQ,10/08/2026,1150,1800,1500
+Maharashtra,Ahmednagar,Ahmednagar,Tomato,Local,FAQ,17/08/2026,850,1600,1200
+Maharashtra,Ahmednagar,Rahata,Soybean,Yellow,FAQ,24/08/2026,4400,5100,4800
+Maharashtra,Ahmednagar,Rahata,Wheat,Lokwan,FAQ,27/08/2026,2450,2850,2650
+Maharashtra,Kolhapur,Kolhapur,Soybean,Yellow,FAQ,12/08/2026,4350,5000,4700
+Maharashtra,Kolhapur,Kolhapur,Tur,Red,FAQ,25/08/2026,7100,8900,8100
+Maharashtra,Kolhapur,Kolhapur,Maize,Local,FAQ,28/08/2026,1950,2350,2150
+Maharashtra,Sangli,Sangli,Tur,Red,FAQ,15/08/2026,7300,9100,8400
+Maharashtra,Sangli,Sangli,Onion,Local,FAQ,22/08/2026,1300,2000,1650
+Maharashtra,Sangli,Sangli,Gram,Desi,FAQ,29/08/2026,4850,5450,5150
+Maharashtra,Satara,Satara,Tomato,Local,FAQ,13/08/2026,950,1900,1400
+Maharashtra,Satara,Satara,Potato,Local,FAQ,20/08/2026,1050,1750,1350
+Maharashtra,Satara,Satara,Wheat,Lokwan,FAQ,30/08/2026,2400,2900,2700
+Maharashtra,Jalgaon,Jalgaon,Cotton,Medium Staple,FAQ,14/08/2026,6600,8100,7500
+Maharashtra,Jalgaon,Jalgaon,Bajra,Local,FAQ,21/08/2026,2200,2700,2500
+Maharashtra,Jalgaon,Jalgaon,Maize,Local,FAQ,31/08/2026,1900,2300,2100
+Maharashtra,Latur,Latur,Soybean,Yellow,FAQ,18/08/2026,4300,5050,4700
+Maharashtra,Latur,Latur,Tur,Red,FAQ,25/08/2026,7400,9500,8800
+Maharashtra,Amravati,Amravati,Cotton,Long Staple,FAQ,19/08/2026,6900,8200,7700
+Maharashtra,Amravati,Amravati,Soybean,Yellow,FAQ,26/08/2026,4250,4900,4550
+Maharashtra,Akola,Akola,Tur,White,FAQ,27/08/2026,7600,9400,8700
+Maharashtra,Akola,Akola,Gram,Desi,FAQ,01/09/2026,4950,5600,5300

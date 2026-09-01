@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.price_cache import PriceCache
 from app.services.fixtures import generate_fixture_rows
+from app.services.snapshot import load_snapshot_rows
 
 logger = logging.getLogger(__name__)
 
@@ -116,23 +117,38 @@ def upsert_price_rows(db: Session, rows: list[dict]) -> int:
     return len(rows)
 
 
-def run_ingestion(db: Session) -> dict:
-    """Tries the live API first (if a key is configured); falls back to the
-    bundled fixture dataset when the key is missing, the call fails, or the
-    table is still empty so the app has something to show either way."""
-    source = "live"
+def resolve_ingestion_rows() -> tuple[str, list[dict]]:
+    """Decide the price-row source and return the rows. Pure: no DB access, no
+    side effects, never raises. Order is live -> committed snapshot -> synthetic
+    fixture:
+
+      * "live"     — data.gov.in AGMARKNET resource (D-01), only when a key is
+                     configured and the call yields usable normalized rows.
+      * "snapshot" — the committed Maharashtra CSV export (authentic names/prices,
+                     no arrival volume).
+      * "fixture"  — the synthetic generator (last resort; the only source with
+                     arrival_volume, which the signal's volume factor needs).
+    """
     try:
         if not settings.data_gov_in_api_key:
             raise RuntimeError("DATA_GOV_IN_API_KEY not configured")
-        raw_rows = fetch_maharashtra_rows(settings.data_gov_in_api_key)
-        rows = normalize_rows(raw_rows)
+        rows = normalize_rows(fetch_maharashtra_rows(settings.data_gov_in_api_key))
         if not rows:
             raise RuntimeError("live API returned no usable rows")
-    except Exception as exc:  # noqa: BLE001 - any failure falls back to fixtures
-        logger.warning("Live ingestion unavailable (%s); using fixture data", exc)
-        source = "fixture"
-        rows = generate_fixture_rows()
+        return "live", rows
+    except Exception as exc:  # noqa: BLE001 - any failure falls back to snapshot/fixture
+        logger.warning("Live ingestion unavailable (%s); using snapshot/fixture data", exc)
 
+    snapshot_rows = load_snapshot_rows()
+    if snapshot_rows:
+        return "snapshot", snapshot_rows
+    return "fixture", generate_fixture_rows()
+
+
+def run_ingestion(db: Session) -> dict:
+    """Resolves the row source (live -> snapshot -> fixture) and upserts into
+    PriceCache so the dashboard always has something to show."""
+    source, rows = resolve_ingestion_rows()
     count = upsert_price_rows(db, rows)
     return {"source": source, "rows_upserted": count}
 
