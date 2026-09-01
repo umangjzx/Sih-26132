@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import type { SellWaitSignalResponse } from "@/lib/api";
 
 const styleByRecommendation: Record<SellWaitSignalResponse["recommendation"], string> = {
-  sell_now: "bg-[color-mix(in_srgb,var(--color-sell)_12%,white)] border-[var(--color-sell)] text-[var(--color-sell)]",
-  wait: "bg-[color-mix(in_srgb,var(--color-wait)_12%,white)] border-[var(--color-wait)] text-[var(--color-wait)]",
-  hold: "bg-[color-mix(in_srgb,var(--color-hold)_12%,white)] border-[var(--color-hold)] text-[var(--color-hold)]",
+  sell_now: "bg-green-50/80 border-green-300 text-green-900 shadow-green-900/10",
+  wait: "bg-red-50/80 border-red-300 text-red-900 shadow-red-900/10",
+  hold: "bg-amber-50/80 border-amber-300 text-amber-900 shadow-amber-900/10",
 };
 
 export function SellWaitSignalCard({ signal }: { signal: SellWaitSignalResponse }) {
@@ -21,11 +21,11 @@ export function SellWaitSignalCard({ signal }: { signal: SellWaitSignalResponse 
 
   return (
     <section
-      className={`rounded-xl border-2 p-5 ${styleByRecommendation[signal.recommendation]}`}
+      className={`rounded-2xl border backdrop-blur-xl p-6 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ${styleByRecommendation[signal.recommendation]}`}
       aria-live="polite"
     >
-      <h2 className="text-base font-semibold uppercase tracking-wide opacity-80">{t("title")}</h2>
-      <p className="mt-1 text-3xl font-bold">{label}</p>
+      <h2 className="text-base font-bold font-heading uppercase tracking-wide opacity-80">{t("title")}</h2>
+      <p className="mt-2 text-4xl font-extrabold tracking-tight">{label}</p>
       <div className="mt-4 border-t border-current/20 pt-3">
         <h3 className="text-sm font-semibold opacity-90">{t("why")}</h3>
         <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--color-text)]">

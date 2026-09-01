@@ -95,12 +95,12 @@ export function PriceDashboard() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text)]">{t("title")}</h1>
-        <p className="mt-1 text-stone-600">{t("subtitle")}</p>
+        <h1 className="text-3xl font-bold text-[var(--color-text)] font-heading tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-stone-600 font-medium">{t("subtitle")}</p>
       </div>
 
       <div className="flex flex-wrap gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium text-stone-700">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--color-text)]">
           {t("selectCrop")}
           <select
             value={crop}
@@ -110,7 +110,7 @@ export function PriceDashboard() {
               const firstMarket = options.find((o) => o.crop === nextCrop)?.market ?? "";
               setMarket(firstMarket);
             }}
-            className="min-w-40 rounded-lg border-2 border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-800 focus:border-green-700 focus:outline-none"
+            className="min-w-40 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-md px-4 py-2.5 text-base font-semibold text-[var(--color-text)] shadow-sm focus:ring-2 focus:ring-[var(--color-brand)] focus:border-transparent focus:outline-none transition-all duration-200 cursor-pointer"
           >
             {crops.map((c) => (
               <option key={c} value={c}>
@@ -120,12 +120,12 @@ export function PriceDashboard() {
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-stone-700">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--color-text)]">
           {t("selectMarket")}
           <select
             value={market}
             onChange={(e) => setMarket(e.target.value)}
-            className="min-w-40 rounded-lg border-2 border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-800 focus:border-green-700 focus:outline-none"
+            className="min-w-40 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-md px-4 py-2.5 text-base font-semibold text-[var(--color-text)] shadow-sm focus:ring-2 focus:ring-[var(--color-brand)] focus:border-transparent focus:outline-none transition-all duration-200 cursor-pointer"
           >
             {marketsForCrop.map((m) => (
               <option key={m} value={m}>
@@ -140,10 +140,10 @@ export function PriceDashboard() {
             <button
               key={d}
               onClick={() => setDays(d)}
-              className={`rounded-lg border-2 px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 ${
                 days === d
-                  ? "border-[var(--color-brand)] bg-[var(--color-brand)] text-white"
-                  : "border-stone-300 bg-white text-stone-700"
+                  ? "bg-[var(--color-brand)] text-white ring-2 ring-[var(--color-brand)] ring-offset-1"
+                  : "bg-[var(--color-surface)] backdrop-blur-md text-[var(--color-text)] border border-[var(--color-border)] hover:bg-white/90"
               }`}
             >
               {t(`days${d}` as "days7" | "days30" | "days90")}
@@ -177,9 +177,9 @@ export function PriceDashboard() {
       ) : (
         <>
           {trend && trend.points.length > 0 ? (
-            <section className="rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-base font-semibold">
+            <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl p-6 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-lg font-bold font-heading text-[var(--color-text)]">
                   {trend.crop} · {trend.market}
                 </h2>
                 <span className="text-sm text-stone-500">
@@ -203,10 +203,10 @@ export function PriceDashboard() {
                   <dd className="text-lg font-bold">₹{trend.points[trend.points.length - 1]?.max_price.toFixed(0)}</dd>
                 </div>
               </dl>
-              <p className="mt-1 text-center text-xs text-stone-500">{t("perQuintal")}</p>
+              <p className="mt-2 text-center text-xs text-stone-500 font-medium">{t("perQuintal")}</p>
             </section>
           ) : (
-            <p className="rounded-lg border-2 border-[var(--color-border)] bg-white px-4 py-3 text-stone-600">
+            <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl px-6 py-4 text-stone-600 shadow-md">
               {t("noData")}
             </p>
           )}

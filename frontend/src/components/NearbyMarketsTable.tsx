@@ -8,8 +8,8 @@ export function NearbyMarketsTable({ markets }: { markets: NearestMarketComparis
   const t = useTranslations("nearby");
 
   return (
-    <section className="rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-      <h2 className="text-base font-semibold">{t("title")}</h2>
+    <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl p-6 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
+      <h2 className="text-lg font-bold font-heading text-[var(--color-text)]">{t("title")}</h2>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[420px] text-left text-sm">
           <thead>

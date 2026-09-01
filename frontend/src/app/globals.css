@@ -1,27 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #faf7f0;
-  --color-surface: #ffffff;
-  --color-text: #2a2118;
-  --color-border: #e2d9c8;
-  --color-brand: #2f5d3a;
-  --color-brand-dark: #1f3f27;
-  --color-accent: #c97c1f;
-  --color-sell: #2f5d3a;
-  --color-wait: #b3451f;
-  --color-hold: #8a6d1f;
+  --color-bg: #F0FDF4;
+  --color-surface: rgba(255, 255, 255, 0.7);
+  --color-text: #0F172A;
+  --color-border: rgba(21, 128, 61, 0.15);
+  --color-brand: #15803D;
+  --color-brand-dark: #14532D;
+  --color-accent: #A16207;
+  --color-sell: #15803D;
+  --color-wait: #DC2626;
+  --color-hold: #A16207;
 }
 
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
-  --font-sans: var(--font-latin), var(--font-devanagari), sans-serif;
+  --font-sans: var(--font-body), var(--font-devanagari), sans-serif;
+  --font-heading: var(--font-heading), var(--font-devanagari), sans-serif;
 }
 
 body {
-  font-family: var(--font-latin), var(--font-devanagari), sans-serif;
+  font-family: var(--font-body), var(--font-devanagari), sans-serif;
   font-size: 16px;
+  background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+  background-attachment: fixed;
 }
 
 /* Large tap targets and visible focus rings throughout, for low-literacy
