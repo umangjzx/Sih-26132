@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * "Storage near you" + "FPOs near you" (v1.1). Given a district (and optionally a
- * crop) it surfaces cold-storage / warehouse options and FPOs to aggregate with.
+ * "Storage near you" + "FPOs near you" (v1.1), styled on the AgriLink UI kit.
  */
 
 import { useEffect, useState } from "react";
@@ -14,9 +13,7 @@ import {
   type ColdStorage,
   type FpoInfo,
 } from "@/lib/api";
-
-const card =
-  "rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl p-5 shadow-lg";
+import { Card, EmptyState, Icon, SectionHeader } from "./ui";
 
 export function NearbyResources({ district, crop }: { district?: string; crop?: string }) {
   const ts = useTranslations("storage");
@@ -33,23 +30,25 @@ export function NearbyResources({ district, crop }: { district?: string; crop?: 
   if (!district) return null;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <section className={card}>
-        <h2 className="font-heading text-sm font-bold">{ts("title")}</h2>
-        <p className="mb-2 text-xs text-stone-500">{ts("subtitle")}</p>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <SectionHeader icon="warehouse" title={ts("title")} />
+        <p className="-mt-2 mb-2 text-xs text-[var(--ink-soft)]">{ts("subtitle")}</p>
         {storage.length === 0 ? (
-          <p className="text-sm opacity-60">{ts("none")}</p>
+          <EmptyState icon="warehouse">{ts("none")}</EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">
             {storage.slice(0, 5).map((s) => (
-              <li key={s.name} className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm">
+              <li key={s.name} className="al-card-plain px-3 py-2.5 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold">{s.name}</span>
                   {s.distance_km != null && (
-                    <span className="text-xs text-stone-500">{s.distance_km} km</span>
+                    <span className="flex items-center gap-1 text-xs text-[var(--ink-soft)]">
+                      <Icon name="pin" size={12} /> {s.distance_km} km
+                    </span>
                   )}
                 </div>
-                <div className="text-xs text-stone-500">
+                <div className="text-xs text-[var(--ink-soft)]">
                   {ts(s.type === "cold_storage" ? "type_cold_storage" : "type_warehouse")} ·{" "}
                   {ts("capacity")}: {s.capacity_tonnes.toLocaleString()} t · {s.crops}
                 </div>
@@ -57,32 +56,36 @@ export function NearbyResources({ district, crop }: { district?: string; crop?: 
             ))}
           </ul>
         )}
-      </section>
+      </Card>
 
-      <section className={card}>
-        <h2 className="font-heading text-sm font-bold">{tf("title")}</h2>
-        <p className="mb-2 text-xs text-stone-500">{tf("subtitle")}</p>
+      <Card>
+        <SectionHeader icon="users" title={tf("title")} />
+        <p className="-mt-2 mb-2 text-xs text-[var(--ink-soft)]">{tf("subtitle")}</p>
         {fpos.length === 0 ? (
-          <p className="text-sm opacity-60">{tf("none")}</p>
+          <EmptyState icon="users">{tf("none")}</EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">
             {fpos.slice(0, 5).map((f) => (
-              <li key={f.name} className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm">
+              <li key={f.name} className="al-card-plain px-3 py-2.5 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold">{f.name}</span>
                   {f.distance_km != null && (
-                    <span className="text-xs text-stone-500">{f.distance_km} km</span>
+                    <span className="flex items-center gap-1 text-xs text-[var(--ink-soft)]">
+                      <Icon name="pin" size={12} /> {f.distance_km} km
+                    </span>
                   )}
                 </div>
-                <div className="text-xs text-stone-500">
+                <div className="text-xs text-[var(--ink-soft)]">
                   {f.members.toLocaleString()} {tf("members")} · {tf("focus")}: {f.crops}
                 </div>
-                <div className="text-xs text-[var(--color-brand)]">{tf("contact")}: {f.contact}</div>
+                <div className="text-xs font-medium text-[var(--green-700)]">
+                  {tf("contact")}: {f.contact}
+                </div>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

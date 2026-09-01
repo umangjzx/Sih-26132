@@ -3,15 +3,32 @@
 import { useTranslations } from "next-intl";
 
 import type { SellWaitSignalResponse } from "@/lib/api";
+import { Icon } from "./ui";
 
-const styleByRecommendation: Record<SellWaitSignalResponse["recommendation"], string> = {
-  sell_now: "bg-green-50/80 border-green-300 text-green-900 shadow-green-900/10",
-  wait: "bg-red-50/80 border-red-300 text-red-900 shadow-red-900/10",
-  hold: "bg-amber-50/80 border-amber-300 text-amber-900 shadow-amber-900/10",
+const theme: Record<
+  SellWaitSignalResponse["recommendation"],
+  { wrap: string; accent: string; icon: string }
+> = {
+  sell_now: {
+    wrap: "border-[var(--green-600)]/40 bg-gradient-to-br from-[var(--green-100)] to-white",
+    accent: "text-[var(--green-700)]",
+    icon: "check",
+  },
+  wait: {
+    wrap: "border-[var(--red-500)]/40 bg-gradient-to-br from-[var(--red-100)] to-white",
+    accent: "text-[var(--red-700)]",
+    icon: "clock",
+  },
+  hold: {
+    wrap: "border-[var(--amber-500)]/40 bg-gradient-to-br from-[var(--amber-100)] to-white",
+    accent: "text-[var(--amber-700)]",
+    icon: "scale",
+  },
 };
 
 export function SellWaitSignalCard({ signal }: { signal: SellWaitSignalResponse }) {
   const t = useTranslations("signal");
+  const s = theme[signal.recommendation];
   const label =
     signal.recommendation === "sell_now"
       ? t("sell_now")
@@ -21,17 +38,29 @@ export function SellWaitSignalCard({ signal }: { signal: SellWaitSignalResponse 
 
   return (
     <section
-      className={`rounded-2xl border backdrop-blur-xl p-6 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ${styleByRecommendation[signal.recommendation]}`}
+      className={`al-card overflow-hidden border p-0 ${s.wrap}`}
       aria-live="polite"
     >
-      <h2 className="text-base font-bold font-heading uppercase tracking-wide opacity-80">{t("title")}</h2>
-      <p className="mt-2 text-4xl font-extrabold tracking-tight">{label}</p>
-      <div className="mt-4 border-t border-current/20 pt-3">
-        <h3 className="text-sm font-semibold opacity-90">{t("why")}</h3>
-        <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--color-text)]">
+      <div className="flex items-center gap-4 border-b border-black/5 p-5 sm:p-6">
+        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/70 ${s.accent}`}>
+          <Icon name={s.icon} size={26} />
+        </span>
+        <div>
+          <div className={`text-xs font-bold uppercase tracking-widest ${s.accent} opacity-80`}>
+            {t("title")}
+          </div>
+          <div className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">
+            {label}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5 sm:p-6">
+        <h3 className="mb-2 text-sm font-semibold text-[var(--ink-soft)]">{t("why")}</h3>
+        <ul className="space-y-2.5 text-sm leading-relaxed text-[var(--ink)]">
           {signal.reasons.map((reason, idx) => (
-            <li key={idx} className="flex gap-2">
-              <span aria-hidden className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+            <li key={idx} className="flex gap-2.5">
+              <span aria-hidden className={`mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full ${s.accent}`} style={{ background: "currentColor" }} />
               <span>{reason}</span>
             </li>
           ))}

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { CropMarketPicker } from "@/components/CropMarketPicker";
+import { Card, Icon, SectionHeader } from "@/components/ui";
 import {
   fetchPublicOverview,
   fetchSignal,
@@ -14,21 +15,32 @@ import {
 } from "@/lib/api";
 import { useCropMarket } from "@/lib/useCropMarket";
 
-const recStyle: Record<SellWaitSignalResponse["recommendation"], string> = {
-  sell_now: "bg-green-50 border-green-300 text-green-900",
-  wait: "bg-red-50 border-red-300 text-red-900",
-  hold: "bg-amber-50 border-amber-300 text-amber-900",
+const recTheme: Record<SellWaitSignalResponse["recommendation"], { cls: string; icon: string }> = {
+  sell_now: { cls: "bg-[var(--green-100)] text-[var(--green-700)]", icon: "check" },
+  wait: { cls: "bg-[var(--red-100)] text-[var(--red-700)]", icon: "clock" },
+  hold: { cls: "bg-[var(--amber-100)] text-[var(--amber-700)]", icon: "scale" },
 };
 
-function NavCard({ href, emoji, title, desc }: { href: string; emoji: string; title: string; desc: string }) {
+function NavCard({
+  href,
+  icon,
+  title,
+  desc,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  desc: string;
+}) {
   return (
-    <Link
-      href={href}
-      className="flex flex-col gap-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl p-5 shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
-    >
-      <span className="text-2xl">{emoji}</span>
-      <span className="font-heading text-base font-bold">{title}</span>
-      <span className="text-sm text-stone-600">{desc}</span>
+    <Link href={href}>
+      <Card as="div" hover className="h-full">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
+          <Icon name={icon} size={20} />
+        </span>
+        <span className="mt-3 block font-heading text-base font-bold">{title}</span>
+        <span className="mt-0.5 block text-sm text-[var(--ink-soft)]">{desc}</span>
+      </Card>
     </Link>
   );
 }
@@ -72,79 +84,93 @@ function HomeInner() {
         ? ts("wait")
         : ts("hold")
     : null;
+  const rt = rec ? recTheme[rec.recommendation] : null;
 
   return (
     <div className="flex flex-col gap-8">
       {/* Hero */}
-      <section className="rounded-3xl border border-[var(--color-border)] bg-gradient-to-br from-white/70 to-[var(--color-brand)]/10 p-8 shadow-xl">
-        <h1 className="font-heading text-4xl font-extrabold tracking-tight text-[var(--color-brand-dark)]">
-          {t("heroTitle")}
-        </h1>
-        <p className="mt-2 max-w-2xl text-lg text-stone-600">{t("heroSubtitle")}</p>
-
-        <div className="mt-6">
-          <CropMarketPicker cm={cm} />
+      <section className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--green-100)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[var(--green-700)]">
+            <Icon name="leaf" size={13} /> Maharashtra · SIH 2026
+          </span>
+          <h1 className="mt-3 font-heading text-4xl font-extrabold leading-[1.1] tracking-tight text-[var(--green-900)] sm:text-5xl">
+            {t("heroTitle")}
+          </h1>
+          <p className="mt-3 max-w-xl text-lg text-[var(--ink-soft)]">{t("heroSubtitle")}</p>
+          <div className="mt-6">
+            <CropMarketPicker cm={cm} />
+          </div>
         </div>
 
-        {(price != null || recLabel) && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--color-border)] bg-white/70 p-5">
-              <div className="text-xs uppercase tracking-wide text-stone-500">
-                {td("modalPrice")} · {cm.market}
-              </div>
-              <div className="mt-1 font-heading text-3xl font-bold text-[var(--color-brand)]">
-                {price != null ? `₹${price.toFixed(0)}` : "—"}
-              </div>
-              <div className="text-xs text-stone-400">
-                {td("asOf")}: {asOf ?? "—"} · {td("perQuintal")}
-              </div>
-            </div>
-            {rec && (
-              <div className={`rounded-2xl border p-5 ${recStyle[rec.recommendation]}`}>
-                <div className="text-xs font-bold uppercase tracking-wide opacity-70">
+        <Card className="lg:justify-self-end lg:max-w-sm">
+          <SectionHeader icon="chart" title={`${td("modalPrice")} · ${cm.market || "…"}`} />
+          <div className="font-heading text-4xl font-bold text-[var(--green-700)]">
+            {price != null ? `₹${price.toFixed(0)}` : "—"}
+          </div>
+          <div className="text-xs text-[var(--ink-soft)]">
+            {td("asOf")}: {asOf ?? "—"} · {td("perQuintal")}
+          </div>
+
+          {rec && rt && (
+            <div className={`mt-4 flex items-center gap-3 rounded-xl px-4 py-3 ${rt.cls}`}>
+              <Icon name={rt.icon} size={22} className="shrink-0" />
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-widest opacity-75">
                   {ts("title")}
                 </div>
-                <div className="mt-1 font-heading text-3xl font-extrabold">{recLabel}</div>
-                <Link href={`/advisor?crop=${cm.crop}&market=${cm.market}`} className="mt-1 inline-block text-sm font-semibold underline">
-                  {t("seeWhy")}
-                </Link>
+                <div className="font-heading text-xl font-extrabold">{recLabel}</div>
               </div>
-            )}
-          </div>
-        )}
+              <Link
+                href={`/advisor?crop=${cm.crop}&market=${cm.market}`}
+                className="ml-auto text-sm font-semibold underline"
+              >
+                {t("seeWhy")}
+              </Link>
+            </div>
+          )}
+        </Card>
       </section>
 
       {/* Section links */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <NavCard href={`/prices?crop=${cm.crop}&market=${cm.market}`} emoji="📈" title={t("pricesTitle")} desc={t("pricesDesc")} />
-        <NavCard href={`/advisor?crop=${cm.crop}&market=${cm.market}`} emoji="🌦️" title={t("advisorTitle")} desc={t("advisorDesc")} />
-        <NavCard href="/directory" emoji="🏬" title={t("directoryTitle")} desc={t("directoryDesc")} />
-        <NavCard href="/explore" emoji="🗺️" title={t("exploreTitle")} desc={t("exploreDesc")} />
+        <NavCard href={`/prices?crop=${cm.crop}&market=${cm.market}`} icon="chart" title={t("pricesTitle")} desc={t("pricesDesc")} />
+        <NavCard href={`/advisor?crop=${cm.crop}&market=${cm.market}`} icon="cloudRain" title={t("advisorTitle")} desc={t("advisorDesc")} />
+        <NavCard href="/directory" icon="warehouse" title={t("directoryTitle")} desc={t("directoryDesc")} />
+        <NavCard href="/explore" icon="map" title={t("exploreTitle")} desc={t("exploreDesc")} />
       </div>
 
       {/* Statewide snapshot */}
       {overview && overview.crops.length > 0 && (
-        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl p-5 shadow-lg">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-heading text-sm font-bold">{t("snapshotTitle")}</h2>
-            <Link href="/explore" className="text-xs font-semibold text-[var(--color-brand)] hover:underline">
-              {t("snapshotMore")}
-            </Link>
-          </div>
+        <Card>
+          <SectionHeader
+            icon="spark"
+            title={t("snapshotTitle")}
+            action={
+              <Link href="/explore" className="text-xs font-semibold text-[var(--green-700)] hover:underline">
+                {t("snapshotMore")}
+              </Link>
+            }
+          />
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {overview.crops.map((c) => (
-              <div key={c.crop} className="rounded-xl border border-[var(--color-border)] bg-white/50 p-3 text-center">
-                <div className="text-xs text-stone-500">{c.crop}</div>
-                <div className="font-heading text-lg font-bold">₹{c.avg_modal_price}</div>
+              <div key={c.crop} className="al-card-plain p-3 text-center">
+                <div className="text-xs text-[var(--ink-soft)]">{c.crop}</div>
+                <div className="font-heading text-lg font-bold text-[var(--green-900)]">₹{c.avg_modal_price}</div>
                 {c.change_7d_pct != null && (
-                  <div className={`text-xs font-semibold ${c.change_7d_pct >= 0 ? "text-[var(--color-sell)]" : "text-[var(--color-wait)]"}`}>
-                    {c.change_7d_pct >= 0 ? "▲" : "▼"} {Math.abs(c.change_7d_pct)}%
+                  <div
+                    className={`flex items-center justify-center gap-0.5 text-xs font-semibold ${
+                      c.change_7d_pct >= 0 ? "text-[var(--green-600)]" : "text-[var(--red-500)]"
+                    }`}
+                  >
+                    <Icon name={c.change_7d_pct >= 0 ? "arrowUp" : "arrowDown"} size={12} />
+                    {Math.abs(c.change_7d_pct)}%
                   </div>
                 )}
               </div>
             ))}
           </div>
-        </section>
+        </Card>
       )}
     </div>
   );
@@ -152,7 +178,7 @@ function HomeInner() {
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-stone-200" />}>
+    <Suspense fallback={<div className="al-skeleton h-40" />}>
       <HomeInner />
     </Suspense>
   );

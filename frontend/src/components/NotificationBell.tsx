@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { useAuth } from "@/components/AuthProvider";
+import { Icon } from "@/components/ui";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -66,11 +67,11 @@ export function NotificationBell() {
         type="button"
         onClick={openDropdown}
         aria-label={t("title")}
-        className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-lg"
+        className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--line)] bg-white/70 text-[var(--green-700)] transition-colors hover:bg-white"
       >
-        🔔
+        <Icon name="bell" size={19} />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--color-wait)] px-1 text-center text-[11px] font-bold text-white">
+          <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--red-500)] px-1 text-center text-[11px] font-bold text-white">
             {unread > 9 ? "9+" : unread}
           </span>
         )}

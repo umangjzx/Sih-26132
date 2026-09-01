@@ -1,8 +1,6 @@
 "use client";
 
-/**
- * Public statewide price-transparency dashboard (v1.1). No login. Sharable.
- */
+/** Public statewide price-transparency dashboard (v1.1). No login. Sharable. */
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -16,48 +14,40 @@ import {
   YAxis,
 } from "recharts";
 
+import { Card, EmptyState, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
 import { fetchPublicOverview, type PublicOverview } from "@/lib/api";
-
-const card =
-  "rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl p-5 shadow-lg";
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-white/50 p-3 text-center">
-      <div className="font-heading text-2xl font-bold text-[var(--color-brand-dark)]">{value}</div>
-      <div className="text-[11px] text-stone-500">{label}</div>
-    </div>
-  );
-}
 
 function MoverList({
   title,
+  icon,
   rows,
 }: {
   title: string;
+  icon: string;
   rows: { crop: string; avg_modal_price: number; change_7d_pct: number }[];
 }) {
   return (
-    <div className={card}>
-      <h2 className="mb-2 font-heading text-sm font-bold">{title}</h2>
+    <Card>
+      <SectionHeader icon={icon} title={title} />
       <ul className="flex flex-col gap-1.5">
         {rows.map((r) => (
           <li key={r.crop} className="flex items-center justify-between text-sm">
             <span className="font-medium">{r.crop}</span>
             <span className="flex items-center gap-2">
-              <span className="text-stone-500">₹{r.avg_modal_price}</span>
+              <span className="text-[var(--ink-soft)]">₹{r.avg_modal_price}</span>
               <span
-                className={`font-bold ${
-                  r.change_7d_pct >= 0 ? "text-[var(--color-sell)]" : "text-[var(--color-wait)]"
+                className={`flex items-center gap-0.5 font-bold ${
+                  r.change_7d_pct >= 0 ? "text-[var(--green-600)]" : "text-[var(--red-500)]"
                 }`}
               >
-                {r.change_7d_pct >= 0 ? "▲" : "▼"} {Math.abs(r.change_7d_pct)}%
+                <Icon name={r.change_7d_pct >= 0 ? "arrowUp" : "arrowDown"} size={13} />
+                {Math.abs(r.change_7d_pct)}%
               </span>
             </span>
           </li>
         ))}
       </ul>
-    </div>
+    </Card>
   );
 }
 
@@ -79,10 +69,14 @@ export default function ExplorePage() {
     load();
   }, [load]);
 
-  if (error) {
-    return <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{t("noData")}</p>;
-  }
-  if (!data) return <p className="text-sm opacity-60">…</p>;
+  if (error) return <EmptyState icon="map">{t("noData")}</EmptyState>;
+  if (!data)
+    return (
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-52" />
+      </div>
+    );
 
   const a = data.activity;
   const chart = data.price_trend.map((p) => ({ date: p.date.slice(5), avg: p.avg_modal_price }));
@@ -90,10 +84,12 @@ export default function ExplorePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-heading text-3xl font-bold tracking-tight">{t("title")}</h1>
-        <p className="mt-1 text-stone-600">{t("subtitle")}</p>
+        <h1 className="font-heading text-3xl font-extrabold tracking-tight text-[var(--green-900)]">
+          {t("title")}
+        </h1>
+        <p className="mt-1 text-[var(--ink-soft)]">{t("subtitle")}</p>
         {data.as_of && (
-          <p className="mt-1 text-xs text-stone-400">
+          <p className="mt-1 text-xs text-[var(--ink-soft)]/70">
             {t("asOf")}: {data.as_of}
           </p>
         )}
@@ -109,19 +105,19 @@ export default function ExplorePage() {
       </div>
 
       {chart.length > 1 && (
-        <section className={card}>
-          <h2 className="mb-2 font-heading text-sm font-bold">{t("statewideTrend")}</h2>
+        <Card>
+          <SectionHeader icon="chart" title={t("statewideTrend")} />
           <div className="h-52 w-full" role="img" aria-label={t("statewideTrend")}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={24} />
                 <YAxis tick={{ fontSize: 11 }} width={52} />
-                <Tooltip contentStyle={{ fontSize: 13, borderRadius: 8 }} />
+                <Tooltip contentStyle={{ fontSize: 13, borderRadius: 10 }} />
                 <Line
                   type="monotone"
                   dataKey="avg"
-                  stroke="var(--color-brand)"
+                  stroke="var(--green-600)"
                   strokeWidth={2.5}
                   dot={false}
                   isAnimationActive={false}
@@ -129,41 +125,39 @@ export default function ExplorePage() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </section>
+        </Card>
       )}
 
       {(data.gainers.length > 0 || data.losers.length > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <MoverList title={t("gainers")} rows={data.gainers} />
-          <MoverList title={t("losers")} rows={data.losers} />
+          <MoverList title={t("gainers")} icon="arrowUp" rows={data.gainers} />
+          <MoverList title={t("losers")} icon="arrowDown" rows={data.losers} />
         </div>
       )}
 
-      <section className={card}>
-        <h2 className="mb-3 font-heading text-sm font-bold">{t("allCrops")}</h2>
+      <Card>
+        <SectionHeader icon="scale" title={t("allCrops")} />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[380px] text-left text-sm">
-            <thead className="text-xs text-stone-500">
-              <tr>
-                <th className="py-1.5 pr-3">{t("crop")}</th>
-                <th className="py-1.5 pr-3">{t("price")}</th>
-                <th className="py-1.5">{t("change")}</th>
+            <thead className="text-xs font-medium text-[var(--ink-soft)]">
+              <tr className="border-b border-[var(--line)]">
+                <th className="py-2 pr-3">{t("crop")}</th>
+                <th className="py-2 pr-3">{t("price")}</th>
+                <th className="py-2">{t("change")}</th>
               </tr>
             </thead>
             <tbody>
               {data.crops.map((c) => (
-                <tr key={c.crop} className="border-t border-[var(--color-border)]">
-                  <td className="py-1.5 pr-3 font-medium">{c.crop}</td>
-                  <td className="py-1.5 pr-3">₹{c.avg_modal_price}</td>
-                  <td className="py-1.5">
+                <tr key={c.crop} className="border-b border-[var(--line)]/60">
+                  <td className="py-2 pr-3 font-medium">{c.crop}</td>
+                  <td className="py-2 pr-3">₹{c.avg_modal_price}</td>
+                  <td className="py-2">
                     {c.change_7d_pct == null ? (
-                      <span className="text-stone-400">—</span>
+                      <span className="text-[var(--ink-soft)]/50">—</span>
                     ) : (
                       <span
                         className={
-                          c.change_7d_pct >= 0
-                            ? "text-[var(--color-sell)]"
-                            : "text-[var(--color-wait)]"
+                          c.change_7d_pct >= 0 ? "text-[var(--green-600)]" : "text-[var(--red-500)]"
                         }
                       >
                         {c.change_7d_pct >= 0 ? "+" : ""}
@@ -176,7 +170,7 @@ export default function ExplorePage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </Card>
     </div>
   );
 }

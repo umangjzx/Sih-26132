@@ -1,42 +1,139 @@
 @import "tailwindcss";
 
+/* =========================================================================
+   AgriLink design tokens
+   Institutional-agri: deep forest green, warm paper surfaces, amber caution.
+   ========================================================================= */
 :root {
-  --color-bg: #F0FDF4;
-  --color-surface: rgba(255, 255, 255, 0.7);
-  --color-text: #0F172A;
-  --color-border: rgba(21, 128, 61, 0.15);
-  --color-brand: #15803D;
-  --color-brand-dark: #14532D;
-  --color-accent: #A16207;
-  --color-sell: #15803D;
-  --color-wait: #DC2626;
-  --color-hold: #A16207;
+  /* brand scale */
+  --green-50: #edf7f0;
+  --green-100: #d6ecdd;
+  --green-200: #aed9bd;
+  --green-400: #4a9d6b;
+  --green-600: #1f7a45;
+  --green-700: #175c34;
+  --green-900: #0c3a20;
+
+  --amber-100: #fbeecb;
+  --amber-500: #b8791b;
+  --amber-700: #8a5a12;
+
+  --red-100: #fbe0dd;
+  --red-500: #c8452f;
+  --red-700: #97331f;
+
+  /* neutrals */
+  --paper: #fbfaf6;
+  --ink: #1c2620;
+  --ink-soft: #55605a;
+  --line: #e4e0d4;
+
+  /* semantic aliases (kept for existing class names) */
+  --color-bg: var(--paper);
+  --color-surface: #ffffff;
+  --color-text: var(--ink);
+  --color-border: var(--line);
+  --color-brand: var(--green-600);
+  --color-brand-dark: var(--green-700);
+  --color-accent: var(--amber-500);
+  --color-sell: var(--green-600);
+  --color-wait: var(--red-500);
+  --color-hold: var(--amber-500);
+
+  /* elevation */
+  --shadow-sm: 0 1px 2px rgba(20, 40, 28, 0.06);
+  --shadow-md: 0 4px 16px -4px rgba(20, 40, 28, 0.12);
+  --shadow-lg: 0 12px 32px -8px rgba(20, 40, 28, 0.16);
+
+  --radius: 1rem;
 }
 
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
-  --font-sans: var(--font-body), var(--font-devanagari), sans-serif;
-  --font-heading: var(--font-heading), var(--font-devanagari), sans-serif;
+  --font-sans: var(--font-body), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-heading), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  background: var(--paper);
 }
 
 body {
-  font-family: var(--font-body), var(--font-devanagari), sans-serif;
+  font-family: var(--font-body), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
-  background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+  color: var(--ink);
+  /* soft, mostly-flat field-of-green backdrop */
+  background:
+    radial-gradient(1100px 500px at 12% -10%, var(--green-100) 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, var(--amber-100) 0%, transparent 55%),
+    var(--paper);
   background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
-/* Large tap targets and visible focus rings throughout, for low-literacy
-   and rural, sometimes-touch, sometimes-patchy-connectivity users. */
+.font-heading {
+  font-family: var(--font-heading), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+/* Large tap targets + visible focus for rural / touch / low-vision users. */
 button,
 select,
 input,
-a {
+textarea,
+a[role="button"] {
   min-height: 44px;
 }
-
 *:focus-visible {
-  outline: 3px solid var(--color-brand);
+  outline: 3px solid var(--green-400);
   outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---- shared surface classes ---- */
+.al-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, #ffffff 82%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-md);
+}
+.al-card-plain {
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, #ffffff 60%, transparent);
+}
+.al-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.al-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ---- skeleton shimmer ---- */
+@keyframes al-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.al-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--green-100);
+  border-radius: 0.75rem;
+}
+.al-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.65),
+    transparent
+  );
+  animation: al-shimmer 1.5s infinite;
 }

@@ -18,6 +18,7 @@ import {
 import type { CropMarketState } from "@/lib/useCropMarket";
 import { CalendarChip, MspBanner, WeatherStrip } from "./intel";
 import { SellWaitSignalCard } from "./SellWaitSignalCard";
+import { Icon, Skeleton } from "./ui";
 
 export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
   const tc = useTranslations("common");
@@ -61,8 +62,9 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
   if (loading) {
     return (
       <div className="flex flex-col gap-4">
-        <div data-testid="skeleton" role="status" aria-label={tc("loading")} className="h-44 w-full animate-pulse rounded-lg bg-stone-200" />
-        <div className="h-40 w-full animate-pulse rounded-lg bg-stone-200" />
+        <Skeleton className="h-16" />
+        <Skeleton className="h-48" />
+        <Skeleton className="h-32" />
       </div>
     );
   }
@@ -84,8 +86,9 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       <WeatherStrip data={weather} />
 
       {holidays?.note && (
-        <div className="rounded-xl border border-[var(--color-hold)]/40 bg-[var(--color-hold)]/10 px-4 py-3 text-sm text-[var(--color-hold)]">
-          📅 {holidays.note}
+        <div className="flex items-start gap-2 rounded-xl border border-[var(--amber-500)]/40 bg-[var(--amber-100)]/60 px-4 py-3 text-sm text-[var(--amber-700)]">
+          <Icon name="calendar" size={16} className="mt-0.5 shrink-0" />
+          {holidays.note}
         </div>
       )}
     </div>

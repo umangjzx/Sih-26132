@@ -15,20 +15,9 @@ import type { CropMarketState } from "@/lib/useCropMarket";
 import { BestMarketPanel } from "./intel";
 import { NearbyMarketsTable } from "./NearbyMarketsTable";
 import { PriceTrendChart } from "./PriceTrendChart";
+import { Card, SectionHeader, Skeleton } from "./ui";
 
 const DAY_OPTIONS = [7, 30, 90] as const;
-
-function Skeleton({ className = "" }: { className?: string }) {
-  const tc = useTranslations("common");
-  return (
-    <div
-      data-testid="skeleton"
-      role="status"
-      aria-label={tc("loading")}
-      className={`animate-pulse rounded-lg bg-stone-200 ${className}`}
-    />
-  );
-}
 
 export function PriceDetail({ cm }: { cm: CropMarketState }) {
   const t = useTranslations("dashboard");
@@ -102,36 +91,37 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
       ) : (
         <>
           {trend && trend.points.length > 0 ? (
-            <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-xl p-6 shadow-xl">
-              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-lg font-bold font-heading">
-                  {trend.crop} · {trend.market}
-                </h2>
-                <span className="text-sm text-stone-500">
-                  {t("asOf")}: {last?.date}
-                </span>
-              </div>
+            <Card>
+              <SectionHeader
+                icon="chart"
+                title={`${trend.crop} · ${trend.market}`}
+                action={
+                  <span className="text-sm text-[var(--ink-soft)]">
+                    {t("asOf")}: {last?.date}
+                  </span>
+                }
+              />
               <PriceTrendChart points={trend.points} />
               <dl className="mt-4 grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <dt className="text-xs text-stone-500">{t("minPrice")}</dt>
-                  <dd className="text-lg font-bold">₹{last?.min_price.toFixed(0)}</dd>
+                  <dt className="text-xs text-[var(--ink-soft)]">{t("minPrice")}</dt>
+                  <dd className="font-heading text-lg font-bold">₹{last?.min_price.toFixed(0)}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-stone-500">{t("modalPrice")}</dt>
-                  <dd className="text-lg font-bold text-[var(--color-brand)]">₹{last?.modal_price.toFixed(0)}</dd>
+                  <dt className="text-xs text-[var(--ink-soft)]">{t("modalPrice")}</dt>
+                  <dd className="font-heading text-lg font-bold text-[var(--green-700)]">
+                    ₹{last?.modal_price.toFixed(0)}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-stone-500">{t("maxPrice")}</dt>
-                  <dd className="text-lg font-bold">₹{last?.max_price.toFixed(0)}</dd>
+                  <dt className="text-xs text-[var(--ink-soft)]">{t("maxPrice")}</dt>
+                  <dd className="font-heading text-lg font-bold">₹{last?.max_price.toFixed(0)}</dd>
                 </div>
               </dl>
-              <p className="mt-2 text-center text-xs text-stone-500 font-medium">{t("perQuintal")}</p>
-            </section>
+              <p className="mt-2 text-center text-xs font-medium text-[var(--ink-soft)]">{t("perQuintal")}</p>
+            </Card>
           ) : (
-            <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-4 text-stone-600 shadow-md">
-              {t("noData")}
-            </p>
+            <Card>{t("noData")}</Card>
           )}
 
           <BestMarketPanel data={best} />
