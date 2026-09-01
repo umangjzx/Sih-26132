@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   fetchNearby,
@@ -20,7 +20,15 @@ import { SellWaitSignalCard } from "./SellWaitSignalCard";
 const DAY_OPTIONS = [7, 30, 90] as const;
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-stone-200 ${className}`} />;
+  const tc = useTranslations("common");
+  return (
+    <div
+      data-testid="skeleton"
+      role="status"
+      aria-label={tc("loading")}
+      className={`animate-pulse rounded-lg bg-stone-200 ${className}`}
+    />
+  );
 }
 
 export function PriceDashboard() {
@@ -44,34 +52,45 @@ export function PriceDashboard() {
     [options, crop],
   );
 
-  useEffect(() => {
-    fetchOptions()
-      .then((opts) => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      // Recover a failed (or first-ever) options fetch: if we have no options
+      // yet, fetch them and seed the selection, then let the dep change re-run
+      // load() for the trend/signal/nearby calls.
+      if (options.length === 0) {
+        const opts = await fetchOptions();
         setOptions(opts);
         if (opts.length > 0) {
           setCrop(opts[0].crop);
           setMarket(opts[0].market);
         }
-      })
-      .catch(() => setError(true));
-  }, []);
+        return;
+      }
+
+      if (!crop || !market) return;
+
+      const district = options.find((o) => o.crop === crop && o.market === market)?.district ?? "";
+
+      const [trendRes, signalRes, nearbyRes] = await Promise.all([
+        fetchTrend(crop, market, days),
+        fetchSignal(crop, market),
+        fetchNearby(crop, district),
+      ]);
+      setTrend(trendRes);
+      setSignal(signalRes);
+      setNearby(nearbyRes);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [crop, market, days, options]);
 
   useEffect(() => {
-    if (!crop || !market) return;
-    setLoading(true);
-    setError(false);
-
-    const district = options.find((o) => o.crop === crop && o.market === market)?.district ?? "";
-
-    Promise.all([fetchTrend(crop, market, days), fetchSignal(crop, market), fetchNearby(crop, district)])
-      .then(([trendRes, signalRes, nearbyRes]) => {
-        setTrend(trendRes);
-        setSignal(signalRes);
-        setNearby(nearbyRes);
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [crop, market, days, options]);
+    load();
+  }, [load]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,7 +153,19 @@ export function PriceDashboard() {
       </div>
 
       {error && (
-        <p className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-red-800">{tc("error")}</p>
+        <div
+          role="alert"
+          className="flex flex-col items-start gap-3 rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-red-800"
+        >
+          <p>{tc("error")}</p>
+          <button
+            type="button"
+            onClick={() => load()}
+            className="rounded-lg border-2 border-red-400 bg-white px-4 py-2 text-sm font-semibold text-red-800"
+          >
+            {tc("retry")}
+          </button>
+        </div>
       )}
 
       {loading ? (
