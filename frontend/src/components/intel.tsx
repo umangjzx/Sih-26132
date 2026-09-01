@@ -58,6 +58,27 @@ export function WeatherStrip({ data }: { data: WeatherForecast | null }) {
           </div>
         ))}
       </div>
+      {data.current && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white/50 px-3 py-2 text-xs text-[var(--ink-soft)]">
+          <span className="font-bold uppercase tracking-wide text-[var(--green-700)]">
+            {t("now")}
+          </span>
+          {data.current.conditions && <span>{data.current.conditions}</span>}
+          {data.current.temp_c != null && (
+            <span className="font-semibold text-[var(--ink)]">{data.current.temp_c}°</span>
+          )}
+          {data.current.feels_like_c != null && (
+            <span>
+              {t("feelsLike")} {data.current.feels_like_c}°
+            </span>
+          )}
+          {data.current.humidity_pct != null && (
+            <span>
+              {t("humidity")} {data.current.humidity_pct}%
+            </span>
+          )}
+        </div>
+      )}
       <p className="mt-3 text-sm text-[var(--ink-soft)]">{data.note}</p>
       {data.rain_anomaly?.note && (
         <p className="mt-1 text-xs text-[var(--ink-soft)]/80">{data.rain_anomaly.note}</p>

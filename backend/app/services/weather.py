@@ -15,6 +15,8 @@ import time
 
 import httpx
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -37,6 +39,47 @@ def _cached(key: tuple):
 def _store(key: tuple, value: dict) -> dict:
     _CACHE[key] = (time.time(), value)
     return value
+
+
+def _openweather_current(lat: float, lon: float) -> dict | None:
+    """Current conditions from OpenWeatherMap, when a key is configured.
+
+    Optional enrichment only — Open-Meteo remains the 7-day backbone and the
+    sell/wait bias is unchanged. Returns None on any failure or missing key.
+    """
+    if not settings.weather_api_key:
+        return None
+    try:
+        with httpx.Client(timeout=6.0) as client:
+            resp = client.get(
+                settings.openweather_url,
+                params={
+                    "lat": lat,
+                    "lon": lon,
+                    "appid": settings.weather_api_key,
+                    "units": "metric",
+                },
+            )
+            resp.raise_for_status()
+            j = resp.json()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("OpenWeatherMap current failed (%s)", exc)
+        return None
+
+    main = j.get("main", {})
+    wind = j.get("wind", {})
+    weather_list = j.get("weather", []) or [{}]
+    temp = main.get("temp")
+    feels = main.get("feels_like")
+    humidity = main.get("humidity")
+    wind_ms = wind.get("speed")
+    return {
+        "temp_c": round(float(temp), 1) if isinstance(temp, (int, float)) else None,
+        "feels_like_c": round(float(feels), 1) if isinstance(feels, (int, float)) else None,
+        "humidity_pct": int(humidity) if isinstance(humidity, (int, float)) else None,
+        "wind_kmh": round(float(wind_ms) * 3.6, 1) if isinstance(wind_ms, (int, float)) else None,
+        "conditions": (weather_list[0].get("description") or "").strip().capitalize() or None,
+    }
 
 
 def get_forecast(lat: float, lon: float) -> dict:
@@ -114,10 +157,18 @@ def get_forecast(lat: float, lon: float) -> dict:
         bias = 0
         note = f"Some rain expected ({next3:.0f} mm over 3 days) but nothing severe."
 
-    return _store(
-        key,
-        {"days": days, "next3_rain_mm": next3, "sell_bias": bias, "note": note, "source": "open-meteo"},
-    )
+    result = {
+        "days": days,
+        "next3_rain_mm": next3,
+        "sell_bias": bias,
+        "note": note,
+        "source": "open-meteo",
+    }
+    current = _openweather_current(lat, lon)
+    if current is not None:
+        result["current"] = current
+        result["source"] = "open-meteo+openweather"
+    return _store(key, result)
 
 
 def get_rain_anomaly(lat: float, lon: float) -> dict:

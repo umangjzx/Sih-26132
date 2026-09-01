@@ -224,7 +224,10 @@
     "wind": "Wind",
     "rainProb": "Rain chance",
     "vsNormal": "Rainfall vs 10-year normal",
-    "unavailable": "Weather is unavailable right now"
+    "unavailable": "Weather is unavailable right now",
+    "now": "Now",
+    "feelsLike": "feels",
+    "humidity": "humidity"
   },
   "msp": {
     "title": "Minimum Support Price",

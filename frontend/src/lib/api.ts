@@ -493,6 +493,13 @@ export type WeatherDay = {
   wind_kmh: number | null;
   rain_prob: number | null;
 };
+export type WeatherCurrent = {
+  temp_c: number | null;
+  feels_like_c: number | null;
+  humidity_pct: number | null;
+  wind_kmh: number | null;
+  conditions: string | null;
+};
 export type WeatherForecast = {
   latitude: number;
   longitude: number;
@@ -501,6 +508,7 @@ export type WeatherForecast = {
   sell_bias: number;
   note: string;
   source: string;
+  current?: WeatherCurrent;
   rain_anomaly?: {
     recent_mm: number | null;
     normal_mm: number | null;
