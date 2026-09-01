@@ -8,10 +8,12 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.deals import router as deals_router
 from app.api.demands import router as demands_router
 from app.api.disputes import router as disputes_router
+from app.api.history import router as history_router
 from app.api.lots import router as lots_router
 from app.api.matching import router as matching_router
 from app.api.offers import router as offers_router
@@ -83,6 +85,8 @@ app.include_router(matching_router)
 app.include_router(offers_router)
 app.include_router(deals_router)
 app.include_router(disputes_router)
+app.include_router(history_router)
+app.include_router(admin_router)
 app.include_router(prices_router)
 
 
