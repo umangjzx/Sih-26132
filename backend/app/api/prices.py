@@ -1,9 +1,11 @@
+import secrets
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.price_cache import PriceCache
 from app.schemas.price import (
@@ -68,6 +70,8 @@ def price_trend(
 def nearby_markets(
     crop: str,
     district: str,
+    max_distance_km: float = Query(200, gt=0, le=2000),
+    limit: int = Query(8, ge=1, le=50),
     db: Session = Depends(get_db),
 ) -> list[NearestMarketComparison]:
     latest_date_stmt = select(PriceCache.date).where(PriceCache.crop == crop).order_by(PriceCache.date.desc()).limit(1)
@@ -88,8 +92,11 @@ def nearby_markets(
         )
         for r in rows
     ]
-    results.sort(key=lambda item: (item.distance_km is None, item.distance_km or 0))
-    return results
+    # Keep unknown-centroid markets (distance None); drop only known distances
+    # beyond the cap. None sorts last (D-09). Hard-slice to `limit`.
+    kept = [x for x in results if x.distance_km is None or x.distance_km <= max_distance_km]
+    kept.sort(key=lambda item: (item.distance_km is None, item.distance_km or 0.0))
+    return kept[:limit]
 
 
 @router.get("/prices/signal", response_model=SellWaitSignalResponse)
@@ -114,6 +121,15 @@ def sell_wait_signal(
 
 
 @router.post("/ingest/run", response_model=IngestionResultResponse)
-def trigger_ingestion(db: Session = Depends(get_db)) -> IngestionResultResponse:
+def trigger_ingestion(
+    x_ingest_secret: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> IngestionResultResponse:
+    # D-05: the one write surface in an otherwise public phase. Constant-time
+    # compare (ASVS V6); a blank configured secret keeps the endpoint disabled.
+    # The 403 body is a fixed string and the secret is never logged.
+    expected = settings.ingest_trigger_secret
+    if not expected or not x_ingest_secret or not secrets.compare_digest(x_ingest_secret, expected):
+        raise HTTPException(status_code=403, detail="Forbidden")
     result = ingestion.run_ingestion(db)
     return IngestionResultResponse(**result)
