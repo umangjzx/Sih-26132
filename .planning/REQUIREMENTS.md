@@ -9,7 +9,7 @@ Requirements for the SIH demo build. Each maps to a roadmap phase.
 
 ### Price Discovery (Pillar A)
 
-- [ ] **PRICE-01**: A scheduled background job pulls Maharashtra mandi prices from the
+- [x] **PRICE-01**: A scheduled background job pulls Maharashtra mandi prices from the
       data.gov.in AGMARKNET resource, paginating until exhausted, and upserts into
       `PriceCache` keyed on (market, crop, variety, date) — never called live on a user request
 - [ ] **PRICE-02**: If the live API is unavailable (no key, error, empty), the job seeds
@@ -105,7 +105,7 @@ Deferred; tracked, not in the current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PRICE-01 | Phase 1 | In Progress |
+| PRICE-01 | Phase 1 | Complete |
 | PRICE-02 | Phase 1 | In Progress |
 | PRICE-03 | Phase 1 | In Progress |
 | PRICE-04 | Phase 1 | In Progress |
