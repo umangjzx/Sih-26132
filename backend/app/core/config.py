@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # OTP lives for 10 minutes by default.
     otp_ttl_seconds: int = 600
 
+    # v1.1: indicative road-freight cost, ₹ per quintal per km (shared-truck haulage).
+    transport_cost_per_qtl_km: float = 0.4
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

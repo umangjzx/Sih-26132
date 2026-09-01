@@ -14,10 +14,12 @@ from app.api.deals import router as deals_router
 from app.api.demands import router as demands_router
 from app.api.disputes import router as disputes_router
 from app.api.history import router as history_router
+from app.api.intel import router as intel_router
 from app.api.lots import router as lots_router
 from app.api.matching import router as matching_router
 from app.api.offers import router as offers_router
 from app.api.prices import router as prices_router
+from app.api.public import router as public_router
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.services import ingestion
@@ -87,6 +89,8 @@ app.include_router(deals_router)
 app.include_router(disputes_router)
 app.include_router(history_router)
 app.include_router(admin_router)
+app.include_router(intel_router)
+app.include_router(public_router)
 app.include_router(prices_router)
 
 

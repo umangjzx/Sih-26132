@@ -34,11 +34,24 @@ class SellWaitSignal:
     ma_30: float | None
     volume_trend_pct: float | None
     days_of_data: int
+    weather_bias: int = 0          # -1 / 0 / +1 (from weather.get_forecast)
+    weather_note: str | None = None
+    msp: dict | None = None        # {"price", "gap", "below": bool, "season"}
 
 
-def compute_signal(rows: list[PriceCache]) -> SellWaitSignal | None:
+def compute_signal(
+    rows: list[PriceCache],
+    *,
+    weather: dict | None = None,
+    msp: dict | None = None,
+) -> SellWaitSignal | None:
     """`rows` must be PriceCache rows for a single crop+market, sorted
-    ascending by date. Returns None when there isn't even a week of data."""
+    ascending by date. Returns None when there isn't even a week of data.
+
+    Optional context:
+      weather — result of ``weather.get_forecast`` (adds a weight-1 factor).
+      msp     — result of ``reference.msp_for`` (advisory overlay, not scored).
+    """
     if len(rows) < 7:
         return None
 
@@ -113,7 +126,34 @@ def compute_signal(rows: list[PriceCache]) -> SellWaitSignal | None:
     else:
         reasons.append("Arrival-volume data isn't available for this market, so this factor was skipped.")
 
-    total_score = 2 * price_score + volume_score
+    # --- weather factor (weight 1) ---
+    weather_bias = 0
+    weather_note: str | None = None
+    if weather and weather.get("source") not in (None, "unavailable"):
+        weather_bias = int(weather.get("sell_bias", 0) or 0)
+        weather_note = weather.get("note")
+        if weather_note:
+            reasons.append(weather_note)
+
+    # --- MSP advisory overlay (not scored) ---
+    msp_block: dict | None = None
+    if msp and msp.get("price"):
+        gap = round(current_price - msp["price"], 0)
+        below = current_price < msp["price"]
+        msp_block = {"price": msp["price"], "gap": gap, "below": below, "season": msp.get("season", "")}
+        if below:
+            reasons.append(
+                f"Today's price (₹{current_price:.0f}) is ₹{abs(gap):.0f} below the "
+                f"Minimum Support Price (₹{msp['price']:.0f}) — a government procurement "
+                "centre may pay more; avoid selling to a private trader below MSP."
+            )
+        else:
+            reasons.append(
+                f"Today's price (₹{current_price:.0f}) is ₹{gap:.0f} above the Minimum "
+                f"Support Price (₹{msp['price']:.0f}) — the open market is paying a premium."
+            )
+
+    total_score = 2 * price_score + volume_score + weather_bias
     if total_score >= 2:
         recommendation = "sell_now"
     elif total_score <= -2:
@@ -129,4 +169,7 @@ def compute_signal(rows: list[PriceCache]) -> SellWaitSignal | None:
         ma_30=ma_30,
         volume_trend_pct=volume_trend_pct,
         days_of_data=len(prices),
+        weather_bias=weather_bias,
+        weather_note=weather_note,
+        msp=msp_block,
     )

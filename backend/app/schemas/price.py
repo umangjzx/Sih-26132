@@ -40,6 +40,9 @@ class SellWaitSignalResponse(BaseModel):
     ma_30: float | None
     volume_trend_pct: float | None
     days_of_data: int
+    weather_bias: int = 0
+    weather_note: str | None = None
+    msp: dict | None = None
 
 
 class IngestionResultResponse(BaseModel):

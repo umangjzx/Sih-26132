@@ -16,8 +16,9 @@ from app.schemas.price import (
     PriceTrendResponse,
     SellWaitSignalResponse,
 )
-from app.services import ingestion
+from app.services import ingestion, reference, weather
 from app.services.geo import district_distance_km
+from app.services.market_towns import market_coords
 from app.services.signal import compute_signal
 
 router = APIRouter(prefix="/api", tags=["prices"])
@@ -106,7 +107,20 @@ def sell_wait_signal(
     db: Session = Depends(get_db),
 ) -> SellWaitSignalResponse:
     rows = _fetch_series(db, crop, market, days=60)
-    signal = compute_signal(rows)
+    if len(rows) < 7:
+        raise HTTPException(status_code=404, detail="Not enough price history to compute a signal")
+
+    # v1.1 context: 7-day weather for the market + the crop's MSP.
+    weather_ctx = None
+    try:
+        pt = market_coords(market) or None
+        if pt is not None:
+            weather_ctx = weather.get_forecast(*pt)
+    except Exception:  # noqa: BLE001 - weather never blocks the signal
+        weather_ctx = None
+    msp_ctx = reference.msp_for(crop)
+
+    signal = compute_signal(rows, weather=weather_ctx, msp=msp_ctx)
     if signal is None:
         raise HTTPException(status_code=404, detail="Not enough price history to compute a signal")
     return SellWaitSignalResponse(
@@ -117,6 +131,9 @@ def sell_wait_signal(
         ma_30=signal.ma_30,
         volume_trend_pct=signal.volume_trend_pct,
         days_of_data=signal.days_of_data,
+        weather_bias=signal.weather_bias,
+        weather_note=signal.weather_note,
+        msp=signal.msp,
     )
 
 

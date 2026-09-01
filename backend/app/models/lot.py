@@ -20,4 +20,7 @@ class Lot(Base):
     expected_price: Mapped[float] = mapped_column(Float)
     available_from: Mapped[date] = mapped_column(Date)
     location: Mapped[str] = mapped_column(String(120))
+    # Geocoded from `location` on create (best-effort; nullable when geocoding fails).
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open")
