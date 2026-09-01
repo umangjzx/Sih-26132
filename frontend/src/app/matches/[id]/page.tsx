@@ -15,6 +15,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
+import { PageHeader } from "@/components/PageHeader";
+import { Icon } from "@/components/ui";
 import {
   acceptOffer,
   declineOffer,
@@ -91,101 +93,146 @@ export default function MatchThreadPage() {
   }
 
   if (!isAuthenticated || !user) return null;
+  
+  if (!match) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-24 w-full animate-pulse rounded-2xl bg-white/50" />
+        <div className="h-64 w-full animate-pulse rounded-2xl bg-white/50" />
+      </div>
+    );
+  }
 
-  const cp = match?.counterparty;
-  // Determine if current user is farmer or buyer from this match
-  const isFarmer = match ? match.lot.farmer_id === user.id : false;
+  const cp = match.counterparty;
+  const isFarmer = match.lot.farmer_id === user.id;
 
-  // Can the current user make an offer? Only if match is open and no pending offer from them
   const myPendingOffer = offers.find(
     (o) => o.from_user_id === user.id && o.status === "pending"
   );
-  const matchOpen = match && ["proposed", "offered"].includes(match.status);
+  const matchOpen = ["proposed", "offered"].includes(match.status);
   const canOffer = matchOpen && !myPendingOffer && !deal;
 
   return (
     <div className="flex flex-col gap-6">
+      <PageHeader
+        icon="connection"
+        title={t("offerThreadTitle")}
+        subtitle="Negotiate directly with verified counterparties"
+      />
+
       {/* Match header */}
-      {match && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <h1 className="mb-1 text-lg font-bold">{t("offerThreadTitle")}</h1>
-          <p className="text-sm opacity-70">
-            {match.lot.crop} · {match.lot.quantity_kg} kg · ₹{match.lot.expected_price}/quintal
-          </p>
-          {cp && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-sm">{cp.name}</span>
-              {cp.kyc_status === "verified" && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-sell)] bg-opacity-10 px-2 py-0.5 text-xs font-medium text-[var(--color-sell)]">
-                  ✓ {isFarmer ? t("verifiedBuyer") : t("verifiedFarmer")}
-                </span>
-              )}
-            </div>
-          )}
-          <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+      <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="font-heading text-lg font-bold text-[var(--ink)]">{match.lot.crop}</h1>
+            <p className="text-sm font-medium text-[var(--ink-soft)]">
+              <span className="text-[var(--green-700)]">{match.lot.quantity_kg} kg</span> · ₹{match.lot.expected_price}/quintal
+            </p>
+          </div>
+          
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest ${
             match.status === "accepted"
-              ? "bg-[var(--color-sell)] bg-opacity-10 text-[var(--color-sell)]"
-              : "bg-[var(--color-border)] text-[var(--color-text)] opacity-70"
+              ? "bg-[var(--green-100)] text-[var(--green-700)]"
+              : "bg-[var(--line)] text-[var(--ink-soft)]"
           }`}>
+            {match.status === "accepted" && <Icon name="check" size={14} />}
             {t(`status_${match.status}` as "status_accepted")}
           </span>
         </div>
-      )}
+        
+        {cp && (
+          <div className="mt-4 flex items-center gap-3 border-t border-[var(--line)] pt-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--green-700)] text-white">
+              <span className="font-bold">{cp.name.charAt(0)}</span>
+            </div>
+            <div>
+              <span className="font-bold text-[var(--ink)]">{cp.name}</span>
+              {cp.kyc_status === "verified" && (
+                <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--green-600)] uppercase tracking-wider">
+                  <Icon name="check" size={12} /> {isFarmer ? t("verifiedBuyer") : t("verifiedFarmer")}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Deal banner */}
-      {(deal || match?.status === "accepted") && (
-        <div className="rounded-md bg-[var(--color-sell)] bg-opacity-10 border border-[var(--color-sell)] px-4 py-3 text-sm font-medium text-[var(--color-sell)]">
+      {(deal || match.status === "accepted") && (
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
+          <Icon name="handshake" size={20} />
           {toast ?? t("offerAccepted")}
         </div>
       )}
 
       {/* Toast */}
-      {toast && match?.status !== "accepted" && (
-        <div className="rounded-md bg-[var(--color-sell)] bg-opacity-10 border border-[var(--color-sell)] px-4 py-3 text-sm text-[var(--color-sell)]">
+      {toast && match.status !== "accepted" && (
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--amber-600)]/30 bg-[var(--amber-100)] px-5 py-4 text-sm font-bold text-[var(--amber-800)]">
+          <Icon name="bell" size={18} />
           {toast}
         </div>
       )}
 
       {/* Offer thread */}
-      <section>
-        <h2 className="mb-3 text-base font-semibold">{t("offerThreadTitle")}</h2>
+      <section className="flex flex-col gap-4">
+        <h2 className="flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
+          <Icon name="clock" size={18} className="text-[var(--ink-soft)]" /> Negotiation History
+        </h2>
+        
         {offers.length === 0 ? (
-          <p className="text-sm opacity-60">{t("noMatches")}</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--paper)] py-8 text-center">
+            <Icon name="handshake" size={24} className="text-[var(--ink-soft)] opacity-50" />
+            <p className="text-sm font-medium text-[var(--ink-soft)]">{t("noMatches")}</p>
+          </div>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-4">
             {offers.map((offer) => {
               const isMe = offer.from_user_id === user.id;
               return (
                 <li key={offer.id}
-                  className={`flex flex-col gap-2 rounded-xl border p-4 ${
+                  className={`flex flex-col gap-3 rounded-2xl border p-5 shadow-sm transition-all ${
                     isMe
-                      ? "border-[var(--color-brand)] bg-[var(--color-brand)] bg-opacity-5"
-                      : "border-[var(--color-border)] bg-[var(--color-surface)]"
+                      ? "ml-8 border-[var(--green-200)] bg-[var(--green-50)]"
+                      : "mr-8 border-[var(--line)] bg-white"
                   }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">
-                      {isMe ? t("youLabel") : (cp?.name ?? "—")} · ₹{offer.price}/quintal · {offer.quantity} kg
-                    </span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs ${
-                      offer.status === "accepted" ? "bg-[var(--color-sell)] bg-opacity-10 text-[var(--color-sell)]" :
-                      offer.status === "pending" ? "bg-[var(--color-accent)] bg-opacity-10 text-[var(--color-accent)]" :
-                      "opacity-50"
-                    }`}>
-                      {t(`offer_${offer.status}` as "offer_pending")}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] pb-3">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--ink-soft)]">
+                        {isMe ? t("youLabel") : (cp?.name ?? "—")}
+                      </span>
+                      <span className={`font-bold text-lg ${isMe ? "text-[var(--green-900)]" : "text-[var(--ink)]"}`}>
+                        ₹{offer.price}
+                        <span className="text-sm font-medium opacity-60">/quintal</span>
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
+                        offer.status === "accepted" ? "bg-[var(--green-200)] text-[var(--green-900)]" :
+                        offer.status === "pending" ? "bg-[var(--amber-200)] text-[var(--amber-900)]" :
+                        "bg-[var(--line)] text-[var(--ink-soft)]"
+                      }`}>
+                        {t(`offer_${offer.status}` as "offer_pending")}
+                      </span>
+                      <span className="text-xs font-bold text-[var(--ink-soft)]">{offer.quantity} kg</span>
+                    </div>
                   </div>
+                  
                   {offer.message && (
-                    <p className="text-sm opacity-70">{offer.message}</p>
+                    <p className={`text-sm italic ${isMe ? "text-[var(--green-800)]" : "text-[var(--ink-soft)]"}`}>
+                      "{offer.message}"
+                    </p>
                   )}
-                  {/* Accept/decline buttons — shown to the other party on pending offers */}
-                  {offer.status === "pending" && !isMe && match?.status !== "accepted" && (
-                    <div className="flex gap-2">
+                  
+                  {/* Accept/decline buttons */}
+                  {offer.status === "pending" && !isMe && match.status !== "accepted" && (
+                    <div className="mt-2 flex gap-3 pt-2">
                       <button onClick={() => handleAccept(offer.id)}
-                        className="rounded-md bg-[var(--color-sell)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 transition-opacity">
+                        className="flex-1 rounded-xl bg-[var(--green-700)] px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)]">
                         {t("accept")}
                       </button>
                       <button onClick={() => handleDecline(offer.id)}
-                        className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-border)] transition-colors">
+                        className="flex-1 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]">
                         {t("decline")}
                       </button>
                     </div>
@@ -199,27 +246,42 @@ export default function MatchThreadPage() {
 
       {/* Make offer form */}
       {canOffer && (
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <h2 className="mb-3 text-base font-semibold">{t("makeOffer")}</h2>
-          <form onSubmit={handleOffer} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm font-medium">
+        <section className="mt-4 rounded-2xl border border-[var(--green-200)] bg-white p-6 shadow-sm">
+          <h2 className="mb-4 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
+            <Icon name="handshake" size={18} className="text-[var(--green-600)]" /> {t("makeOffer")}
+          </h2>
+          <form onSubmit={handleOffer} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5 text-sm font-bold text-[var(--ink)]">
               {t("offerPriceLabel")}
-              <input type="number" min="1" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)}
-                required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-[var(--ink-soft)]">₹</span>
+                <input 
+                  type="number" min="1" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} required 
+                  className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-8 pr-3 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors" 
+                />
+              </div>
             </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
+            <label className="flex flex-col gap-1.5 text-sm font-bold text-[var(--ink)]">
               {t("offerQuantityLabel")}
-              <input type="number" min="1" value={offerQty} onChange={(e) => setOfferQty(e.target.value)}
-                required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
+              <div className="relative">
+                <input 
+                  type="number" min="1" value={offerQty} onChange={(e) => setOfferQty(e.target.value)} required 
+                  className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-3 pr-10 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors" 
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold text-[var(--ink-soft)]">kg</span>
+              </div>
             </label>
-            <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
+            <label className="flex flex-col gap-1.5 text-sm font-bold text-[var(--ink)] sm:col-span-2">
               {t("offerMessageLabel")}
-              <textarea value={offerMsg} onChange={(e) => setOfferMsg(e.target.value)} rows={2}
-                className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm resize-none" />
+              <textarea 
+                value={offerMsg} onChange={(e) => setOfferMsg(e.target.value)} rows={2}
+                placeholder="Add a friendly note..."
+                className="resize-none rounded-xl border border-[var(--line)] p-3 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors" 
+              />
             </label>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 pt-2">
               <button type="submit" disabled={submitting}
-                className="rounded-md bg-[var(--color-brand)] px-5 py-2.5 font-semibold text-white hover:bg-[var(--color-brand-dark)] disabled:opacity-60 transition-colors">
+                className="w-full rounded-xl bg-[var(--green-700)] px-6 py-3 font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60">
                 {submitting ? t("submittingOffer") : t("submitOffer")}
               </button>
             </div>

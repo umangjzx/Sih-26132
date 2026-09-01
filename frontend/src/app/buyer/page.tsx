@@ -13,6 +13,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
+import { PageHeader } from "@/components/PageHeader";
+import { Icon } from "@/components/ui";
 import {
   createDemand,
   listMyDemands,
@@ -31,20 +33,23 @@ function parseScoreDetail(raw: string | null): ScoreDetail | null {
 function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null }) {
   const tm = useTranslations("matching");
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <div className="h-2 flex-1 rounded-full bg-[var(--color-border)]">
+    <div className="mt-3 flex flex-col gap-2 rounded-xl bg-[var(--paper)] p-3 border border-[var(--line)]">
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-widest shrink-0">Match Score</span>
+        <div className="h-2 flex-1 rounded-full bg-[var(--line)] overflow-hidden">
           <div
-            className="h-full rounded-full bg-[var(--color-brand)]"
+            className="h-full rounded-full bg-[var(--green-600)]"
             style={{ width: `${score}%` }}
           />
         </div>
-        <span className="text-xs font-semibold text-[var(--color-brand)]">{score}/100</span>
+        <span className="text-sm font-extrabold text-[var(--green-700)]">{score}%</span>
       </div>
       {detail && (
-        <p className="text-xs opacity-60">
-          {tm("quantityScore")}: {detail.quantity} · {tm("priceScore")}: {detail.price} · {tm("distanceScore")}: {detail.distance}
-        </p>
+        <div className="flex items-center gap-4 text-xs font-medium text-[var(--ink-soft)]">
+          <span className="flex items-center gap-1"><Icon name="leaf" size={14} className="text-[var(--amber-600)]" /> Qty: {detail.quantity}/30</span>
+          <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--amber-600)]" /> Price: {detail.price}/40</span>
+          <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> Dist: {detail.distance}/30</span>
+        </div>
       )}
     </div>
   );
@@ -100,53 +105,104 @@ export default function BuyerPage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon="handshake"
+        title="Buyer Dashboard"
+        subtitle={`Welcome back${user?.name ? `, ${user.name}` : ""}! Post your demands and find matching sellers.`}
+      />
+
       {toast && (
-        <div className="rounded-md bg-[var(--color-sell)] bg-opacity-10 border border-[var(--color-sell)] px-4 py-3 text-sm text-[var(--color-sell)]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
+          <Icon name="check" size={18} />
           {toast}
         </div>
       )}
 
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { icon: "handshake", label: "Post Demand", href: "#create-demand", color: "bg-[var(--green-700)]" },
+          { icon: "connection", label: "View Matches", href: "#matches", color: "bg-[var(--green-600)]" },
+          { icon: "clock", label: "Track Deals", href: "/history", color: "bg-[var(--amber-700)]" },
+          { icon: "warehouse", label: "Find FPOs", href: "/directory", color: "bg-slate-700" },
+        ].map((action) => (
+          <Link
+            key={action.label}
+            href={action.href}
+            className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${action.color} text-white`}>
+              <Icon name={action.icon} size={22} />
+            </div>
+            <span className="text-sm font-bold text-[var(--ink)]">{action.label}</span>
+          </Link>
+        ))}
+      </div>
+
       {/* Post demand form */}
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="mb-4 text-lg font-semibold">{td("createTitle")}</h2>
+      <section id="create-demand" className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
+            <Icon name="handshake" size={20} />
+          </div>
+          <div>
+            <h2 className="font-heading text-base font-bold text-[var(--ink)]">{td("createTitle")}</h2>
+            <p className="text-xs text-[var(--ink-soft)]">Specify your requirements to find sellers</p>
+          </div>
+        </div>
+        
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {td("cropLabel")}
-            <input type="text" value={form.crop} onChange={(e) => setForm({ ...form, crop: e.target.value })}
-              placeholder={td("cropPlaceholder")} required
-              className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {td("quantityLabel")}
-            <input type="number" min="1" value={form.quantity_kg || ""} onChange={(e) => setForm({ ...form, quantity_kg: parseFloat(e.target.value) })}
-              required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
+          {[
+            { key: "crop" as keyof DemandCreate, label: td("cropLabel"), type: "text", placeholder: td("cropPlaceholder"), required: true },
+            { key: "quantity_kg" as keyof DemandCreate, label: td("quantityLabel"), type: "number", required: true },
+            { key: "price_band_min" as keyof DemandCreate, label: td("priceMinLabel"), type: "number", required: true },
+            { key: "price_band_max" as keyof DemandCreate, label: td("priceMaxLabel"), type: "number", required: true },
+          ].map((field) => (
+            <label key={field.key} className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+              {field.label}
+              <input
+                type={field.type}
+                value={(form[field.key] as string | number) || ""}
+                onChange={(e) => setForm({ ...form, [field.key]: field.type === "number" ? parseFloat(e.target.value) : e.target.value })}
+                placeholder={"placeholder" in field ? field.placeholder as string : undefined}
+                required={field.required}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+              />
+            </label>
+          ))}
+          
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)] sm:col-span-2">
             {td("qualitySpecLabel")}
-            <input type="text" value={form.quality_spec} onChange={(e) => setForm({ ...form, quality_spec: e.target.value })}
-              placeholder={td("qualitySpecPlaceholder")} required
-              className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
+            <input 
+              type="text" 
+              value={form.quality_spec} 
+              onChange={(e) => setForm({ ...form, quality_spec: e.target.value })}
+              placeholder={td("qualitySpecPlaceholder")} 
+              required
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+            />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {td("priceMinLabel")}
-            <input type="number" min="1" value={form.price_band_min || ""} onChange={(e) => setForm({ ...form, price_band_min: parseFloat(e.target.value) })}
-              required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {td("priceMaxLabel")}
-            <input type="number" min="1" value={form.price_band_max || ""} onChange={(e) => setForm({ ...form, price_band_max: parseFloat(e.target.value) })}
-              required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
+          
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)] sm:col-span-2">
             {td("deliveryWindowLabel")}
-            <input type="text" value={form.delivery_window} onChange={(e) => setForm({ ...form, delivery_window: e.target.value })}
-              placeholder={td("deliveryWindowPlaceholder")} required
-              className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
+            <input 
+              type="text" 
+              value={form.delivery_window} 
+              onChange={(e) => setForm({ ...form, delivery_window: e.target.value })}
+              placeholder={td("deliveryWindowPlaceholder")} 
+              required
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+            />
           </label>
-          <div className="sm:col-span-2">
-            <button type="submit" disabled={submitting}
-              className="rounded-md bg-[var(--color-brand)] px-6 py-3 font-semibold text-white hover:bg-[var(--color-brand-dark)] disabled:opacity-60 transition-colors">
+          
+          <div className="sm:col-span-2 pt-2">
+            <button 
+              type="submit" 
+              disabled={submitting}
+              className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60"
+            >
+              <Icon name="handshake" size={18} />
               {submitting ? td("submitting") : td("submit")}
             </button>
           </div>
@@ -154,10 +210,25 @@ export default function BuyerPage() {
       </section>
 
       {/* Matches list */}
-      <section>
-        <h2 className="mb-4 text-lg font-semibold">{tm("title")}</h2>
+      <section id="matches" className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-heading text-base font-bold text-[var(--ink)]">
+            {tm("title")}
+            {matches.length > 0 && (
+              <span className="ml-2 rounded-full bg-[var(--green-100)] px-2 py-0.5 text-xs font-bold text-[var(--green-700)]">
+                {matches.length}
+              </span>
+            )}
+          </h2>
+          <Link href="#matches" className="text-xs font-semibold text-[var(--green-700)] hover:underline">
+            View All →
+          </Link>
+        </div>
         {matches.length === 0 ? (
-          <p className="text-sm opacity-60">{tm("noMatches")}</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
+            <Icon name="connection" size={28} className="text-[var(--green-400)]" />
+            <p className="text-sm text-[var(--ink-soft)]">{tm("noMatches")}</p>
+          </div>
         ) : (
           <ul className="flex flex-col gap-3">
             {matches.map((match) => {
@@ -165,26 +236,31 @@ export default function BuyerPage() {
               const cp = match.counterparty;
               return (
                 <li key={match.id}
-                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <span className="font-semibold">{match.lot.crop}</span>
-                      <span className="ml-2 text-sm opacity-60">
-                        {match.lot.quantity_kg} kg · ₹{match.lot.expected_price}/quintal · {match.lot.location}
-                      </span>
-                      {cp && (
-                        <div className="mt-1 flex items-center gap-2">
-                          <span className="text-sm opacity-70">{cp.name}</span>
-                          {cp.kyc_status === "verified" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-sell)] bg-opacity-10 px-2 py-0.5 text-xs font-medium text-[var(--color-sell)]">
-                              ✓ {tm("verifiedFarmer")}
-                            </span>
-                          )}
+                  className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 flex flex-col gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
+                        <Icon name="leaf" size={20} />
+                      </div>
+                      <div>
+                        <span className="font-bold text-[var(--ink)]">{match.lot.crop}</span>
+                        <div className="mt-0.5 text-xs text-[var(--ink-soft)]">
+                          {match.lot.quantity_kg} kg · ₹{match.lot.expected_price}/qtl · {match.lot.location}
                         </div>
-                      )}
+                        {cp && (
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold text-[var(--ink)]">{cp.name}</span>
+                            {cp.kyc_status === "verified" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--green-100)] px-2 py-0.5 text-xs font-bold text-[var(--green-700)]">
+                                <Icon name="check" size={12} /> {tm("verifiedFarmer")}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <Link href={`/matches/${match.id}`}
-                      className="shrink-0 rounded-md border border-[var(--color-brand)] px-3 py-1.5 text-sm font-medium text-[var(--color-brand)] hover:bg-[var(--color-brand)] hover:text-white transition-colors">
+                      className="shrink-0 rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white transition hover:bg-[var(--green-900)]">
                       {tm("viewOffers")}
                     </Link>
                   </div>

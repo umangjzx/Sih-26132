@@ -18,6 +18,7 @@ import {
 } from "recharts";
 
 import { Card, EmptyState, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
+import { PageHeader } from "@/components/PageHeader";
 import { fetchPublicOverview, type PublicOverview } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
 
@@ -90,22 +91,21 @@ export default function ExplorePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-heading text-3xl font-extrabold tracking-tight text-[var(--green-900)]">
-          {t("title")}
-        </h1>
-        <p className="mt-1 text-[var(--ink-soft)]">{t("subtitle")}</p>
-        {a.state && (
-          <p className="mt-1 text-xs font-semibold text-[var(--green-700)]">
-            {t("showing")}: {a.state}
-          </p>
-        )}
-        {data.as_of && (
-          <p className="mt-1 text-xs text-[var(--ink-soft)]/70">
-            {t("asOf")}: {data.as_of}
-          </p>
-        )}
-      </div>
+      <PageHeader
+        icon="globe"
+        title={t("title")}
+        subtitle={t("subtitle")}
+      />
+      {a.state && (
+        <p className="-mt-4 mb-2 text-xs font-semibold text-[var(--green-700)]">
+          {t("showing")}: {a.state}
+        </p>
+      )}
+      {data.as_of && (
+        <p className="-mt-4 mb-2 text-xs text-[var(--ink-soft)]/70">
+          {t("asOf")}: {data.as_of}
+        </p>
+      )}
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         <Stat label={t("marketsReporting")} value={a.markets_reporting ?? 0} />

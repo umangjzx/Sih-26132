@@ -14,6 +14,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { NearbyResources } from "@/components/NearbyResources";
+import { PageHeader } from "@/components/PageHeader";
+import { Icon } from "@/components/ui";
 import { createLot, listMyLots, type LotCreate, type LotResponse } from "@/lib/api";
 
 const DRAFT_KEY = "agrilink.lot_draft";
@@ -174,71 +176,107 @@ export default function FarmerPage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Offline banner */}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon="leaf"
+        title="Farmer Dashboard"
+        subtitle={`Welcome back${user?.name ? `, ${user.name}` : ""}! Manage your produce and track deals.`}
+      />
+
+      {/* Status Banners */}
       {!isOnline && (
-        <div className="rounded-md bg-[var(--color-accent)] bg-opacity-10 border border-[var(--color-accent)] px-4 py-3 text-sm text-[var(--color-accent)]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--amber-500)]/30 bg-[var(--amber-100)] px-5 py-4 text-sm font-semibold text-[var(--amber-700)]">
+          <Icon name="wind" size={18} />
           {t("offlineBanner")}
         </div>
       )}
       {queueCount > 0 && isOnline && (
-        <div className="rounded-md bg-[var(--color-accent)] bg-opacity-10 border border-[var(--color-accent)] px-4 py-3 text-sm text-[var(--color-accent)]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--amber-500)]/30 bg-[var(--amber-100)] px-5 py-4 text-sm font-semibold text-[var(--amber-700)]">
+          <Icon name="clock" size={18} />
           {t("queuedOffline", { count: queueCount })}
         </div>
       )}
       {toast && (
-        <div className="rounded-md bg-[var(--color-sell)] bg-opacity-10 border border-[var(--color-sell)] px-4 py-3 text-sm text-[var(--color-sell)]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
+          <Icon name="check" size={18} />
           {toast}
         </div>
       )}
 
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { icon: "leaf", label: "List Produce", href: "#create-lot", color: "bg-[var(--green-700)]" },
+          { icon: "connection", label: "View Matches", href: "/matches", color: "bg-[var(--green-600)]" },
+          { icon: "handshake", label: "Track Deals", href: "/deals", color: "bg-[var(--amber-700)]" },
+          { icon: "warehouse", label: "Find Storage", href: "/directory", color: "bg-slate-700" },
+        ].map((action) => (
+          <Link
+            key={action.label}
+            href={action.href}
+            className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${action.color} text-white`}>
+              <Icon name={action.icon} size={22} />
+            </div>
+            <span className="text-sm font-bold text-[var(--ink)]">{action.label}</span>
+          </Link>
+        ))}
+      </div>
+
       {/* Create lot form */}
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="mb-4 text-lg font-semibold">{t("createTitle")}</h2>
+      <section id="create-lot" className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
+            <Icon name="leaf" size={20} />
+          </div>
+          <div>
+            <h2 className="font-heading text-base font-bold text-[var(--ink)]">{t("createTitle")}</h2>
+            <p className="text-xs text-[var(--ink-soft)]">Fill in the details to list your produce</p>
+          </div>
+        </div>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("cropLabel")}
-            <input type="text" value={form.crop} onChange={(e) => updateField("crop", e.target.value)}
-              placeholder={t("cropPlaceholder")} required
-              className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("quantityLabel")}
-            <input type="number" min="1" value={form.quantity_kg} onChange={(e) => updateField("quantity_kg", e.target.value)}
-              required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          {[
+            { key: "crop" as keyof FormState, label: t("cropLabel"), type: "text", placeholder: t("cropPlaceholder"), required: true },
+            { key: "quantity_kg" as keyof FormState, label: t("quantityLabel"), type: "number", required: true },
+            { key: "expected_price" as keyof FormState, label: t("priceLabel"), type: "number", required: true },
+            { key: "available_from" as keyof FormState, label: t("dateLabel"), type: "date", required: true },
+            { key: "location" as keyof FormState, label: t("locationLabel"), type: "text", required: true },
+            { key: "photo_url" as keyof FormState, label: t("photoUrlLabel"), type: "url", required: false },
+          ].map((field) => (
+            <label key={field.key} className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+              {field.label}
+              <input
+                type={field.type}
+                value={form[field.key]}
+                onChange={(e) => updateField(field.key, e.target.value)}
+                placeholder={"placeholder" in field ? field.placeholder as string : undefined}
+                required={field.required}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+              />
+            </label>
+          ))}
+
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
             {t("gradeLabel")}
-            <select value={form.quality_grade} onChange={(e) => updateField("quality_grade", e.target.value)}
-              className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm">
+            <select
+              value={form.quality_grade}
+              onChange={(e) => updateField("quality_grade", e.target.value)}
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
+            >
               <option value="A">{t("gradeA")}</option>
               <option value="B">{t("gradeB")}</option>
               <option value="C">{t("gradeC")}</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("priceLabel")}
-            <input type="number" min="1" value={form.expected_price} onChange={(e) => updateField("expected_price", e.target.value)}
-              required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("dateLabel")}
-            <input type="date" value={form.available_from} onChange={(e) => updateField("available_from", e.target.value)}
-              required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("locationLabel")}
-            <input type="text" value={form.location} onChange={(e) => updateField("location", e.target.value)}
-              required className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
-            {t("photoUrlLabel")}
-            <input type="url" value={form.photo_url} onChange={(e) => updateField("photo_url", e.target.value)}
-              className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm" />
-          </label>
-          <div className="sm:col-span-2">
-            <button type="submit" disabled={submitting}
-              className="rounded-md bg-[var(--color-brand)] px-6 py-3 font-semibold text-white hover:bg-[var(--color-brand-dark)] disabled:opacity-60 transition-colors">
+
+          <div className="sm:col-span-2 pt-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60"
+            >
+              <Icon name="leaf" size={18} />
               {submitting ? t("submitting") : t("submit")}
             </button>
           </div>
@@ -246,31 +284,51 @@ export default function FarmerPage() {
       </section>
 
       {/* Lot list */}
-      <section>
-        <h2 className="mb-4 text-lg font-semibold">{t("title")}</h2>
+      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-heading text-base font-bold text-[var(--ink)]">
+            {t("title")}
+            {lots.length > 0 && (
+              <span className="ml-2 rounded-full bg-[var(--green-100)] px-2 py-0.5 text-xs font-bold text-[var(--green-700)]">
+                {lots.length}
+              </span>
+            )}
+          </h2>
+          <Link href="/matches" className="text-xs font-semibold text-[var(--green-700)] hover:underline">
+            View Matches →
+          </Link>
+        </div>
         {lots.length === 0 ? (
-          <p className="text-sm opacity-60">{t("noLots")}</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
+            <Icon name="leaf" size={28} className="text-[var(--green-400)]" />
+            <p className="text-sm text-[var(--ink-soft)]">{t("noLots")}</p>
+          </div>
         ) : (
           <ul className="flex flex-col gap-3">
             {lots.map((lot) => (
-              <li key={lot.id}
-                className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
-                <div className="flex flex-col gap-1">
-                  <span className="font-semibold">{lot.crop}</span>
-                  <span className="text-sm opacity-70">
-                    {lot.quantity_kg} kg · Grade {lot.quality_grade} · ₹{lot.expected_price}/quintal
-                  </span>
-                  <span className="text-xs opacity-50">{lot.location} · {lot.available_from}</span>
-                </div>
+              <li
+                key={lot.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4"
+              >
                 <div className="flex items-center gap-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    lot.status === "open"
-                      ? "bg-[var(--color-sell)] bg-opacity-10 text-[var(--color-sell)]"
-                      : "bg-[var(--color-border)] text-[var(--color-text)] opacity-60"
-                  }`}>
-                    {t(`status_${lot.status}` as "status_open")}
-                  </span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
+                    <Icon name="leaf" size={20} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-[var(--ink)]">{lot.crop}</span>
+                    <div className="mt-0.5 text-xs text-[var(--ink-soft)]">
+                      {lot.quantity_kg} kg · Grade {lot.quality_grade} · ₹{lot.expected_price}/qtl
+                    </div>
+                    <div className="text-xs text-[var(--ink-soft)]/70">{lot.location} · {lot.available_from}</div>
+                  </div>
                 </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                  lot.status === "open"
+                    ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                    : "bg-[var(--line)] text-[var(--ink-soft)]"
+                }`}>
+                  {t(`status_${lot.status}` as "status_open")}
+                </span>
               </li>
             ))}
           </ul>

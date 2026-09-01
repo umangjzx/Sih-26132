@@ -1,13 +1,17 @@
 "use client";
 
 /**
- * Price-alert management (v1.1). Auth required.
+ * Price-alert management (v2.0). Auth required.
+ * Redesigned with premium UI/UX.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 
 import { useAuth } from "@/components/AuthProvider";
+import { PageHeader } from "@/components/PageHeader";
+import { Icon } from "@/components/ui";
 import {
   createAlert,
   deleteAlert,
@@ -26,6 +30,7 @@ export default function AlertsPage() {
   const [direction, setDirection] = useState<"above" | "below">("above");
   const [threshold, setThreshold] = useState("");
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -36,15 +41,25 @@ export default function AlertsPage() {
     }
   }, [token]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (!isAuthenticated) {
     return (
-      <p className="rounded-xl border border-[var(--color-border)] bg-white/50 px-4 py-3 text-sm text-stone-600">
-        {t("loginRequired")}
-      </p>
+      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[var(--line)] bg-white p-12 text-center shadow-sm">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
+          <Icon name="bell" size={32} />
+        </div>
+        <div>
+          <h2 className="font-heading text-xl font-bold text-[var(--ink)]">Login Required</h2>
+          <p className="mt-1 text-sm text-[var(--ink-soft)]">{t("loginRequired")}</p>
+        </div>
+        <Link
+          href="/login"
+          className="rounded-xl bg-[var(--green-700)] px-6 py-2.5 text-sm font-bold text-white hover:bg-[var(--green-900)] transition-colors"
+        >
+          Sign In
+        </Link>
+      </div>
     );
   }
 
@@ -60,6 +75,8 @@ export default function AlertsPage() {
       setCrop("");
       setMarket("");
       setThreshold("");
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
       await load();
     } finally {
       setBusy(false);
@@ -68,115 +85,163 @@ export default function AlertsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-heading text-3xl font-bold tracking-tight">{t("title")}</h1>
-        <p className="mt-1 text-stone-600">{t("subtitle")}</p>
-      </div>
+      <PageHeader
+        icon="bell"
+        title={t("title")}
+        subtitle={t("subtitle")}
+      />
 
-      <form
-        onSubmit={add}
-        className="grid gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg sm:grid-cols-2"
-      >
-        <label className="flex flex-col gap-1 text-sm font-semibold">
-          {t("crop")}
-          <input
-            value={crop}
-            onChange={(e) => setCrop(e.target.value)}
-            required
-            placeholder="Onion"
-            className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-semibold">
-          {t("market")}
-          <input
-            value={market}
-            onChange={(e) => setMarket(e.target.value)}
-            required
-            placeholder="Pune"
-            className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-semibold">
-          {t("direction")}
-          <select
-            value={direction}
-            onChange={(e) => setDirection(e.target.value as "above" | "below")}
-            className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm"
-          >
-            <option value="above">{t("above")}</option>
-            <option value="below">{t("below")}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-semibold">
-          {t("threshold")}
-          <input
-            type="number"
-            min="1"
-            value={threshold}
-            onChange={(e) => setThreshold(e.target.value)}
-            required
-            className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm"
-          />
-        </label>
-        <div className="sm:col-span-2">
+      {/* Success toast */}
+      {success && (
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-semibold text-[var(--green-700)]">
+          <Icon name="check" size={18} />
+          Alert created successfully!
+        </div>
+      )}
+
+      {/* Alert Creation Form */}
+      <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <h2 className="mb-2 font-heading text-base font-bold text-[var(--ink)]">
+          Create New Alert
+        </h2>
+        <p className="mb-5 text-sm text-[var(--ink-soft)]">
+          We will notify you when the price reaches your target.
+        </p>
+
+        <form onSubmit={add}>
+          {/* Visual form builder */}
+          <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper)] p-4 text-sm">
+            <span className="font-semibold text-[var(--ink-soft)]">Notify me when</span>
+            <input
+              value={crop}
+              onChange={(e) => setCrop(e.target.value)}
+              required
+              placeholder="Crop (e.g. Onion)"
+              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
+            />
+            <span className="font-semibold text-[var(--ink-soft)]">at</span>
+            <input
+              value={market}
+              onChange={(e) => setMarket(e.target.value)}
+              required
+              placeholder="Market (e.g. Pune)"
+              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
+            />
+            <span className="font-semibold text-[var(--ink-soft)]">goes</span>
+            <select
+              value={direction}
+              onChange={(e) => setDirection(e.target.value as "above" | "below")}
+              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
+            >
+              <option value="above">{t("above")}</option>
+              <option value="below">{t("below")}</option>
+            </select>
+            <div className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2">
+              <span className="text-sm font-bold text-[var(--ink-soft)]">₹</span>
+              <input
+                type="number"
+                min="1"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                required
+                placeholder="Price"
+                className="w-24 text-sm font-semibold focus:outline-none"
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={busy}
-            className="min-h-11 rounded-xl bg-[var(--color-brand)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-brand-dark)] disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-50"
           >
+            <Icon name="bell" size={16} />
             {busy ? t("adding") : t("add")}
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
-      <section>
-        <h2 className="mb-2 font-heading text-sm font-bold">{t("yourAlerts")}</h2>
+      {/* Active Alerts List */}
+      <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-heading text-base font-bold text-[var(--ink)]">
+            {t("yourAlerts")}
+            {alerts.length > 0 && (
+              <span className="ml-2 rounded-full bg-[var(--green-100)] px-2 py-0.5 text-xs font-bold text-[var(--green-700)]">
+                {alerts.length}
+              </span>
+            )}
+          </h2>
+        </div>
+
         {alerts.length === 0 ? (
-          <p className="text-sm opacity-60">{t("none")}</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
+            <Icon name="bell" size={28} className="text-[var(--green-400)]" />
+            <div>
+              <p className="font-semibold text-[var(--ink)]">No active alerts yet</p>
+              <p className="mt-0.5 text-sm text-[var(--ink-soft)]">
+                Create an alert and we&apos;ll notify you when the market reaches your target price.
+              </p>
+            </div>
+          </div>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {alerts.map((al) => (
               <li
                 key={al.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-white/50 px-4 py-3 text-sm"
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 transition-colors ${
+                  al.active
+                    ? "border-[var(--green-600)]/20 bg-[var(--green-50)]"
+                    : "border-[var(--line)] bg-[var(--paper)]"
+                }`}
               >
-                <span>
-                  <span className="font-semibold">{al.crop}</span> @ {al.market} · {t("direction")}{" "}
-                  <span className="font-semibold">
-                    {al.direction === "above" ? t("above") : t("below")} ₹{al.threshold}
-                  </span>
-                  <span
-                    className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      al.active
-                        ? "bg-[var(--color-sell)]/10 text-[var(--color-sell)]"
-                        : "bg-[var(--color-border)] text-stone-500"
-                    }`}
-                  >
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                    al.direction === "above"
+                      ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                      : "bg-[var(--red-100)] text-[var(--red-700)]"
+                  }`}>
+                    <Icon name={al.direction === "above" ? "arrowUp" : "arrowDown"} size={18} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-[var(--ink)]">{al.crop}</span>
+                    <span className="text-sm text-[var(--ink-soft)]"> @ {al.market}</span>
+                    <div className="mt-0.5 text-sm">
+                      <span className={al.direction === "above" ? "text-[var(--green-700)]" : "text-[var(--red-700)]"}>
+                        {al.direction === "above" ? "▲ Above" : "▼ Below"} ₹{al.threshold}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    al.active
+                      ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                      : "bg-[var(--line)] text-[var(--ink-soft)]"
+                  }`}>
                     {al.active ? t("active") : t("paused")}
                   </span>
-                </span>
-                <span className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => token && toggleAlert(al.id, token).then(load)}
-                    className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold"
+                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--paper)] transition-colors"
                   >
                     {al.active ? t("pause") : t("resume")}
                   </button>
                   <button
                     type="button"
                     onClick={() => token && deleteAlert(al.id, token).then(load)}
-                    className="rounded-lg border border-[var(--color-wait)]/40 px-3 py-1.5 text-xs font-semibold text-[var(--color-wait)]"
+                    className="rounded-xl border border-[var(--red-500)]/30 bg-[var(--red-100)] px-3 py-1.5 text-xs font-semibold text-[var(--red-700)] hover:bg-[var(--red-100)] transition-colors"
                   >
                     {t("delete")}
                   </button>
-                </span>
+                </div>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </div>
     </div>
   );
 }

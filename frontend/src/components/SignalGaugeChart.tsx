@@ -21,7 +21,7 @@ export function SignalGaugeChart({ recommendation }: { recommendation: Recommend
     recommendation === "sell_now" ? 16.5 : recommendation === "hold" ? 50 : 83.5;
 
   return (
-    <div className="relative h-40 w-full" role="img" aria-label={t("title")}>
+    <div className="relative h-48 w-full pb-8" role="img" aria-label={t("title")}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -49,17 +49,17 @@ export function SignalGaugeChart({ recommendation }: { recommendation: Recommend
       
       {/* Custom Needle */}
       <div 
-        className="absolute bottom-2 left-1/2 h-16 w-1 origin-bottom bg-stone-800 transition-transform duration-1000 ease-out z-10"
+        className="absolute bottom-10 left-1/2 h-20 w-1 origin-bottom bg-stone-800 transition-transform duration-1000 ease-out z-10"
         style={{
           transform: `translateX(-50%) rotate(${(needleValue / 100) * 180 - 90}deg)`,
         }}
       >
         <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-stone-800" />
       </div>
-      <div className="absolute bottom-1 left-1/2 h-5 w-5 -translate-x-1/2 rounded-full bg-stone-800 z-20" />
+      <div className="absolute bottom-9 left-1/2 h-5 w-5 -translate-x-1/2 rounded-full bg-stone-800 z-20" />
       
       {/* Label */}
-      <div className="absolute -bottom-8 w-full text-center font-heading text-2xl font-extrabold" style={{ color: DATA.find(d => d.name === recommendation)?.color }}>
+      <div className="absolute bottom-0 w-full text-center font-heading text-2xl font-extrabold" style={{ color: DATA.find(d => d.name === recommendation)?.color }}>
         {t(recommendation)}
       </div>
     </div>

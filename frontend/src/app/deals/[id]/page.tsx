@@ -14,6 +14,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
+import { PageHeader } from "@/components/PageHeader";
+import { Icon } from "@/components/ui";
 import {
   advanceDeal,
   getDealById,
@@ -40,7 +42,6 @@ export default function DealDetailPage() {
   const t = useTranslations("deals");
   const tp = useTranslations("disputes");
 
-  // next-intl's typed catalogue rejects template-literal keys, so map explicitly.
   const stageLabel: Record<(typeof STAGES)[number], string> = {
     matched: t("pipeline_matched"),
     offer_accepted: t("pipeline_offer_accepted"),
@@ -130,52 +131,76 @@ export default function DealDetailPage() {
   if (error) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="rounded-md border border-[var(--color-wait)] bg-[var(--color-wait)]/10 px-4 py-3 text-sm text-[var(--color-wait)]">
+        <p className="rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-bold text-[var(--red-700)]">
           {error}
         </p>
-        <Link href="/history" className="text-sm font-medium text-[var(--color-brand)] hover:underline">
+        <Link href="/history" className="text-sm font-semibold text-[var(--green-700)] hover:underline">
           {t("backToHistory")}
         </Link>
       </div>
     );
   }
-  if (!deal) return <p className="text-sm opacity-60">…</p>;
+  
+  if (!deal) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-24 w-full animate-pulse rounded-2xl bg-white/50" />
+        <div className="h-64 w-full animate-pulse rounded-2xl bg-white/50" />
+      </div>
+    );
+  }
 
   const currentIdx = STAGES.indexOf(deal.pipeline_status as (typeof STAGES)[number]);
   const hasOpenDispute = disputes.some((d) => d.status === "open");
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon="handshake"
+        title="Deal Dashboard"
+        subtitle={`Track logistics and payments for ${deal.lot.crop}`}
+      />
+      
       {toast && (
-        <div className="rounded-md border border-[var(--color-sell)] bg-[var(--color-sell)]/10 px-4 py-3 text-sm text-[var(--color-sell)]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
+          <Icon name="check" size={18} />
           {toast}
         </div>
       )}
 
-      {/* Header */}
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h1 className="text-lg font-semibold">{deal.lot.crop}</h1>
-        <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="opacity-60">{t("agreedPrice")}</dt>
-            <dd className="font-semibold">₹{deal.agreed_price}</dd>
+      {/* Header Info */}
+      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-3 border-b border-[var(--line)] pb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--green-700)] text-white">
+            <Icon name="leaf" size={24} />
           </div>
           <div>
-            <dt className="opacity-60">{t("agreedQty")}</dt>
-            <dd className="font-semibold">{deal.agreed_quantity} kg</dd>
+            <h1 className="font-heading text-lg font-extrabold text-[var(--ink)]">{deal.lot.crop}</h1>
+            <p className="text-xs text-[var(--ink-soft)]">Deal ID: #{deal.id}</p>
           </div>
-          <div>
-            <dt className="opacity-60">{t("logistics")}</dt>
-            <dd className="font-semibold">{logisticsLabel[deal.logistics_mode] ?? deal.logistics_mode}</dd>
+        </div>
+        
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-4">
+          <div className="flex flex-col gap-1">
+            <dt className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-soft)]">{t("agreedPrice")}</dt>
+            <dd className="font-bold text-[var(--ink)]">₹{deal.agreed_price}</dd>
           </div>
-          <div>
-            <dt className="opacity-60">{t("paymentStatus")}</dt>
+          <div className="flex flex-col gap-1">
+            <dt className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-soft)]">{t("agreedQty")}</dt>
+            <dd className="font-bold text-[var(--ink)]">{deal.agreed_quantity} kg</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-soft)]">{t("logistics")}</dt>
+            <dd className="font-bold text-[var(--ink)]">{logisticsLabel[deal.logistics_mode] ?? deal.logistics_mode}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-soft)]">{t("paymentStatus")}</dt>
             <dd>
               <span
-                className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                className={`inline-block rounded-full px-2.5 py-1 text-xs font-bold ${
                   deal.payment_status === "paid"
-                    ? "bg-[var(--color-sell)]/10 text-[var(--color-sell)]"
-                    : "bg-[var(--color-hold)]/10 text-[var(--color-hold)]"
+                    ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                    : "bg-[var(--amber-100)] text-[var(--amber-700)]"
                 }`}
               >
                 {paymentLabel[deal.payment_status] ?? deal.payment_status}
@@ -186,76 +211,103 @@ export default function DealDetailPage() {
       </section>
 
       {/* Pipeline stepper */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold opacity-80">{t("pipeline")}</h2>
-        <ol className="flex flex-wrap gap-2" aria-label={t("pipeline")}>
+      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <h2 className="mb-5 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
+          <Icon name="connection" size={18} className="text-[var(--green-600)]" /> {t("pipeline")}
+        </h2>
+        
+        <ol className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-2" aria-label={t("pipeline")}>
           {STAGES.map((stage, i) => {
-            const state =
-              i < currentIdx ? "done" : i === currentIdx ? "current" : "future";
+            const state = i < currentIdx ? "done" : i === currentIdx ? "current" : "future";
+            
             return (
               <li
                 key={stage}
                 data-state={state}
-                aria-current={state === "current" ? "step" : undefined}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  state === "done"
-                    ? "bg-[var(--color-sell)] text-white"
-                    : state === "current"
-                      ? "border-2 border-[var(--color-brand)] font-bold text-[var(--color-brand)]"
-                      : "bg-[var(--color-border)] text-[var(--color-text)]/50"
-                }`}
+                className="flex items-center gap-2 sm:flex-1 sm:flex-col sm:items-start"
               >
-                {stageLabel[stage]}
+                <div 
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                    state === "done"
+                      ? "bg-[var(--green-600)] text-white"
+                      : state === "current"
+                        ? "border-2 border-[var(--green-600)] bg-[var(--green-50)] text-[var(--green-700)]"
+                        : "bg-[var(--line)] text-[var(--ink-soft)]"
+                  }`}
+                >
+                  {state === "done" ? <Icon name="check" size={14} /> : i + 1}
+                </div>
+                <span className={`text-xs font-bold ${
+                  state === "done" ? "text-[var(--ink)]" : state === "current" ? "text-[var(--green-700)]" : "text-[var(--ink-soft)]"
+                }`}>
+                  {stageLabel[stage]}
+                </span>
               </li>
             );
           })}
         </ol>
-        <button
-          type="button"
-          onClick={handleAdvance}
-          disabled={advancing || deal.pipeline_status === "closed"}
-          className="mt-4 min-h-11 rounded-md bg-[var(--color-brand)] px-6 py-3 text-sm font-semibold text-white hover:bg-[var(--color-brand-dark)] disabled:opacity-50 transition-colors"
-        >
-          {deal.pipeline_status === "closed"
-            ? t("alreadyClosed")
-            : advancing
-              ? t("advancing")
-              : t("advancePipeline")}
-        </button>
+        
+        <div className="mt-8 border-t border-[var(--line)] pt-5">
+          <button
+            type="button"
+            onClick={handleAdvance}
+            disabled={advancing || deal.pipeline_status === "closed"}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60"
+          >
+            {deal.pipeline_status === "closed"
+              ? t("alreadyClosed")
+              : advancing
+                ? t("advancing")
+                : t("advancePipeline")}
+            {deal.pipeline_status !== "closed" && !advancing && <Icon name="chevronDown" size={16} className="-rotate-90" />}
+          </button>
+        </div>
       </section>
 
       {/* Disputes */}
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="mb-3 text-sm font-semibold opacity-80">{tp("title")}</h2>
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-6 shadow-sm">
+        <h2 className="mb-5 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
+          <Icon name="shield" size={18} className="text-[var(--red-600)]" /> {tp("title")}
+        </h2>
+        
         {disputes.length === 0 ? (
-          <p className="text-sm opacity-60">{tp("noDisputes")}</p>
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--line)] py-6 text-center">
+            <Icon name="shield" size={24} className="text-[var(--green-300)]" />
+            <p className="text-sm font-medium text-[var(--ink-soft)]">{tp("noDisputes")}</p>
+          </div>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {disputes.map((d) => (
               <li
                 key={d.id}
-                className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm"
+                className="flex flex-col gap-2 rounded-xl border border-[var(--red-200)] bg-[var(--red-50)] p-4 text-sm shadow-sm"
               >
-                <span
-                  className={`mr-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    d.status === "open"
-                      ? "bg-[var(--color-hold)]/15 text-[var(--color-hold)]"
-                      : "bg-[var(--color-border)] text-[var(--color-text)]/60"
-                  }`}
-                >
-                  {disputeStatusLabel[d.status] ?? d.status}
-                </span>
-                {d.reason}
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[var(--red-900)]">Dispute #{d.id}</span>
+                  <span
+                    className={`inline-block rounded-full px-2.5 py-1 text-xs font-bold ${
+                      d.status === "open"
+                        ? "bg-[var(--red-200)] text-[var(--red-900)]"
+                        : "bg-[var(--line)] text-[var(--ink-soft)]"
+                    }`}
+                  >
+                    {disputeStatusLabel[d.status] ?? d.status}
+                  </span>
+                </div>
+                <p className="text-[var(--red-800)]">{d.reason}</p>
               </li>
             ))}
           </ul>
         )}
 
         {hasOpenDispute ? (
-          <p className="mt-4 text-sm text-[var(--color-hold)]">{tp("duplicateError")}</p>
+          <div className="mt-6 flex items-center gap-2 rounded-xl bg-[var(--amber-100)] px-4 py-3 text-sm font-bold text-[var(--amber-800)]">
+            <Icon name="close" size={16} />
+            {tp("duplicateError")}
+          </div>
         ) : (
-          <form onSubmit={handleRaise} className="mt-4 flex flex-col gap-2">
-            <label className="text-sm font-medium">
+          <form onSubmit={handleRaise} className="mt-6 flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-white p-5">
+            <label className="flex flex-col gap-2 text-sm font-bold text-[var(--ink)]">
               {tp("reasonLabel")}
               <textarea
                 value={reason}
@@ -263,13 +315,13 @@ export default function DealDetailPage() {
                 placeholder={tp("reasonPlaceholder")}
                 required
                 rows={3}
-                className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] p-3 text-sm font-normal focus:border-[var(--red-500)] focus:outline-none transition-colors"
               />
             </label>
             <button
               type="submit"
               disabled={submitting || !reason.trim()}
-              className="min-h-11 self-start rounded-md bg-[var(--color-wait)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="mt-2 self-start rounded-xl bg-[var(--red-600)] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--red-700)] disabled:opacity-50"
             >
               {submitting ? tp("submitting") : tp("submit")}
             </button>

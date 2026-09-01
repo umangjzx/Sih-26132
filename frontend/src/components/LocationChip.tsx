@@ -68,7 +68,7 @@ export function LocationChip() {
         <div
           role="dialog"
           aria-label={t("title")}
-          className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 shadow-lg"
+          className="absolute right-0 lg:left-0 lg:right-auto z-50 mt-2 w-72 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 shadow-lg"
         >
           <p className="text-xs font-bold uppercase tracking-wide text-[var(--ink-soft)]">
             {t("title")}

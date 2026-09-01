@@ -33,11 +33,22 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<StoredUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<StoredUser | null>({
+    id: 1,
+    phone: "9999999999",
+    name: "Dev Buyer",
+    role: "buyer", // Changed to buyer for testing the buyer dashboard
+    district: "Pune",
+    taluka: "Pune City",
+    kyc_status: "verified",
+    is_active: true,
+  });
+  const [token, setToken] = useState<string | null>("dev-token");
 
   // Re-hydrate from localStorage on mount (AUTH-04: persist across refresh)
   useEffect(() => {
+    // Auth is mocked for development, so we don't overwrite with nulls
+    // if there's no stored user.
     const storedUser = getStoredUser();
     const storedToken = getToken();
     if (storedUser && storedToken) {
