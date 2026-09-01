@@ -28,25 +28,27 @@ migrations and focused tests, and ships a green local run + PR.
 ### Price data source
 - **D-01:** Keep the current primary resource `9ef84268-d588-465a-a308-a864a43d0070`
   (Variety-wise Daily Market Prices) for min/max/modal price + crop/market/district/date.
-- **D-02:** ADD a second data.gov.in AGMARKNET ingestion for **arrival volume**, so the
-  signal's volume factor works on live data (not just fixtures). Candidate resource:
-  the "Current daily price of various commodities from various markets (Mandi)" dataset
-  (catalog `current-daily-price-various-commodities-various-markets-mandi`), which the
-  portal documents as carrying arrivals. **The exact resource ID and whether the JSON
-  API actually exposes an arrivals field is a Plan-phase research task** — data.gov.in
-  field names and availability differ per resource; do not assume snake_case parity with
-  D-01. If research finds no live resource that reliably exposes arrivals via API,
-  fall back to: keep the volume factor powered by fixtures for the demo and log the
-  limitation (do NOT silently drop it).
-- **D-03:** Merge strategy — arrivals join onto `PriceCache` rows on
-  (market, crop, variety, date). Arrivals ingestion is a separate function/job in
-  `app/services/ingestion.py`; it updates `arrival_volume` on existing rows and does not
-  create price-less rows. Name/variety mismatch between the two resources is expected —
-  match on (market, crop, date) with variety best-effort; unmatched arrivals are dropped.
-- **D-04:** Both ingestions stay scheduled-only (never on a user request). Keep the
-  fixture fallback (`fixtures.generate_fixture_rows`, seed 26132, with synthetic volume)
-  for any source that is missing/fails/empty. Also wire the §4.2 manual CSV/JSON export
-  path: a committed Maharashtra snapshot the job can seed from offline.
+- **D-02 (REVISED 2026-09-01 after research):** There is **no data.gov.in JSON resource
+  that exposes daily arrival volume** — a live call confirmed `9ef84268-…` returns only
+  10 fields (no arrivals), and it IS the "Current Daily Price (Mandi)" dataset, so there
+  is no distinct second resource to add. Arrivals exist only in non-OGD sources
+  (CEDA Ashoka API, India Data Portal CKAN, agmarknet.gov.in HTML), none demo-verified.
+  **Decision: implement the fallback.** Keep the volume factor in the signal, powered by
+  fixture + committed-CSV-snapshot data only. On live data `arrival_volume` stays null
+  and the signal's reason text says so explicitly (do NOT silently drop the factor —
+  see D-07). Scaffold an **off-by-default** `fetch_arrivals_rows()` seam in
+  `app/services/ingestion.py` (no live source wired) so a future phase can add a non-OGD
+  arrivals source without restructuring. Record the limitation in code + README.
+- **D-03:** Arrivals still merge onto `PriceCache` rows on (market, crop, date) with
+  variety best-effort — this governs the fixture/snapshot volume population and the
+  future `fetch_arrivals_rows()` seam. Volume rows never create price-less rows;
+  unmatched volume is dropped.
+- **D-04:** Ingestion stays scheduled-only (never on a user request). Seed/refresh
+  order: **live API → committed Maharashtra CSV snapshot → synthetic fixtures**
+  (`fixtures.generate_fixture_rows`, seed 26132, which carries synthetic
+  `arrival_volume`). The CSV snapshot is a real Maharashtra data.gov.in export
+  (authentic market/commodity names + prices, no arrivals) committed under the backend.
+  Any source missing/failing/empty falls through to the next.
 - **D-05:** Gate `POST /api/ingest/run` behind a shared-secret header (env
   `INGEST_TRIGGER_SECRET`) in Phase 1 — cheap protection for a write endpoint before
   real auth exists in Phase 2. 403 without the header.
@@ -55,9 +57,12 @@ migrations and focused tests, and ships a green local run + PR.
 - **D-06:** Keep the existing rule-based weighted model in `app/services/signal.py`
   (price factor ×2 + volume factor ×1 → integer score → `sell_now` / `wait` / `hold`),
   with every driving number inlined in `reasons`. No ML.
-- **D-07:** With D-02 in place, the volume factor should fire on live data. Keep the
-  "degrade gracefully + say so in the reason" behaviour for rows where `arrival_volume`
-  is still null.
+- **D-07 (REVISED):** Per revised D-02, the volume factor fires only on
+  fixture/snapshot data. On live data every row has `arrival_volume = null`, so the
+  signal MUST keep the existing "skip the volume factor and say so in the reason"
+  behaviour (e.g. "Arrival-volume data isn't available for this market, so this factor
+  was skipped."). The factor stays in the code, weighted and tested — it is dormant,
+  not deleted.
 - **D-08:** Add a short unit-test suite for `compute_signal` covering: sell_now,
   wait, hold, <7 days (None), 7–13 days (no MA-30), and volume present vs absent.
 
@@ -113,12 +118,25 @@ migrations and focused tests, and ships a green local run + PR.
   for the frontend) + a PR to `origin` (`github.com/umangjzx/Sih-26132`). No
   deployment in Phase 1; hosting decided before Phase 4 (Cordova).
 
+### Resolved after research (2026-09-01) — accepted recommendations
+- **Alembic:** do BOTH — `command.upgrade(cfg, "head")` in the FastAPI lifespan (idempotent)
+  AND document `alembic upgrade head` as the manual command in the backend README.
+  Add a `MetaData(naming_convention=…)` to `Base` before the first autogen.
+- **Seed order:** live API → committed Maharashtra CSV snapshot → synthetic fixtures (D-04).
+- **i18n terminology:** Hindi/Marathi "modal price" rendering as "average price"
+  (औसत भाव / सरासरी भाव) is acceptable for low-literacy users — note it in the D-18
+  plausibility pass, do not treat as a bug.
+- **pytest DB:** pure-function tests need no DB; the 4 read endpoints run on
+  SQLite-in-memory + `get_db` override; extract `resolve_ingestion_rows()` so the
+  Postgres-only `on_conflict_do_update` path is not exercised in tests; use a bare
+  `TestClient(app)` (NOT the `with` form) so APScheduler doesn't boot.
+
 ### Claude's Discretion
-- Exact Alembic config layout and whether startup auto-upgrades vs. documents the command.
-- Test file organisation and the throwaway-DB mechanism for API tests.
-- The arrivals ingestion function's internal shape, retry/backoff parameters.
+- Exact Alembic `env.py` / `alembic.ini` layout and directory location.
+- Test file organisation.
+- The `fetch_arrivals_rows()` seam's internal shape (it has no live source in Phase 1).
 - Chart/skeleton/error-state visual details within the existing design system.
-- Whether the CSV-snapshot seed lives in `backend/app/services/` data or a `seeds/` dir.
+- Whether the CSV-snapshot seed lives under `backend/app/services/` or a `backend/seeds/` dir.
 
 </decisions>
 
