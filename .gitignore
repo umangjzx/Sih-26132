@@ -1,0 +1,24 @@
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# GSD staging
+.claude/.gsd-staging/

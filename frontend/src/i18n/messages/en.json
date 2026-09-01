@@ -1,0 +1,43 @@
+{
+  "common": {
+    "appName": "AgriLink",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry"
+  },
+  "nav": {
+    "prices": "Mandi Prices",
+    "language": "Language"
+  },
+  "dashboard": {
+    "title": "Mandi Price Discovery",
+    "subtitle": "Check current prices, trends, and get a sell-now-or-wait recommendation",
+    "selectCrop": "Select Crop",
+    "selectMarket": "Select Market",
+    "days7": "7 Days",
+    "days30": "30 Days",
+    "days90": "90 Days",
+    "modalPrice": "Modal Price",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "perQuintal": "per quintal",
+    "noData": "No price data available for this selection",
+    "asOf": "As of"
+  },
+  "signal": {
+    "title": "Sell Now or Wait?",
+    "sell_now": "Sell Now",
+    "wait": "Wait",
+    "hold": "Hold / Watch",
+    "why": "Why this recommendation?",
+    "notEnoughData": "Not enough price history yet to give a recommendation"
+  },
+  "nearby": {
+    "title": "Nearby Market Comparison",
+    "market": "Market",
+    "district": "District",
+    "distance": "Distance",
+    "price": "Price",
+    "km": "km"
+  }
+}

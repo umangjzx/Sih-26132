@@ -1,0 +1,119 @@
+from datetime import date, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models.price_cache import PriceCache
+from app.schemas.price import (
+    CropMarketOption,
+    IngestionResultResponse,
+    NearestMarketComparison,
+    PricePoint,
+    PriceTrendResponse,
+    SellWaitSignalResponse,
+)
+from app.services import ingestion
+from app.services.geo import district_distance_km
+from app.services.signal import compute_signal
+
+router = APIRouter(prefix="/api", tags=["prices"])
+
+
+@router.get("/options", response_model=list[CropMarketOption])
+def list_options(db: Session = Depends(get_db)) -> list[CropMarketOption]:
+    rows = db.execute(select(PriceCache.crop, PriceCache.market, PriceCache.district).distinct()).all()
+    return [CropMarketOption(crop=r.crop, market=r.market, district=r.district) for r in rows]
+
+
+def _fetch_series(db: Session, crop: str, market: str, days: int) -> list[PriceCache]:
+    since = date.today() - timedelta(days=days)
+    stmt = (
+        select(PriceCache)
+        .where(PriceCache.crop == crop, PriceCache.market == market, PriceCache.date >= since)
+        .order_by(PriceCache.date.asc())
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+@router.get("/prices/trend", response_model=PriceTrendResponse)
+def price_trend(
+    crop: str,
+    market: str,
+    days: int = Query(30, ge=1, le=90),
+    db: Session = Depends(get_db),
+) -> PriceTrendResponse:
+    rows = _fetch_series(db, crop, market, days)
+    if not rows:
+        raise HTTPException(status_code=404, detail="No price data for this crop/market")
+    return PriceTrendResponse(
+        crop=crop,
+        market=market,
+        district=rows[-1].district,
+        points=[
+            PricePoint(
+                date=r.date,
+                min_price=r.min_price,
+                max_price=r.max_price,
+                modal_price=r.modal_price,
+                arrival_volume=r.arrival_volume,
+            )
+            for r in rows
+        ],
+    )
+
+
+@router.get("/prices/nearby", response_model=list[NearestMarketComparison])
+def nearby_markets(
+    crop: str,
+    district: str,
+    db: Session = Depends(get_db),
+) -> list[NearestMarketComparison]:
+    latest_date_stmt = select(PriceCache.date).where(PriceCache.crop == crop).order_by(PriceCache.date.desc()).limit(1)
+    latest_date = db.execute(latest_date_stmt).scalar_one_or_none()
+    if latest_date is None:
+        raise HTTPException(status_code=404, detail="No price data for this crop")
+
+    stmt = select(PriceCache).where(PriceCache.crop == crop, PriceCache.date == latest_date)
+    rows = list(db.execute(stmt).scalars().all())
+
+    results = [
+        NearestMarketComparison(
+            market=r.market,
+            district=r.district,
+            distance_km=district_distance_km(district, r.district),
+            modal_price=r.modal_price,
+            date=r.date,
+        )
+        for r in rows
+    ]
+    results.sort(key=lambda item: (item.distance_km is None, item.distance_km or 0))
+    return results
+
+
+@router.get("/prices/signal", response_model=SellWaitSignalResponse)
+def sell_wait_signal(
+    crop: str,
+    market: str,
+    db: Session = Depends(get_db),
+) -> SellWaitSignalResponse:
+    rows = _fetch_series(db, crop, market, days=60)
+    signal = compute_signal(rows)
+    if signal is None:
+        raise HTTPException(status_code=404, detail="Not enough price history to compute a signal")
+    return SellWaitSignalResponse(
+        recommendation=signal.recommendation,
+        reasons=signal.reasons,
+        current_price=signal.current_price,
+        ma_7=signal.ma_7,
+        ma_30=signal.ma_30,
+        volume_trend_pct=signal.volume_trend_pct,
+        days_of_data=signal.days_of_data,
+    )
+
+
+@router.post("/ingest/run", response_model=IngestionResultResponse)
+def trigger_ingestion(db: Session = Depends(get_db)) -> IngestionResultResponse:
+    result = ingestion.run_ingestion(db)
+    return IngestionResultResponse(**result)
