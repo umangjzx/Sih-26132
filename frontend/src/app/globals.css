@@ -10,27 +10,29 @@
   --green-100: #d6ecdd;
   --green-200: #aed9bd;
   --green-400: #4a9d6b;
-  --green-600: #1f7a45;
-  --green-700: #175c34;
-  --green-900: #0c3a20;
+  --green-600: #2E7D32; /* Forest Green */
+  --green-700: #1E5B3A; /* Deep Agricultural Green */
+  --green-900: #123723;
+  --green-natural: #81C784;
 
-  --amber-100: #fbeecb;
-  --amber-500: #b8791b;
-  --amber-700: #8a5a12;
+  --amber-100: #fef0cd;
+  --amber-500: #F4A400; /* Harvest Gold */
+  --amber-700: #b37900;
 
   --red-100: #fbe0dd;
   --red-500: #c8452f;
   --red-700: #97331f;
 
   /* neutrals */
-  --paper: #fbfaf6;
-  --ink: #1c2620;
-  --ink-soft: #55605a;
-  --line: #e4e0d4;
+  --paper: #F7F9FA;
+  --surface: #FFFFFF;
+  --ink: #1F2A33;
+  --ink-soft: #6B7280;
+  --line: #E5E7EB;
 
   /* semantic aliases (kept for existing class names) */
   --color-bg: var(--paper);
-  --color-surface: #ffffff;
+  --color-surface: var(--surface);
   --color-text: var(--ink);
   --color-border: var(--line);
   --color-brand: var(--green-600);
@@ -70,13 +72,19 @@ body {
   font-family: var(--font-body), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   color: var(--ink);
-  /* soft, mostly-flat field-of-green backdrop */
-  background:
-    radial-gradient(1100px 500px at 12% -10%, var(--green-100) 0%, transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, var(--amber-100) 0%, transparent 55%),
-    var(--paper);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  background: var(--paper);
+}
+
+/* Sidebar custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 99px;
 }
 
 .font-heading {
