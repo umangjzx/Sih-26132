@@ -1,9 +1,24 @@
 # AgriLink frontend
 
 Next.js 16 (App Router, Turbopack) + React 19 + TypeScript, `next-intl` for i18n,
-`recharts` for the price chart, Tailwind v4. Mobile-first, built to wrap unchanged in
-Apache Cordova later — so the price routes are a client-rendered SPA that calls the REST
-API (no Next.js server actions / server-only features on those routes).
+`recharts` for charts, Tailwind v4. Mobile-first, built to wrap unchanged in Apache
+Cordova later — every route is a client component (`"use client"`) that calls the REST
+API, with no Next.js server actions or server-only features.
+
+## Routes
+
+| Route | Purpose |
+|---|---|
+| `/` | Home — hero, crop/market picker, price + signal snapshot, statewide snapshot |
+| `/prices` | Trend area chart, min/modal/max, nearby-market comparison bars |
+| `/advisor` | Sell / wait / hold gauge with weather · MSP · calendar · holiday context |
+| `/directory` | Cold storage / FPOs near a location |
+| `/explore` | Public statewide transparency dashboard (movers, trend, activity) |
+| `/alerts` | Price alerts + notifications |
+| `/login` · `/farmer` · `/buyer` · `/history` · `/deals/[id]` · `/matches/[id]` · `/admin` | Auth + trade workflow |
+
+A header **location chip** (`useLocation` / `LocationProvider`) detects or picks a place,
+persists it to `localStorage['agrilink.location']`, and re-scopes prices to that state.
 
 ## Run
 
@@ -22,7 +37,7 @@ cd frontend && npm run build
 ```
 
 > `npm run build` needs network access the first time — `next/font/google` fetches the
-> Noto Sans / Noto Sans Devanagari files. The dev server works offline.
+> Space Grotesk / DM Sans / Noto Sans Devanagari files. The dev server works offline.
 
 ## Tests
 
@@ -34,9 +49,11 @@ cd frontend && npm run test:watch  # watch mode
 > In a shell without `cmd.exe`, run `npx vitest run` directly (or
 > `npm run test --script-shell=bash`).
 
-Suites: `parity.test.ts` (locale key parity), `PriceDashboard.test.tsx` (skeleton→data,
-error→Retry recovery), `SellWaitSignalCard.test.tsx` (each recommendation + its reasons),
-`LanguageSwitcher.test.tsx` (locale change + `localStorage` persistence).
+Suites include `parity.test.ts` (locale key parity), `PriceDetail.test.tsx`
+(skeleton→data, error→Retry), `SellWaitSignalCard.test.tsx` (each recommendation + its
+reasons), `LanguageSwitcher.test.tsx` (locale change + `localStorage` persistence), and a
+smoke test per authed page (`farmer`, `buyer`, `deals`, `history`, `login`, `alerts`,
+`explore`). Component tests that render charts mock `recharts`.
 
 ## Internationalisation
 
