@@ -12,6 +12,16 @@ class Settings(BaseSettings):
     ingest_trigger_secret: str = ""
     cors_origins: str = "http://localhost:3000"
 
+    # Phase 2: JWT auth settings.
+    # jwt_secret_key must be set to a long random string in production.
+    # Blank → tokens will fail to verify; acceptable for local demo only.
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+    # OTP lives for 10 minutes by default.
+    otp_ttl_seconds: int = 600
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

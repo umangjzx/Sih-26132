@@ -8,6 +8,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.auth import router as auth_router
+from app.api.demands import router as demands_router
+from app.api.lots import router as lots_router
+from app.api.matching import router as matching_router
+from app.api.offers import router as offers_router
 from app.api.prices import router as prices_router
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -60,15 +65,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AgriLink API", lifespan=lifespan)
 
-# No auth / cookies / JWT until Phase 2 — credentials and the method list
-# widen again when auth lands.
+# Phase 2: auth landed — credentials enabled, methods widened.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_methods=["GET", "POST"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
+app.include_router(lots_router)
+app.include_router(demands_router)
+app.include_router(matching_router)
+app.include_router(offers_router)
 app.include_router(prices_router)
 
 

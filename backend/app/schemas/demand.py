@@ -1,0 +1,46 @@
+"""Pydantic v2 schemas for the demand endpoints."""
+
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+
+class DemandCreate(BaseModel):
+    crop: str
+    quantity_kg: float
+    quality_spec: str
+    price_band_min: float
+    price_band_max: float
+    delivery_window: str
+
+    @field_validator("quantity_kg")
+    @classmethod
+    def qty_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("quantity_kg must be greater than 0")
+        return v
+
+    @field_validator("price_band_min")
+    @classmethod
+    def min_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("price_band_min must be greater than 0")
+        return v
+
+    @model_validator(mode="after")
+    def band_order(self) -> "DemandCreate":
+        if self.price_band_max < self.price_band_min:
+            raise ValueError("price_band_max must be >= price_band_min")
+        return self
+
+
+class DemandResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    buyer_id: int
+    crop: str
+    quantity_kg: float
+    quality_spec: str
+    price_band_min: float
+    price_band_max: float
+    delivery_window: str
+    status: str
