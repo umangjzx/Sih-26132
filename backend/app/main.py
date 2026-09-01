@@ -1,14 +1,19 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from alembic import command
+from alembic.config import Config as AlembicConfig
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.prices import router as prices_router
 from app.core.config import settings
-from app.core.database import Base, SessionLocal, engine
+from app.core.database import SessionLocal
 from app.services import ingestion
+
+ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +32,13 @@ def _run_ingestion_job() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    try:
+        command.upgrade(AlembicConfig(str(ALEMBIC_INI)), "head")
+    except Exception:
+        logger.exception(
+            "alembic upgrade failed - run 'cd backend && alembic upgrade head' manually"
+        )
+        raise
 
     db = SessionLocal()
     try:
