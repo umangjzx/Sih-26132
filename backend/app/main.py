@@ -32,6 +32,8 @@ def _run_ingestion_job() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Idempotent: a no-op when the schema is already at head. Manual fallback
+    # (documented in backend/README.md): `cd backend && alembic upgrade head`.
     try:
         command.upgrade(AlembicConfig(str(ALEMBIC_INI)), "head")
     except Exception:
@@ -58,11 +60,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AgriLink API", lifespan=lifespan)
 
+# No auth / cookies / JWT until Phase 2 — credentials and the method list
+# widen again when auth lands.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
