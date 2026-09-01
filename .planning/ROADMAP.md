@@ -18,7 +18,7 @@ with Apache Cordova. Each phase runs the GSD loop: Discuss → Plan → Execute 
 
 - [x] **Phase 1: Price Discovery & i18n Shell** - Mandi price ingestion, trend charts, nearest-market comparison, explainable sell/wait signal, language-switchable UI (en/hi/mr)
 - [x] **Phase 2: Auth & Farmer–Buyer Matching** - Phone-OTP JWT auth with roles, lot creation, demand posting, rule-based match scoring, offer/counter-offer threads
-- [ ] **Phase 3: Deal Tracking, Disputes & Admin** - Deal records, pipeline stages, dispute flags, per-user transaction history, read-only admin dashboard
+- [x] **Phase 3: Deal Tracking, Disputes & Admin** - Deal records, pipeline stages, dispute flags, per-user transaction history, read-only admin dashboard
 - [ ] **Phase 4: Cordova Android Wrap** - Wrap the stable SPA into a `cordova-android` APK pointed at the deployed API
 
 ## Phase Details
@@ -82,13 +82,13 @@ Plans:
   4. Each user sees their own history of lots, demands, and deals with current status
   5. An admin sees aggregate price trends, active lot/demand counts, and the dispute queue — read only
 
-**Plans**: 0/3 plans executed
+**Plans**: 3/3 plans executed — Phase 3 complete 2026-09-01 (backend 133 pytest, frontend 39 vitest, tsc clean)
 
 Plans:
 
-- [ ] 03-01-PLAN.md — Deal pipeline + dispute endpoints: GET /deals/mine, GET /deals/{id}, PATCH /deals/{id}/advance, POST/GET/PATCH disputes, backend test suites
-- [ ] 03-02-PLAN.md — Transaction history + admin dashboard: GET /api/history, GET /api/admin/dashboard, backend test suites
-- [ ] 03-03-PLAN.md — Frontend: deal detail page (pipeline stepper + disputes), history page, admin dashboard, i18n (deals/disputes/history/admin namespaces en/hi/mr), frontend tests, phase close-out
+- [x] 03-01-PLAN.md — Deal pipeline + dispute endpoints: GET /deals/mine, GET /deals/{id}, PATCH /deals/{id}/advance, POST/GET/PATCH disputes, backend test suites
+- [x] 03-02-PLAN.md — Transaction history + admin dashboard: GET /api/history, GET /api/admin/dashboard, backend test suites
+- [x] 03-03-PLAN.md — Frontend: deal detail page (pipeline stepper + disputes), history page, admin dashboard, i18n (deals/disputes/history/admin namespaces en/hi/mr), frontend tests, phase close-out
 
 ### Phase 4: Cordova Android Wrap
 
@@ -116,5 +116,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Price Discovery & i18n Shell | 4/4 | Complete | 2026-09-01 |
 | 2. Auth & Farmer–Buyer Matching | 4/4 | Complete | 2026-09-01 |
-| 3. Deal Tracking, Disputes & Admin | 0/3 | Planned | - |
+| 3. Deal Tracking, Disputes & Admin | 3/3 | Complete | 2026-09-01 |
 | 4. Cordova Android Wrap | 0/TBD | Not started | - |

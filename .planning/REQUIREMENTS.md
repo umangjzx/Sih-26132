@@ -59,16 +59,16 @@ Requirements for the SIH demo build. Each maps to a roadmap phase.
 
 ### Transaction Tracking (Pillar C)
 
-- [ ] **DEAL-01**: An accepted match creates a deal: agreed price, quantity, logistics mode
+- [x] **DEAL-01**: An accepted match creates a deal: agreed price, quantity, logistics mode
       (self-pickup | platform-arranged stub), payment status
-- [ ] **DEAL-02**: Deal pipeline advances through Matched → Offer Accepted → Logistics Arranged
+- [x] **DEAL-02**: Deal pipeline advances through Matched → Offer Accepted → Logistics Arranged
       → Delivered → Paid → Closed
-- [ ] **DISPUTE-01**: Either party can raise a dispute flag on a deal, creating a ticket (open/closed only)
-- [ ] **HISTORY-01**: Each user sees their own transaction history (lots, demands, deals, statuses)
+- [x] **DISPUTE-01**: Either party can raise a dispute flag on a deal, creating a ticket (open/closed only)
+- [x] **HISTORY-01**: Each user sees their own transaction history (lots, demands, deals, statuses)
 
 ### Admin
 
-- [ ] **ADMIN-01**: Admin sees a read-only dashboard: aggregate price trends, active lots/demand counts,
+- [x] **ADMIN-01**: Admin sees a read-only dashboard: aggregate price trends, active lots/demand counts,
       and the dispute queue
 
 ### Mobile wrap
@@ -132,11 +132,11 @@ Deferred; tracked, not in the current roadmap.
 | OFFER-01 | Phase 2 | Complete |
 | OFFER-02 | Phase 2 | Complete |
 | VERIFY-01 | Phase 2 | Complete |
-| DEAL-01 | Phase 3 | Pending |
-| DEAL-02 | Phase 3 | Pending |
-| DISPUTE-01 | Phase 3 | Pending |
-| HISTORY-01 | Phase 3 | Pending |
-| ADMIN-01 | Phase 3 | Pending |
+| DEAL-01 | Phase 3 | Complete |
+| DEAL-02 | Phase 3 | Complete |
+| DISPUTE-01 | Phase 3 | Complete |
+| HISTORY-01 | Phase 3 | Complete |
+| ADMIN-01 | Phase 3 | Complete |
 | CORDOVA-01 | Phase 4 | Pending |
 
 **Coverage:**
