@@ -16,8 +16,8 @@ with Apache Cordova. Each phase runs the GSD loop: Discuss → Plan → Execute 
 - Integer phases (1, 2, 3): planned milestone work
 - Decimal phases (2.1, 2.2): urgent insertions (marked INSERTED)
 
-- [ ] **Phase 1: Price Discovery & i18n Shell** - Mandi price ingestion, trend charts, nearest-market comparison, explainable sell/wait signal, language-switchable UI (en/hi/mr)
-- [ ] **Phase 2: Auth & Farmer–Buyer Matching** - Phone-OTP JWT auth with roles, lot creation, demand posting, rule-based match scoring, offer/counter-offer threads
+- [x] **Phase 1: Price Discovery & i18n Shell** - Mandi price ingestion, trend charts, nearest-market comparison, explainable sell/wait signal, language-switchable UI (en/hi/mr)
+- [x] **Phase 2: Auth & Farmer–Buyer Matching** - Phone-OTP JWT auth with roles, lot creation, demand posting, rule-based match scoring, offer/counter-offer threads
 - [ ] **Phase 3: Deal Tracking, Disputes & Admin** - Deal records, pipeline stages, dispute flags, per-user transaction history, read-only admin dashboard
 - [ ] **Phase 4: Cordova Android Wrap** - Wrap the stable SPA into a `cordova-android` APK pointed at the deployed API
 
@@ -37,14 +37,14 @@ with Apache Cordova. Each phase runs the GSD loop: Discuss → Plan → Execute 
   5. User switches between English, Hindi, and Marathi from the header; all visible copy translates and the choice persists with no layout break
   6. Pages show skeletons while loading, use ≥44px tap targets, high contrast, and the earthy palette
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 Plans:
 
 - [x] 01-01-PLAN.md — Adopt Alembic, retire create_all (tracer: migration + app boot end-to-end)
 - [x] 01-02-PLAN.md — Ingestion resilience (snapshot + arrivals seam), /nearby cap+limit, ingest secret gate, backend pytest suite
 - [x] 01-03-PLAN.md — i18n no-flash gate, key-parity + terminology, dashboard retry + skeleton a11y, frontend vitest suite
-- [ ] 01-04-PLAN.md — Ship readiness: root/backend/frontend READMEs + verified green local run
+- [x] 01-04-PLAN.md — Ship readiness: root/backend/frontend READMEs + verified green local run
 
 ### Phase 2: Auth & Farmer–Buyer Matching
 
@@ -60,11 +60,14 @@ Plans:
   5. Rule-based scoring ranks lot×demand matches and both sides see their ranked matches
   6. Either side can offer and counter on a matched lot; accepting an offer creates a deal; buyers show a verification badge from the stub flag
 
-**Plans**: TBD
+**Plans**: 4/4 plans executed
 
 Plans:
 
-- [ ] 02-01: TBD (set during plan-phase)
+- [x] 02-01-PLAN.md — JWT + phone-OTP auth layer: migration 0002, security module, auth router (otp/request, otp/verify, refresh, me), get_current_user + require_role deps, backend auth test suite
+- [x] 02-02-PLAN.md — Lot/demand CRUD + match scoring engine: schemas, routers (POST lots/demands, GET mine), run_matching() service (qty/price/distance scoring), GET /matches/mine, backend test suites
+- [x] 02-03-PLAN.md — Offer/counter-offer threads + Deal creation + frontend: offer router (post/get/accept/decline), frontend auth layer (auth.ts, AuthProvider, layout nav), login page, farmer/buyer dashboards, offer thread page
+- [x] 02-04-PLAN.md — i18n completion (auth/lots/demands/matching namespaces en/hi/mr), frontend test suite, full green run verification, phase close-out
 
 ### Phase 3: Deal Tracking, Disputes & Admin
 
@@ -79,11 +82,13 @@ Plans:
   4. Each user sees their own history of lots, demands, and deals with current status
   5. An admin sees aggregate price trends, active lot/demand counts, and the dispute queue — read only
 
-**Plans**: TBD
+**Plans**: 0/3 plans executed
 
 Plans:
 
-- [ ] 03-01: TBD (set during plan-phase)
+- [ ] 03-01-PLAN.md — Deal pipeline + dispute endpoints: GET /deals/mine, GET /deals/{id}, PATCH /deals/{id}/advance, POST/GET/PATCH disputes, backend test suites
+- [ ] 03-02-PLAN.md — Transaction history + admin dashboard: GET /api/history, GET /api/admin/dashboard, backend test suites
+- [ ] 03-03-PLAN.md — Frontend: deal detail page (pipeline stepper + disputes), history page, admin dashboard, i18n (deals/disputes/history/admin namespaces en/hi/mr), frontend tests, phase close-out
 
 ### Phase 4: Cordova Android Wrap
 
@@ -109,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Price Discovery & i18n Shell | 3/4 | In Progress|  |
-| 2. Auth & Farmer–Buyer Matching | 0/TBD | Not started | - |
-| 3. Deal Tracking, Disputes & Admin | 0/TBD | Not started | - |
+| 1. Price Discovery & i18n Shell | 4/4 | Complete | 2026-09-01 |
+| 2. Auth & Farmer–Buyer Matching | 4/4 | Complete | 2026-09-01 |
+| 3. Deal Tracking, Disputes & Admin | 0/3 | Planned | - |
 | 4. Cordova Android Wrap | 0/TBD | Not started | - |

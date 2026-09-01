@@ -24,38 +24,38 @@ Requirements for the SIH demo build. Each maps to a roadmap phase.
 
 ### Internationalisation
 
-- [ ] **I18N-01**: Every user-facing string is a translation key; no hardcoded copy in components
-- [ ] **I18N-02**: English is the default locale and is fully translated
-- [ ] **I18N-03**: Hindi and Marathi locale files exist and cover every key present in English
-- [ ] **I18N-04**: A visible language switcher in the header changes the UI language and persists the choice
-- [ ] **I18N-05**: Devanagari (Hindi/Marathi) and Latin (English) render cleanly with no layout break on switch
+- [x] **I18N-01**: Every user-facing string is a translation key; no hardcoded copy in components
+- [x] **I18N-02**: English is the default locale and is fully translated
+- [x] **I18N-03**: Hindi and Marathi locale files exist and cover every key present in English
+- [x] **I18N-04**: A visible language switcher in the header changes the UI language and persists the choice
+- [x] **I18N-05**: Devanagari (Hindi/Marathi) and Latin (English) render cleanly with no layout break on switch
 
 ### Accessibility / Low-bandwidth
 
-- [ ] **A11Y-01**: High contrast, large tap targets (≥44px), icon+text navigation (never icon-only)
-- [ ] **A11Y-02**: Skeleton loading states while data is fetching
-- [ ] **A11Y-03**: Trustworthy, agri-appropriate palette (earthy greens/ochres), not generic startup-blue
-- [ ] **PERF-01**: Pages stay lightweight enough to load on patchy 3G
+- [x] **A11Y-01**: High contrast, large tap targets (≥44px), icon+text navigation (never icon-only)
+- [x] **A11Y-02**: Skeleton loading states while data is fetching
+- [x] **A11Y-03**: Trustworthy, agri-appropriate palette (earthy greens/ochres), not generic startup-blue
+- [x] **PERF-01**: Pages stay lightweight enough to load on patchy 3G
 
 ### Auth
 
-- [ ] **AUTH-01**: User logs in with a phone number and an OTP (OTP delivery stubbed/console for the demo)
-- [ ] **AUTH-02**: Authenticated requests carry a JWT; the API rejects missing/invalid tokens on protected routes
-- [ ] **AUTH-03**: User has a role (farmer | buyer | admin) that gates what they can do and see
-- [ ] **AUTH-04**: Session (JWT) persists across app restarts / browser refresh
+- [x] **AUTH-01**: User logs in with a phone number and an OTP (OTP delivery stubbed/console for the demo)
+- [x] **AUTH-02**: Authenticated requests carry a JWT; the API rejects missing/invalid tokens on protected routes
+- [x] **AUTH-03**: User has a role (farmer | buyer | admin) that gates what they can do and see
+- [x] **AUTH-04**: Session (JWT) persists across app restarts / browser refresh
 
 ### Farmer–Buyer Matching (Pillar B)
 
-- [ ] **LOT-01**: A farmer/FPO creates a lot: crop, quantity, quality grade (self-declared + optional photo),
+- [x] **LOT-01**: A farmer/FPO creates a lot: crop, quantity, quality grade (self-declared + optional photo),
       location, expected price, available-from date
-- [ ] **LOT-02**: Lot-creation form is offline-tolerant — queues locally when offline and syncs when back online
-- [ ] **DEMAND-01**: A buyer posts demand: crop, quantity, quality spec, price band, delivery window
-- [ ] **MATCH-01**: Rule-based match scoring (crop match, quantity fit, distance, price overlap)
+- [x] **LOT-02**: Lot-creation form is offline-tolerant — queues locally when offline and syncs when back online
+- [x] **DEMAND-01**: A buyer posts demand: crop, quantity, quality spec, price band, delivery window
+- [x] **MATCH-01**: Rule-based match scoring (crop match, quantity fit, distance, price overlap)
       produces a score per lot×demand pair
-- [ ] **MATCH-02**: Ranked matches are surfaced to both the farmer and the buyer
-- [ ] **OFFER-01**: On a matched lot, either side can make an offer and the other can counter, in a thread
-- [ ] **OFFER-02**: Accepting an offer marks the match accepted and creates a deal
-- [ ] **VERIFY-01**: Buyers show a verification badge driven by the stub `kyc_status` flag
+- [x] **MATCH-02**: Ranked matches are surfaced to both the farmer and the buyer
+- [x] **OFFER-01**: On a matched lot, either side can make an offer and the other can counter, in a thread
+- [x] **OFFER-02**: Accepting an offer marks the match accepted and creates a deal
+- [x] **VERIFY-01**: Buyers show a verification badge driven by the stub `kyc_status` flag
 
 ### Transaction Tracking (Pillar C)
 
@@ -111,27 +111,27 @@ Deferred; tracked, not in the current roadmap.
 | PRICE-04 | Phase 1 | Complete |
 | PRICE-05 | Phase 1 | Complete |
 | PRICE-06 | Phase 1 | Complete |
-| I18N-01 | Phase 1 | In Progress |
-| I18N-02 | Phase 1 | In Progress |
-| I18N-03 | Phase 1 | In Progress |
-| I18N-04 | Phase 1 | In Progress |
-| I18N-05 | Phase 1 | In Progress |
-| A11Y-01 | Phase 1 | In Progress |
-| A11Y-02 | Phase 1 | In Progress |
-| A11Y-03 | Phase 1 | In Progress |
-| PERF-01 | Phase 1 | Pending |
-| AUTH-01 | Phase 2 | Pending |
-| AUTH-02 | Phase 2 | Pending |
-| AUTH-03 | Phase 2 | Pending |
-| AUTH-04 | Phase 2 | Pending |
-| LOT-01 | Phase 2 | Pending |
-| LOT-02 | Phase 2 | Pending |
-| DEMAND-01 | Phase 2 | Pending |
-| MATCH-01 | Phase 2 | Pending |
-| MATCH-02 | Phase 2 | Pending |
-| OFFER-01 | Phase 2 | Pending |
-| OFFER-02 | Phase 2 | Pending |
-| VERIFY-01 | Phase 2 | Pending |
+| I18N-01 | Phase 1 | Complete |
+| I18N-02 | Phase 1 | Complete |
+| I18N-03 | Phase 1 | Complete |
+| I18N-04 | Phase 1 | Complete |
+| I18N-05 | Phase 1 | Complete |
+| A11Y-01 | Phase 1 | Complete |
+| A11Y-02 | Phase 1 | Complete |
+| A11Y-03 | Phase 1 | Complete |
+| PERF-01 | Phase 1 | Complete |
+| AUTH-01 | Phase 2 | Complete |
+| AUTH-02 | Phase 2 | Complete |
+| AUTH-03 | Phase 2 | Complete |
+| AUTH-04 | Phase 2 | Complete |
+| LOT-01 | Phase 2 | Complete |
+| LOT-02 | Phase 2 | Complete |
+| DEMAND-01 | Phase 2 | Complete |
+| MATCH-01 | Phase 2 | Complete |
+| MATCH-02 | Phase 2 | Complete |
+| OFFER-01 | Phase 2 | Complete |
+| OFFER-02 | Phase 2 | Complete |
+| VERIFY-01 | Phase 2 | Complete |
 | DEAL-01 | Phase 3 | Pending |
 | DEAL-02 | Phase 3 | Pending |
 | DISPUTE-01 | Phase 3 | Pending |
