@@ -37,13 +37,13 @@ with Apache Cordova. Each phase runs the GSD loop: Discuss → Plan → Execute 
   5. User switches between English, Hindi, and Marathi from the header; all visible copy translates and the choice persists with no layout break
   6. Pages show skeletons while loading, use ≥44px tap targets, high contrast, and the earthy palette
 
-**Plans**: 1/4 plans executed
+**Plans**: 3/4 plans executed
 
 Plans:
 
 - [x] 01-01-PLAN.md — Adopt Alembic, retire create_all (tracer: migration + app boot end-to-end)
-- [ ] 01-02-PLAN.md — Ingestion resilience (snapshot + arrivals seam), /nearby cap+limit, ingest secret gate, backend pytest suite
-- [ ] 01-03-PLAN.md — i18n no-flash gate, key-parity + terminology, dashboard retry + skeleton a11y, frontend vitest suite
+- [x] 01-02-PLAN.md — Ingestion resilience (snapshot + arrivals seam), /nearby cap+limit, ingest secret gate, backend pytest suite
+- [x] 01-03-PLAN.md — i18n no-flash gate, key-parity + terminology, dashboard retry + skeleton a11y, frontend vitest suite
 - [ ] 01-04-PLAN.md — Ship readiness: root/backend/frontend READMEs + verified green local run
 
 ### Phase 2: Auth & Farmer–Buyer Matching
@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Price Discovery & i18n Shell | 1/4 | In Progress|  |
+| 1. Price Discovery & i18n Shell | 3/4 | In Progress|  |
 | 2. Auth & Farmer–Buyer Matching | 0/TBD | Not started | - |
 | 3. Deal Tracking, Disputes & Admin | 0/TBD | Not started | - |
 | 4. Cordova Android Wrap | 0/TBD | Not started | - |

@@ -12,13 +12,13 @@ Requirements for the SIH demo build. Each maps to a roadmap phase.
 - [x] **PRICE-01**: A scheduled background job pulls Maharashtra mandi prices from the
       data.gov.in AGMARKNET resource, paginating until exhausted, and upserts into
       `PriceCache` keyed on (market, crop, variety, date) — never called live on a user request
-- [ ] **PRICE-02**: If the live API is unavailable (no key, error, empty), the job seeds
+- [x] **PRICE-02**: If the live API is unavailable (no key, error, empty), the job seeds
       from a bundled Maharashtra fixture snapshot so the app always has data
-- [ ] **PRICE-03**: User selects a crop and market and sees the latest min / modal / max price
-- [ ] **PRICE-04**: User sees a 7-, 30-, or 90-day modal-price trend chart for the selected crop + market
-- [ ] **PRICE-05**: User sees a nearest-market comparison — other markets carrying the same
+- [x] **PRICE-03**: User selects a crop and market and sees the latest min / modal / max price
+- [x] **PRICE-04**: User sees a 7-, 30-, or 90-day modal-price trend chart for the selected crop + market
+- [x] **PRICE-05**: User sees a nearest-market comparison — other markets carrying the same
       crop, with distance and current modal price, nearest first
-- [ ] **PRICE-06**: User sees a sell-now / wait / hold recommendation computed by explainable
+- [x] **PRICE-06**: User sees a sell-now / wait / hold recommendation computed by explainable
       rules (price momentum vs 7- and 30-day averages, arrival-volume trend when available),
       with every number that drove it shown as a human-readable reason
 
@@ -106,11 +106,11 @@ Deferred; tracked, not in the current roadmap.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PRICE-01 | Phase 1 | Complete |
-| PRICE-02 | Phase 1 | In Progress |
-| PRICE-03 | Phase 1 | In Progress |
-| PRICE-04 | Phase 1 | In Progress |
-| PRICE-05 | Phase 1 | In Progress |
-| PRICE-06 | Phase 1 | In Progress |
+| PRICE-02 | Phase 1 | Complete |
+| PRICE-03 | Phase 1 | Complete |
+| PRICE-04 | Phase 1 | Complete |
+| PRICE-05 | Phase 1 | Complete |
+| PRICE-06 | Phase 1 | Complete |
 | I18N-01 | Phase 1 | In Progress |
 | I18N-02 | Phase 1 | In Progress |
 | I18N-03 | Phase 1 | In Progress |

@@ -1,0 +1,33 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Price Discovery & i18n Shell",
+      "status": "in_progress"
+    },
+    {
+      "number": "2",
+      "name": "Auth & Farmer–Buyer Matching",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Deal Tracking, Disputes & Admin",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Cordova Android Wrap",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 1 of 4 · 0% · executing"
+  },
+  "updated_at": "2026-09-01T05:26:01.194Z"
+}
