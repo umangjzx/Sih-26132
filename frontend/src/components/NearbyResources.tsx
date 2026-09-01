@@ -15,7 +15,15 @@ import {
 } from "@/lib/api";
 import { Card, EmptyState, Icon, SectionHeader } from "./ui";
 
-export function NearbyResources({ district, crop }: { district?: string; crop?: string }) {
+export function NearbyResources({
+  district,
+  crop,
+  state,
+}: {
+  district?: string;
+  crop?: string;
+  state?: string;
+}) {
   const ts = useTranslations("storage");
   const tf = useTranslations("fpo");
   const [storage, setStorage] = useState<ColdStorage[]>([]);
@@ -23,9 +31,9 @@ export function NearbyResources({ district, crop }: { district?: string; crop?: 
 
   useEffect(() => {
     if (!district) return;
-    fetchStorageNearby(district).then(setStorage).catch(() => setStorage([]));
-    fetchFpoNearby(district, crop).then(setFpos).catch(() => setFpos([]));
-  }, [district, crop]);
+    fetchStorageNearby(district, state).then(setStorage).catch(() => setStorage([]));
+    fetchFpoNearby(district, crop, state).then(setFpos).catch(() => setFpos([]));
+  }, [district, crop, state]);
 
   if (!district) return null;
 

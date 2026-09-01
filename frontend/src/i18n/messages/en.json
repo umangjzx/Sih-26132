@@ -273,7 +273,8 @@
     "crop": "Crop",
     "price": "Avg price",
     "change": "7-day change",
-    "noData": "No statewide data yet"
+    "noData": "No statewide data yet",
+    "showing": "Showing"
   },
   "alerts": {
     "title": "Price Alerts",
@@ -335,5 +336,20 @@
     "snapshotTitle": "Statewide snapshot",
     "snapshotMore": "Open Explore",
     "loadError": "Could not load prices right now"
+  },
+  "location": {
+    "title": "Your location",
+    "setLocation": "Set location",
+    "detect": "Use my location",
+    "detecting": "Detecting…",
+    "placeLabel": "Search a place",
+    "placePlaceholder": "District or town",
+    "stateLabel": "Or pick a state",
+    "statePlaceholder": "Select a state",
+    "clear": "Reset to Maharashtra",
+    "mhOnlyNote": "The storage & FPO directory currently covers Maharashtra only.",
+    "errorDenied": "Location permission was denied.",
+    "errorUnsupported": "This device does not support location.",
+    "errorResolve": "Could not resolve that location. Try a place name."
   }
 }

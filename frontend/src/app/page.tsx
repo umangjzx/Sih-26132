@@ -14,6 +14,7 @@ import {
   type SellWaitSignalResponse,
 } from "@/lib/api";
 import { useCropMarket } from "@/lib/useCropMarket";
+import { useLocation } from "@/lib/useLocation";
 
 const recTheme: Record<SellWaitSignalResponse["recommendation"], { cls: string; icon: string }> = {
   sell_now: { cls: "bg-[var(--green-100)] text-[var(--green-700)]", icon: "check" },
@@ -50,6 +51,7 @@ function HomeInner() {
   const td = useTranslations("dashboard");
   const ts = useTranslations("signal");
   const cm = useCropMarket();
+  const { location } = useLocation();
 
   const [price, setPrice] = useState<number | null>(null);
   const [asOf, setAsOf] = useState<string | null>(null);
@@ -74,8 +76,10 @@ function HomeInner() {
     load();
   }, [load]);
   useEffect(() => {
-    fetchPublicOverview().then(setOverview).catch(() => setOverview(null));
-  }, []);
+    fetchPublicOverview(location?.state)
+      .then(setOverview)
+      .catch(() => setOverview(null));
+  }, [location?.state]);
 
   const recLabel = rec
     ? rec.recommendation === "sell_now"
@@ -92,7 +96,7 @@ function HomeInner() {
       <section className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--green-100)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[var(--green-700)]">
-            <Icon name="leaf" size={13} /> Maharashtra · SIH 2026
+            <Icon name="leaf" size={13} /> {location?.state ?? "Maharashtra"} · SIH 2026
           </span>
           <h1 className="mt-3 font-heading text-4xl font-extrabold leading-[1.1] tracking-tight text-[var(--green-900)] sm:text-5xl">
             {t("heroTitle")}

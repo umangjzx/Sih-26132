@@ -16,6 +16,7 @@ import {
 
 import { Card, EmptyState, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
 import { fetchPublicOverview, type PublicOverview } from "@/lib/api";
+import { useLocation } from "@/lib/useLocation";
 
 function MoverList({
   title,
@@ -53,17 +54,18 @@ function MoverList({
 
 export default function ExplorePage() {
   const t = useTranslations("explore");
+  const { location } = useLocation();
   const [data, setData] = useState<PublicOverview | null>(null);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     setError(false);
     try {
-      setData(await fetchPublicOverview());
+      setData(await fetchPublicOverview(location?.state));
     } catch {
       setError(true);
     }
-  }, []);
+  }, [location?.state]);
 
   useEffect(() => {
     load();
@@ -88,6 +90,11 @@ export default function ExplorePage() {
           {t("title")}
         </h1>
         <p className="mt-1 text-[var(--ink-soft)]">{t("subtitle")}</p>
+        {a.state && (
+          <p className="mt-1 text-xs font-semibold text-[var(--green-700)]">
+            {t("showing")}: {a.state}
+          </p>
+        )}
         {data.as_of && (
           <p className="mt-1 text-xs text-[var(--ink-soft)]/70">
             {t("asOf")}: {data.as_of}

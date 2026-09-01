@@ -8,6 +8,7 @@ export type CropMarketOption = {
   crop: string;
   market: string;
   district: string;
+  state?: string;
 };
 
 export type PricePoint = {
@@ -290,8 +291,11 @@ export async function patchJson<T>(
 // Phase 1 fetch functions
 // ---------------------------------------------------------------------------
 
-export function fetchOptions(): Promise<CropMarketOption[]> {
-  return getJson("/api/options");
+export function fetchOptions(state?: string): Promise<CropMarketOption[]> {
+  const p = new URLSearchParams();
+  if (state) p.set("state", state);
+  const q = p.toString();
+  return getJson(`/api/options${q ? `?${q}` : ""}`);
 }
 
 export function fetchTrend(
@@ -575,7 +579,7 @@ export type PublicOverview = {
   gainers: { crop: string; avg_modal_price: number; change_7d_pct: number }[];
   losers: { crop: string; avg_modal_price: number; change_7d_pct: number }[];
   price_trend: { date: string; avg_modal_price: number }[];
-  activity: Record<string, number>;
+  activity: Record<string, number> & { state?: string };
 };
 
 export type PriceAlert = {
@@ -610,11 +614,46 @@ const qs = (o: Record<string, string | number | boolean | undefined>) =>
     Object.entries(o).filter(([, v]) => v !== undefined && v !== "") as [string, string][],
   ).toString();
 
+export type ResolvedLocation = {
+  state: string;
+  district: string;
+  display_name: string;
+  latitude: number | null;
+  longitude: number | null;
+  source: string;
+  has_prices?: boolean;
+};
+
+export function resolveLocation(args: {
+  lat?: number;
+  lon?: number;
+  place?: string;
+  ensurePrices?: boolean;
+}): Promise<ResolvedLocation> {
+  return getJson(
+    `/api/location/resolve?${qs({
+      lat: args.lat,
+      lon: args.lon,
+      place: args.place,
+      ensure_prices: args.ensurePrices,
+    })}`,
+  );
+}
+export function listStates(): Promise<string[]> {
+  return getJson("/api/location/states");
+}
+
 export function fetchWeather(
-  market: string,
-  opts: { includeAnomaly?: boolean } = {},
+  opts: { market?: string; lat?: number; lon?: number; includeAnomaly?: boolean } = {},
 ): Promise<WeatherForecast> {
-  return getJson(`/api/weather/forecast?${qs({ market, include_anomaly: opts.includeAnomaly })}`);
+  return getJson(
+    `/api/weather/forecast?${qs({
+      market: opts.market,
+      lat: opts.lat,
+      lon: opts.lon,
+      include_anomaly: opts.includeAnomaly,
+    })}`,
+  );
 }
 export function fetchMsp(crop: string, market?: string): Promise<MspInfo> {
   return getJson(`/api/msp?${qs({ crop, market })}`);
@@ -622,11 +661,11 @@ export function fetchMsp(crop: string, market?: string): Promise<MspInfo> {
 export function fetchCalendar(crop: string): Promise<CropCalendar> {
   return getJson(`/api/calendar?${qs({ crop })}`);
 }
-export function fetchStorageNearby(district: string): Promise<ColdStorage[]> {
-  return getJson(`/api/storage/nearby?${qs({ district })}`);
+export function fetchStorageNearby(district: string, state?: string): Promise<ColdStorage[]> {
+  return getJson(`/api/storage/nearby?${qs({ district, state })}`);
 }
-export function fetchFpoNearby(district: string, crop?: string): Promise<FpoInfo[]> {
-  return getJson(`/api/fpo/nearby?${qs({ district, crop })}`);
+export function fetchFpoNearby(district: string, crop?: string, state?: string): Promise<FpoInfo[]> {
+  return getJson(`/api/fpo/nearby?${qs({ district, crop, state })}`);
 }
 export function fetchBestMarkets(
   crop: string,
@@ -638,8 +677,8 @@ export function fetchBestMarkets(
 export function fetchHolidays(days = 30): Promise<{ holidays: HolidayInfo[]; note: string | null }> {
   return getJson(`/api/holidays/upcoming?${qs({ days })}`);
 }
-export function fetchPublicOverview(): Promise<PublicOverview> {
-  return getJson("/api/public/overview");
+export function fetchPublicOverview(state?: string): Promise<PublicOverview> {
+  return getJson(`/api/public/overview?${qs({ state })}`);
 }
 
 export function listAlerts(token: string): Promise<PriceAlert[]> {

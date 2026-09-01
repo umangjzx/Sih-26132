@@ -4,10 +4,12 @@ import { Space_Grotesk, DM_Sans, Noto_Sans_Devanagari } from "next/font/google";
 
 import { AuthProvider } from "@/components/AuthProvider";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LocationChip } from "@/components/LocationChip";
 import { NavLinks } from "@/components/NavLinks";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Icon } from "@/components/ui";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
+import { LocationProvider } from "@/lib/useLocation";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -43,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col text-[var(--ink)] antialiased">
         <LocaleProvider>
           <AuthProvider>
+            <LocationProvider>
             <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--paper)]/85 backdrop-blur-md">
               <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
                 <Link href="/" className="flex items-center gap-2">
@@ -55,6 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 </Link>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <NavLinks />
+                  <LocationChip />
                   <NotificationBell />
                   <LanguageSwitcher />
                 </div>
@@ -74,6 +78,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 </span>
               </div>
             </footer>
+            </LocationProvider>
           </AuthProvider>
         </LocaleProvider>
       </body>

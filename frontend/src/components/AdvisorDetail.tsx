@@ -38,7 +38,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       const sig = await fetchSignal(cm.crop, cm.market).catch(() => null);
       setSignal(sig);
       const [w, m, c, h] = await Promise.allSettled([
-        fetchWeather(cm.market, { includeAnomaly: true }),
+        fetchWeather({ market: cm.market, includeAnomaly: true }),
         fetchMsp(cm.crop, cm.market),
         fetchCalendar(cm.crop),
         fetchHolidays(45),

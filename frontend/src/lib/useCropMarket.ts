@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { fetchOptions, type CropMarketOption } from "@/lib/api";
+import { useLocation } from "@/lib/useLocation";
 
 export type CropMarketState = {
   options: CropMarketOption[];
@@ -30,6 +31,8 @@ export function useCropMarket(): CropMarketState {
   const params = useSearchParams();
   const urlCrop = params.get("crop") ?? "";
   const urlMarket = params.get("market") ?? "";
+  const { location } = useLocation();
+  const stateScope = location?.state;
 
   const [options, setOptions] = useState<CropMarketOption[]>([]);
   const [ready, setReady] = useState(false);
@@ -38,13 +41,13 @@ export function useCropMarket(): CropMarketState {
   const loadOptions = useCallback(async () => {
     setError(false);
     try {
-      const opts = await fetchOptions();
+      const opts = await fetchOptions(stateScope);
       setOptions(opts);
       setReady(true);
     } catch {
       setError(true);
     }
-  }, []);
+  }, [stateScope]);
 
   useEffect(() => {
     loadOptions();

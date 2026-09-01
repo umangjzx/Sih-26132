@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { NearbyResources } from "@/components/NearbyResources";
+import { useLocation } from "@/lib/useLocation";
 
 const DISTRICTS = [
   "Pune", "Nashik", "Ahmednagar", "Solapur", "Sangli", "Kolhapur", "Satara",
@@ -15,13 +16,28 @@ const DISTRICTS = [
 
 export default function DirectoryPage() {
   const ts = useTranslations("storage");
+  const tl = useTranslations("location");
+  const { location } = useLocation();
   const [district, setDistrict] = useState("Pune");
+
+  useEffect(() => {
+    if (location?.district && DISTRICTS.includes(location.district)) {
+      setDistrict(location.district);
+    }
+  }, [location?.district]);
+
+  const outsideMh = Boolean(location?.state && location.state !== "Maharashtra");
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-heading text-3xl font-bold tracking-tight">{ts("title")}</h1>
         <p className="mt-1 text-stone-600">{ts("subtitle")}</p>
+        {outsideMh && (
+          <p className="mt-2 rounded-xl border border-[var(--amber-500)]/40 bg-[var(--amber-100)]/60 px-3 py-2 text-sm text-[var(--amber-700)]">
+            {tl("mhOnlyNote")}
+          </p>
+        )}
       </div>
 
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
@@ -39,7 +55,7 @@ export default function DirectoryPage() {
         </select>
       </label>
 
-      <NearbyResources district={district} />
+      <NearbyResources district={district} state="Maharashtra" />
     </div>
   );
 }
