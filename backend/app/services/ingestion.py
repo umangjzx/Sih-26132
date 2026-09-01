@@ -214,11 +214,21 @@ def merge_arrivals(price_rows: list[dict], arrival_rows: list[dict]) -> list[dic
 
 def run_ingestion(db: Session) -> dict:
     """Resolves the row source (live -> dense snapshot -> fixture) and upserts into
-    PriceCache so the dashboard always has something to show."""
+    PriceCache so the dashboard always has something to show. Then evaluates any
+    standing price alerts against the fresh data (v1.1)."""
     source, rows = resolve_ingestion_rows()
     # Phase 1: dormant. Wire here when a non-OGD arrivals source lands (PRICE-07).
     count = upsert_price_rows(db, rows)
-    return {"source": source, "rows_upserted": count}
+
+    alerts_fired = 0
+    try:
+        from app.services.alerts import evaluate_alerts
+
+        alerts_fired = evaluate_alerts(db)
+    except Exception as exc:  # noqa: BLE001 - alert evaluation never blocks ingestion
+        logger.warning("Alert evaluation failed (%s)", exc)
+
+    return {"source": source, "rows_upserted": count, "alerts_fired": alerts_fired}
 
 
 def has_price_data(db: Session) -> bool:

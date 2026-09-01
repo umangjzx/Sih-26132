@@ -26,8 +26,21 @@ def create_lot(
     _role: Annotated[None, require_role("farmer")] = None,
     db: Session = Depends(get_db),
 ) -> LotResponse:
-    """Create a new lot for the authenticated farmer, then trigger match scoring."""
+    """Create a new lot for the authenticated farmer, geocode its location, then
+    trigger match scoring."""
     lot = Lot(farmer_id=current_user.id, **body.model_dump())
+
+    # Best-effort village-level geocoding for weather / road-distance features.
+    try:
+        from app.services.geocode import geocode
+
+        geo = geocode(body.location, db)
+        if geo:
+            lot.latitude = geo["latitude"]
+            lot.longitude = geo["longitude"]
+    except Exception:  # noqa: BLE001 - geocoding never blocks lot creation
+        pass
+
     db.add(lot)
     db.commit()
     db.refresh(lot)

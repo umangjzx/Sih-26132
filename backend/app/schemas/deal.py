@@ -77,8 +77,22 @@ class DisputeSummary(BaseModel):
     created_at: datetime
 
 
+class DistrictPriceGap(BaseModel):
+    district: str
+    avg_modal_price: float
+    gap_vs_state_pct: float   # negative => that district's farmers see below-state prices
+
+
+class PriceAnomaly(BaseModel):
+    crop: str
+    market: str
+    modal_price: float
+    avg_7d: float
+    deviation_pct: float
+
+
 class AdminDashboardResponse(BaseModel):
-    """Read-only aggregate view for admins (D-09)."""
+    """Read-only aggregate view for admins (D-09 + v1.1 analytics)."""
 
     total_lots: int
     open_lots: int
@@ -88,3 +102,7 @@ class AdminDashboardResponse(BaseModel):
     open_disputes_count: int
     price_trend_summary: list[PriceTrendPoint] = Field(default_factory=list)
     dispute_queue: list[DisputeSummary] = Field(default_factory=list)
+    # v1.1 analytics
+    district_price_gaps: list[DistrictPriceGap] = Field(default_factory=list)
+    disputes_by_district: dict[str, int] = Field(default_factory=dict)
+    price_anomalies: list[PriceAnomaly] = Field(default_factory=list)

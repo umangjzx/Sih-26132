@@ -41,4 +41,6 @@ class LotResponse(BaseModel):
     expected_price: float
     available_from: date
     location: str
+    latitude: float | None = None
+    longitude: float | None = None
     status: str

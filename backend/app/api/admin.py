@@ -18,11 +18,18 @@ from app.models.lot import Lot
 from app.models.deal import Deal
 from app.models.price_cache import PriceCache
 from app.models.user import User
-from app.schemas.deal import AdminDashboardResponse, DisputeSummary, PriceTrendPoint
+from app.schemas.deal import (
+    AdminDashboardResponse,
+    DisputeSummary,
+    DistrictPriceGap,
+    PriceAnomaly,
+    PriceTrendPoint,
+)
 
 router = APIRouter(tags=["admin"])
 
 PRICE_TREND_DAYS = 30
+ANOMALY_PCT = 20.0
 
 
 @router.get("/api/admin/dashboard", response_model=AdminDashboardResponse)
@@ -66,6 +73,68 @@ def admin_dashboard(
     ).scalars().all()
     dispute_queue = [DisputeSummary.model_validate(d) for d in dispute_rows]
 
+    # --- v1.1: district price-realisation gap (latest reported date) ---
+    latest_date = db.execute(select(func.max(PriceCache.date))).scalar_one_or_none()
+    district_price_gaps: list[DistrictPriceGap] = []
+    if latest_date is not None:
+        rows = db.execute(
+            select(PriceCache.district, func.avg(PriceCache.modal_price))
+            .where(PriceCache.date == latest_date, PriceCache.district != "")
+            .group_by(PriceCache.district)
+        ).all()
+        if rows:
+            state_avg = sum(float(a) for _, a in rows) / len(rows)
+            for district, avg in rows:
+                avg = float(avg)
+                gap = round((avg - state_avg) / state_avg * 100, 1) if state_avg else 0.0
+                district_price_gaps.append(
+                    DistrictPriceGap(district=district, avg_modal_price=round(avg, 0), gap_vs_state_pct=gap)
+                )
+            district_price_gaps.sort(key=lambda x: x.gap_vs_state_pct)
+
+    # --- v1.1: disputes by the raiser's district ---
+    dby_rows = db.execute(
+        select(User.district, func.count())
+        .join(Dispute, Dispute.raised_by == User.id)
+        .group_by(User.district)
+    ).all()
+    disputes_by_district = {d or "Unknown": int(n) for d, n in dby_rows}
+
+    # --- v1.1: price anomalies (latest modal vs its own trailing 7-day avg) ---
+    price_anomalies: list[PriceAnomaly] = []
+    if latest_date is not None:
+        since7 = latest_date - timedelta(days=8)
+        avg_rows = db.execute(
+            select(
+                PriceCache.crop,
+                PriceCache.market,
+                func.avg(PriceCache.modal_price).label("avg7"),
+            )
+            .where(PriceCache.date >= since7, PriceCache.date < latest_date)
+            .group_by(PriceCache.crop, PriceCache.market)
+        ).all()
+        avg_map = {(c, m): float(a) for c, m, a in avg_rows}
+        latest_rows = db.execute(
+            select(PriceCache.crop, PriceCache.market, PriceCache.modal_price)
+            .where(PriceCache.date == latest_date)
+        ).all()
+        for crop, market, modal in latest_rows:
+            base = avg_map.get((crop, market))
+            if not base:
+                continue
+            dev = (float(modal) - base) / base * 100
+            if abs(dev) >= ANOMALY_PCT:
+                price_anomalies.append(
+                    PriceAnomaly(
+                        crop=crop, market=market,
+                        modal_price=round(float(modal), 0),
+                        avg_7d=round(base, 0),
+                        deviation_pct=round(dev, 1),
+                    )
+                )
+        price_anomalies.sort(key=lambda x: abs(x.deviation_pct), reverse=True)
+        price_anomalies = price_anomalies[:15]
+
     return AdminDashboardResponse(
         total_lots=total_lots,
         open_lots=open_lots,
@@ -75,4 +144,7 @@ def admin_dashboard(
         open_disputes_count=open_disputes_count,
         price_trend_summary=price_trend_summary,
         dispute_queue=dispute_queue,
+        district_price_gaps=district_price_gaps,
+        disputes_by_district=disputes_by_district,
+        price_anomalies=price_anomalies,
     )

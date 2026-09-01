@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
+from app.api.alerts import router as alerts_router
 from app.api.auth import router as auth_router
 from app.api.deals import router as deals_router
 from app.api.demands import router as demands_router
@@ -91,6 +92,7 @@ app.include_router(history_router)
 app.include_router(admin_router)
 app.include_router(intel_router)
 app.include_router(public_router)
+app.include_router(alerts_router)
 app.include_router(prices_router)
 
 

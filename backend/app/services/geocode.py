@@ -55,6 +55,17 @@ def geocode(name: str, db: Session) -> dict | None:
             "source": "cache",
         }
 
+    # Known Maharashtra market towns / districts resolve locally — no network call.
+    fb0 = _fallback(key)
+    if fb0 is not None:
+        lat, lon, disp = fb0
+        result = {"latitude": lat, "longitude": lon, "display_name": disp,
+                  "admin1": "Maharashtra", "admin2": "", "admin3": "", "source": "static"}
+        db.add(GeoCache(query=key, latitude=lat, longitude=lon, display_name=disp,
+                        admin1="Maharashtra", admin2="", admin3=""))
+        db.commit()
+        return result
+
     result: dict | None = None
     try:
         with httpx.Client(timeout=8.0) as client:

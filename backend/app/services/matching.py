@@ -61,13 +61,26 @@ def _price_score(expected: float, band_min: float, band_max: float) -> float:
     return round(fraction * PRICE_MAX, 2)
 
 
-def _distance_score(lot_location: str, buyer_district: str) -> float:
-    """0–30 pts based on haversine distance between district centroids.
+def _distance_score(
+    lot_location: str,
+    buyer_district: str,
+    lot_coords: tuple[float, float] | None = None,
+) -> float:
+    """0–30 pts based on distance between the lot and the buyer's district.
 
+    Uses the lot's geocoded coordinates when available (more precise than the
+    district centroid), otherwise the district-centroid haversine.
     Brackets: ≤50 km → 30, 51–150 km → 20, 151–300 km → 10, >300 km → 0.
-    Unknown centroid → neutral 15 pts (don't penalise missing geo data).
+    Unknown → neutral 15 pts (don't penalise missing geo data).
     """
-    dist = district_distance_km(lot_location, buyer_district)
+    dist: float | None
+    if lot_coords is not None:
+        from app.services.geo import DISTRICT_CENTROIDS, haversine_km
+
+        buyer_c = DISTRICT_CENTROIDS.get(buyer_district)
+        dist = round(haversine_km(lot_coords, buyer_c), 1) if buyer_c else None
+    else:
+        dist = district_distance_km(lot_location, buyer_district)
     if dist is None:
         return 15.0
     if dist <= 50:
@@ -87,6 +100,7 @@ def score_pair(
     demand_band_min: float,
     demand_band_max: float,
     buyer_district: str,
+    lot_coords: tuple[float, float] | None = None,
 ) -> tuple[float, str]:
     """Compute match score and return (total_score, score_detail_json).
 
@@ -95,7 +109,7 @@ def score_pair(
     """
     q = _quantity_score(lot_qty, demand_qty)
     p = _price_score(lot_expected_price, demand_band_min, demand_band_max)
-    d = _distance_score(lot_location, buyer_district)
+    d = _distance_score(lot_location, buyer_district, lot_coords)
     total = round(q + p + d, 2)
     detail = json.dumps({
         "quantity": q,
@@ -141,6 +155,11 @@ def run_matching(db: Session) -> int:
             if lot.crop.strip().lower() != demand.crop.strip().lower():
                 continue
 
+            lot_coords = (
+                (lot.latitude, lot.longitude)
+                if lot.latitude is not None and lot.longitude is not None
+                else None
+            )
             total, detail = score_pair(
                 lot_qty=lot.quantity_kg,
                 lot_expected_price=lot.expected_price,
@@ -149,6 +168,7 @@ def run_matching(db: Session) -> int:
                 demand_band_min=demand.price_band_min,
                 demand_band_max=demand.price_band_max,
                 buyer_district=buyer_district,
+                lot_coords=lot_coords,
             )
 
             if total < MIN_SCORE:

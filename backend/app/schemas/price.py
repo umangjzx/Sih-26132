@@ -48,3 +48,4 @@ class SellWaitSignalResponse(BaseModel):
 class IngestionResultResponse(BaseModel):
     source: str
     rows_upserted: int
+    alerts_fired: int = 0
