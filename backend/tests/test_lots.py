@@ -132,3 +132,54 @@ def test_get_lot_unrelated_buyer_forbidden(db, farmer_user, buyer_user):
     app.dependency_overrides.clear()
 
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# PATCH / DELETE  (edit + withdraw a still-open lot)
+# ---------------------------------------------------------------------------
+
+def test_update_own_open_lot(farmer_client, db):
+    lot_id = farmer_client.post("/api/lots/", json=LOT_BODY).json()["id"]
+    resp = farmer_client.patch(f"/api/lots/{lot_id}", json={"expected_price": 2600, "quantity_kg": 750})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["expected_price"] == 2600 and body["quantity_kg"] == 750
+    assert body["crop"] == "Onion"  # unchanged
+
+
+def test_update_lot_rejects_bad_values(farmer_client, db):
+    lot_id = farmer_client.post("/api/lots/", json=LOT_BODY).json()["id"]
+    assert farmer_client.patch(f"/api/lots/{lot_id}", json={"expected_price": -5}).status_code == 422
+    assert farmer_client.patch(f"/api/lots/{lot_id}", json={"quantity_kg": 99_999_999}).status_code == 422
+    assert farmer_client.patch(f"/api/lots/{lot_id}", json={"photo_url": "javascript:alert(1)"}).status_code == 422
+
+
+def test_cannot_edit_a_matched_lot(farmer_client, db):
+    lot_id = farmer_client.post("/api/lots/", json=LOT_BODY).json()["id"]
+    db.get(Lot, lot_id).status = "matched"
+    db.commit()
+    assert farmer_client.patch(f"/api/lots/{lot_id}", json={"expected_price": 2600}).status_code == 409
+
+
+def test_withdraw_own_open_lot(farmer_client, db):
+    lot_id = farmer_client.post("/api/lots/", json=LOT_BODY).json()["id"]
+    resp = farmer_client.delete(f"/api/lots/{lot_id}")
+    assert resp.status_code == 200
+    db.expire_all()
+    assert db.get(Lot, lot_id).status == "closed"
+
+
+def test_cannot_edit_someone_elses_lot(farmer_client, db):
+    other = _make_farmer(db, phone="+910000000077")
+    other_lot = Lot(farmer_id=other.id, crop="Onion", quantity_kg=500, quality_grade="A",
+                    expected_price=2400, available_from=date(2026, 10, 1), location="Pune", status="open")
+    db.add(other_lot)
+    db.commit()
+    assert farmer_client.patch(f"/api/lots/{other_lot.id}", json={"expected_price": 1}).status_code == 403
+    assert farmer_client.delete(f"/api/lots/{other_lot.id}").status_code == 403
+
+
+def test_create_lot_rejects_far_future_date(farmer_client, db):
+    from datetime import date, timedelta
+    body = {**LOT_BODY, "available_from": (date.today() + timedelta(days=900)).isoformat()}
+    assert farmer_client.post("/api/lots/", json=body).status_code == 422

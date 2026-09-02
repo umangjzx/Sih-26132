@@ -128,7 +128,18 @@
     "statStrong": "{n} मजबूत",
     "statVerified": "{n} पडताळलेले खरेदीदार",
     "statNoneYet": "अजून कोणीही नाही",
-    "gradeFaq": "FAQ"
+    "gradeFaq": "FAQ",
+    "edit": "संपादित करा",
+    "withdraw": "मागे घ्या",
+    "saveChanges": "बदल जतन करा",
+    "saving": "जतन होत आहे…",
+    "editTitle": "लॉट संपादित करा",
+    "cancelEdit": "रद्द करा",
+    "withdrawConfirm": "ही लॉट मागे घ्यायची? ती खरेदीदारांना दिसणे बंद होईल.",
+    "withdrawn": "लॉट मागे घेतली.",
+    "updated": "लॉट अपडेट झाली.",
+    "errorGeneric": "काहीतरी चूकले. मूल्ये तपासून पुन्हा प्रयत्न करा.",
+    "cannotEditMatched": "ही लॉट व्यवहारात आहे — ती बदलता येणार नाही."
   },
   "demands": {
     "title": "माझ्या मागण्या",
@@ -166,7 +177,18 @@
     "gradeADesc": "प्रीमियम",
     "gradeBDesc": "चांगला",
     "gradeFaqDesc": "साधारण",
-    "gradeCDesc": "सरासरीपेक्षा कमी"
+    "gradeCDesc": "सरासरीपेक्षा कमी",
+    "edit": "संपादित करा",
+    "withdraw": "मागे घ्या",
+    "saveChanges": "बदल जतन करा",
+    "saving": "जतन होत आहे…",
+    "editTitle": "मागणी संपादित करा",
+    "cancelEdit": "रद्द करा",
+    "withdrawConfirm": "ही मागणी मागे घ्यायची?",
+    "withdrawn": "मागणी मागे घेतली.",
+    "updated": "मागणी अपडेट झाली.",
+    "errorGeneric": "काहीतरी चूकले. मूल्ये तपासून पुन्हा प्रयत्न करा.",
+    "myDemandsTitle": "माझ्या मागण्या"
   },
   "matching": {
     "title": "माझ्या जुळण्या",

@@ -128,7 +128,18 @@
     "statStrong": "{n} strong",
     "statVerified": "{n} verified buyers",
     "statNoneYet": "none yet",
-    "gradeFaq": "FAQ"
+    "gradeFaq": "FAQ",
+    "edit": "Edit",
+    "withdraw": "Withdraw",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "editTitle": "Edit lot",
+    "cancelEdit": "Cancel",
+    "withdrawConfirm": "Withdraw this lot? It will stop appearing to buyers.",
+    "withdrawn": "Lot withdrawn.",
+    "updated": "Lot updated.",
+    "errorGeneric": "Something went wrong. Please check the values and try again.",
+    "cannotEditMatched": "This lot is in a deal — it can't be changed."
   },
   "demands": {
     "title": "My Demands",
@@ -166,7 +177,18 @@
     "gradeADesc": "premium",
     "gradeBDesc": "good",
     "gradeFaqDesc": "fair average",
-    "gradeCDesc": "below average"
+    "gradeCDesc": "below average",
+    "edit": "Edit",
+    "withdraw": "Withdraw",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "editTitle": "Edit demand",
+    "cancelEdit": "Cancel",
+    "withdrawConfirm": "Withdraw this demand?",
+    "withdrawn": "Demand withdrawn.",
+    "updated": "Demand updated.",
+    "errorGeneric": "Something went wrong. Please check the values and try again.",
+    "myDemandsTitle": "My demands"
   },
   "matching": {
     "title": "My Matches",

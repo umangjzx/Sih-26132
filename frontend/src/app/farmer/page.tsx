@@ -19,14 +19,19 @@ import { StatCards, type Stat } from "@/components/StatCards";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   createLot,
   listMyLots,
   listMyMatches,
   scanLotSlip,
+  updateLot,
+  withdrawLot,
   type LotCreate,
   type LotResponse,
   type MatchResponse,
 } from "@/lib/api";
+
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 function matchTier(m: MatchResponse): string {
   try {
@@ -77,10 +82,17 @@ export default function FarmerPage() {
   const tdash = useTranslations("dash");
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [lots, setLots] = useState<LotResponse[]>([]);
   const [matches, setMatches] = useState<MatchResponse[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastErr, setToastErr] = useState(false);
+  const flash = useCallback((msg: string, isErr = false) => {
+    setToast(msg);
+    setToastErr(isErr);
+    setTimeout(() => setToast(null), isErr ? 6000 : 3500);
+  }, []);
   const [isOnline, setIsOnline] = useState(true);
   const [queueCount, setQueueCount] = useState(0);
   const [scanning, setScanning] = useState(false);
@@ -158,7 +170,8 @@ export default function FarmerPage() {
   function updateField(field: keyof FormState, value: string) {
     const next = { ...form, [field]: value };
     setForm(next);
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+    // Only the "new lot" draft is persisted — an in-progress edit is not.
+    if (editingId === null) localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
   }
 
   async function handleSlip(e: React.ChangeEvent<HTMLInputElement>) {
@@ -227,30 +240,73 @@ export default function FarmerPage() {
     };
   }
 
+  function resetForm() {
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM, location: user?.district ?? "" });
+    localStorage.removeItem(DRAFT_KEY);
+  }
+
+  function startEdit(lot: LotResponse) {
+    setEditingId(lot.id);
+    setForm({
+      crop: lot.crop,
+      quantity_kg: String(lot.quantity_kg),
+      quality_grade: lot.quality_grade,
+      expected_price: String(lot.expected_price),
+      available_from: lot.available_from,
+      location: lot.location,
+      photo_url: lot.photo_url ?? "",
+    });
+    document.getElementById("create-lot")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function handleWithdraw(lot: LotResponse) {
+    if (!token || !window.confirm(t("withdrawConfirm"))) return;
+    try {
+      await withdrawLot(lot.id, token);
+      flash(t("withdrawn"));
+      if (editingId === lot.id) resetForm();
+      loadLots();
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : t("errorGeneric"), true);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const body = toBody();
 
-    if (!navigator.onLine) {
+    // Offline queue only applies to brand-new lots.
+    if (editingId === null && !navigator.onLine) {
       const q = [...getQueue(), body];
       saveQueue(q);
       setQueueCount(q.length);
-      setToast(t("queuedOffline", { count: q.length }));
-      setTimeout(() => setToast(null), 4000);
+      flash(t("queuedOffline", { count: q.length }));
       return;
     }
 
     setSubmitting(true);
     try {
-      await createLot(body, token!);
-      localStorage.removeItem(DRAFT_KEY);
-      setForm({ ...EMPTY_FORM, location: user?.district ?? "" });
-      setToast(t("success"));
-      setTimeout(() => setToast(null), 3000);
+      if (editingId !== null) {
+        const { crop: _c, ...patch } = body;
+        await updateLot(editingId, patch, token!);
+        flash(t("updated"));
+      } else {
+        await createLot(body, token!);
+        flash(t("success"));
+      }
+      resetForm();
       loadLots();
-    } catch {
-      setToast(t("queuedOffline", { count: 1 }));
-      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      if (editingId === null && (err instanceof TypeError || !navigator.onLine)) {
+        // genuine network failure on a create → fall back to the offline queue
+        const q = [...getQueue(), body];
+        saveQueue(q);
+        setQueueCount(q.length);
+        flash(t("queuedOffline", { count: q.length }));
+      } else {
+        flash(err instanceof ApiError ? err.message : t("errorGeneric"), true);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -296,8 +352,14 @@ export default function FarmerPage() {
         </div>
       )}
       {toast && (
-        <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
-          <Icon name="check" size={18} />
+        <div
+          className={`flex items-center gap-3 rounded-2xl border px-5 py-4 text-sm font-bold ${
+            toastErr
+              ? "border-[var(--red-500)]/30 bg-[var(--red-100)] text-[var(--red-700)]"
+              : "border-[var(--green-600)]/30 bg-[var(--green-100)] text-[var(--green-700)]"
+          }`}
+        >
+          <Icon name={toastErr ? "alert" : "check"} size={18} />
           {toast}
         </div>
       )}
@@ -330,7 +392,9 @@ export default function FarmerPage() {
             <Icon name="leaf" size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="font-heading text-base font-bold text-[var(--ink)]">{t("createTitle")}</h2>
+            <h2 className="font-heading text-base font-bold text-[var(--ink)]">
+              {editingId !== null ? t("editTitle") : t("createTitle")}
+            </h2>
             <p className="text-xs text-[var(--ink-soft)]">{tdash("createLotHint")}</p>
           </div>
           <input
@@ -354,10 +418,10 @@ export default function FarmerPage() {
         <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("scanHint")}</p>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {[
-            { key: "crop" as keyof FormState, label: t("cropLabel"), type: "text", placeholder: t("cropPlaceholder"), required: true },
-            { key: "quantity_kg" as keyof FormState, label: t("quantityLabel"), type: "number", required: true },
-            { key: "expected_price" as keyof FormState, label: t("priceLabel"), type: "number", required: true },
-            { key: "available_from" as keyof FormState, label: t("dateLabel"), type: "date", required: true },
+            { key: "crop" as keyof FormState, label: t("cropLabel"), type: "text", placeholder: t("cropPlaceholder"), required: true, min: undefined as string | undefined, step: undefined as string | undefined, disabled: editingId !== null },
+            { key: "quantity_kg" as keyof FormState, label: t("quantityLabel"), type: "number", required: true, min: "1", step: "any" },
+            { key: "expected_price" as keyof FormState, label: t("priceLabel"), type: "number", required: true, min: "1", step: "any" },
+            { key: "available_from" as keyof FormState, label: t("dateLabel"), type: "date", required: true, min: TODAY_ISO },
             { key: "location" as keyof FormState, label: t("locationLabel"), type: "text", required: true },
             { key: "photo_url" as keyof FormState, label: t("photoUrlLabel"), type: "url", required: false },
           ].map((field) => (
@@ -369,7 +433,10 @@ export default function FarmerPage() {
                 onChange={(e) => updateField(field.key, e.target.value)}
                 placeholder={"placeholder" in field ? field.placeholder as string : undefined}
                 required={field.required}
-                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+                min={field.min}
+                step={field.step}
+                disabled={field.disabled}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors disabled:bg-[var(--paper)] disabled:text-[var(--ink-soft)]"
               />
             </label>
           ))}
@@ -388,15 +455,26 @@ export default function FarmerPage() {
             </select>
           </label>
 
-          <div className="sm:col-span-2 pt-2">
+          <div className="flex flex-wrap gap-3 sm:col-span-2 pt-2">
             <button
               type="submit"
               disabled={submitting}
               className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60"
             >
               <Icon name="leaf" size={18} />
-              {submitting ? t("submitting") : t("submit")}
+              {submitting
+                ? editingId !== null ? t("saving") : t("submitting")
+                : editingId !== null ? t("saveChanges") : t("submit")}
             </button>
+            {editingId !== null && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-xl border border-[var(--line)] px-5 py-3 font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]"
+              >
+                {t("cancelEdit")}
+              </button>
+            )}
           </div>
         </form>
       </section>
@@ -426,7 +504,9 @@ export default function FarmerPage() {
             {lots.map((lot) => (
               <li
                 key={lot.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4"
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-[var(--paper)] p-4 ${
+                  editingId === lot.id ? "border-[var(--green-600)]" : "border-[var(--line)]"
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
@@ -435,18 +515,38 @@ export default function FarmerPage() {
                   <div>
                     <span className="font-bold text-[var(--ink)]">{lot.crop}</span>
                     <div className="mt-0.5 text-xs text-[var(--ink-soft)]">
-                      {lot.quantity_kg} kg · {tdash("gradeShort")} {lot.quality_grade} · ₹{lot.expected_price}/qtl
+                      {(lot.quantity_kg / 100).toFixed(2)} qtl · {tdash("gradeShort")} {lot.quality_grade} · ₹{lot.expected_price}/qtl
                     </div>
                     <div className="text-xs text-[var(--ink-soft)]/70">{lot.location} · {lot.available_from}</div>
                   </div>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  lot.status === "open"
-                    ? "bg-[var(--green-100)] text-[var(--green-700)]"
-                    : "bg-[var(--line)] text-[var(--ink-soft)]"
-                }`}>
-                  {t(`status_${lot.status}` as "status_open")}
-                </span>
+                <div className="flex items-center gap-2">
+                  {lot.status === "open" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(lot)}
+                        className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink)] transition hover:bg-white"
+                      >
+                        {t("edit")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleWithdraw(lot)}
+                        className="rounded-lg border border-[var(--red-500)]/40 px-3 py-1 text-xs font-bold text-[var(--red-600)] transition hover:bg-[var(--red-100)]"
+                      >
+                        {t("withdraw")}
+                      </button>
+                    </>
+                  )}
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                    lot.status === "open"
+                      ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                      : "bg-[var(--line)] text-[var(--ink-soft)]"
+                  }`}>
+                    {t(`status_${lot.status}` as "status_open")}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>

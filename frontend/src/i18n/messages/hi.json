@@ -128,7 +128,18 @@
     "statStrong": "{n} मजबूत",
     "statVerified": "{n} सत्यापित खरीदार",
     "statNoneYet": "अभी कोई नहीं",
-    "gradeFaq": "FAQ"
+    "gradeFaq": "FAQ",
+    "edit": "संपादित करें",
+    "withdraw": "वापस लें",
+    "saveChanges": "बदलाव सहेजें",
+    "saving": "सहेज रहा…",
+    "editTitle": "लॉट संपादित करें",
+    "cancelEdit": "रद्द करें",
+    "withdrawConfirm": "इस लॉट को वापस लें? यह खरीदारों को दिखना बंद हो जाएगा।",
+    "withdrawn": "लॉट वापस ले लिया।",
+    "updated": "लॉट अपडेट हुआ।",
+    "errorGeneric": "कुछ गलत हुआ। मान जांचकर पुन: प्रयास करें।",
+    "cannotEditMatched": "यह लॉट एक सौदे में है — इसे बदला नहीं जा सकता।"
   },
   "demands": {
     "title": "मेरी मांगें",
@@ -166,7 +177,18 @@
     "gradeADesc": "प्रीमियम",
     "gradeBDesc": "अच्छा",
     "gradeFaqDesc": "सामान्य",
-    "gradeCDesc": "औसत से कम"
+    "gradeCDesc": "औसत से कम",
+    "edit": "संपादित करें",
+    "withdraw": "वापस लें",
+    "saveChanges": "बदलाव सहेजें",
+    "saving": "सहेज रहा…",
+    "editTitle": "मांग संपादित करें",
+    "cancelEdit": "रद्द करें",
+    "withdrawConfirm": "इस मांग को वापस लें?",
+    "withdrawn": "मांग वापस ली।",
+    "updated": "मांग अपडेट हुई।",
+    "errorGeneric": "कुछ गलत हुआ। मान जांचकर पुन: प्रयास करें।",
+    "myDemandsTitle": "मेरी मांगें"
   },
   "matching": {
     "title": "मेरे मिलान",

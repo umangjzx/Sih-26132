@@ -18,14 +18,22 @@ import { StatCards, type Stat } from "@/components/StatCards";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   createDemand,
   listMyDemands,
   listMyMatches,
+  updateDemand,
+  withdrawDemand,
   type DemandCreate,
   type DemandResponse,
   type MatchResponse,
   type ScoreDetail,
 } from "@/lib/api";
+
+const EMPTY_DEMAND: DemandCreate = {
+  crop: "", quantity_kg: 0, quality_spec: "", quality_grade_min: null,
+  price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "",
+};
 
 function tierOf(m: MatchResponse): string {
   try {
@@ -74,13 +82,18 @@ export default function BuyerPage() {
   const tm = useTranslations("matching");
   const tdash = useTranslations("dash");
 
-  const [form, setForm] = useState<DemandCreate>({
-    crop: "", quantity_kg: 0, quality_spec: "", quality_grade_min: null, price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "",
-  });
+  const [form, setForm] = useState<DemandCreate>(EMPTY_DEMAND);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [matches, setMatches] = useState<MatchResponse[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastErr, setToastErr] = useState(false);
+  const flash = useCallback((msg: string, isErr = false) => {
+    setToast(msg);
+    setToastErr(isErr);
+    setTimeout(() => setToast(null), isErr ? 6000 : 3500);
+  }, []);
 
   useEffect(() => {
     if (ready && (!isAuthenticated || user?.role !== "buyer")) router.replace("/login");
@@ -128,21 +141,59 @@ export default function BuyerPage() {
     },
   ];
 
+  function resetForm() {
+    setEditingId(null);
+    setForm(EMPTY_DEMAND);
+  }
+
+  function startEdit(d: DemandResponse) {
+    setEditingId(d.id);
+    setForm({
+      crop: d.crop,
+      quantity_kg: d.quantity_kg,
+      quality_spec: d.quality_spec,
+      quality_grade_min: d.quality_grade_min ?? null,
+      price_band_min: d.price_band_min,
+      price_band_max: d.price_band_max,
+      delivery_window: d.delivery_window,
+      delivery_district: d.delivery_district ?? "",
+    });
+    document.getElementById("create-demand")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function handleWithdraw(d: DemandResponse) {
+    if (!token || !window.confirm(td("withdrawConfirm"))) return;
+    try {
+      await withdrawDemand(d.id, token);
+      flash(td("withdrawn"));
+      if (editingId === d.id) resetForm();
+      loadData();
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : td("errorGeneric"), true);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
     setSubmitting(true);
     try {
-      await createDemand(
-        { ...form, delivery_district: form.delivery_district?.trim() || user?.district || null },
-        token,
-      );
-      setForm({ crop: "", quantity_kg: 0, quality_spec: "", quality_grade_min: null, price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "" });
-      setToast(td("success"));
-      setTimeout(() => setToast(null), 3000);
+      const payload = {
+        ...form,
+        delivery_district: form.delivery_district?.trim() || user?.district || null,
+      };
+      if (editingId !== null) {
+        const { crop: _c, ...patch } = payload;
+        await updateDemand(editingId, patch, token);
+        flash(td("updated"));
+      } else {
+        await createDemand(payload, token);
+        flash(td("success"));
+      }
+      resetForm();
       loadData();
-    } catch {
-      setToast(td("noDemands")); // reuse as generic error; 02-04 adds proper error key
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : td("errorGeneric"), true);
     } finally {
       setSubmitting(false);
     }
@@ -168,8 +219,14 @@ export default function BuyerPage() {
       <StatCards stats={stats} />
 
       {toast && (
-        <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
-          <Icon name="check" size={18} />
+        <div
+          className={`flex items-center gap-3 rounded-2xl border px-5 py-4 text-sm font-bold ${
+            toastErr
+              ? "border-[var(--red-500)]/30 bg-[var(--red-100)] text-[var(--red-700)]"
+              : "border-[var(--green-600)]/30 bg-[var(--green-100)] text-[var(--green-700)]"
+          }`}
+        >
+          <Icon name={toastErr ? "alert" : "check"} size={18} />
           {toast}
         </div>
       )}
@@ -202,17 +259,19 @@ export default function BuyerPage() {
             <Icon name="handshake" size={20} />
           </div>
           <div>
-            <h2 className="font-heading text-base font-bold text-[var(--ink)]">{td("createTitle")}</h2>
+            <h2 className="font-heading text-base font-bold text-[var(--ink)]">
+              {editingId !== null ? td("editTitle") : td("createTitle")}
+            </h2>
             <p className="text-xs text-[var(--ink-soft)]">{tdash("createDemandHint")}</p>
           </div>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {[
-            { key: "crop" as keyof DemandCreate, label: td("cropLabel"), type: "text", placeholder: td("cropPlaceholder"), required: true },
-            { key: "quantity_kg" as keyof DemandCreate, label: td("quantityLabel"), type: "number", required: true },
-            { key: "price_band_min" as keyof DemandCreate, label: td("priceMinLabel"), type: "number", required: true },
-            { key: "price_band_max" as keyof DemandCreate, label: td("priceMaxLabel"), type: "number", required: true },
+            { key: "crop" as keyof DemandCreate, label: td("cropLabel"), type: "text", placeholder: td("cropPlaceholder"), required: true, min: undefined as string | undefined, disabled: editingId !== null },
+            { key: "quantity_kg" as keyof DemandCreate, label: td("quantityLabel"), type: "number", required: true, min: "1" },
+            { key: "price_band_min" as keyof DemandCreate, label: td("priceMinLabel"), type: "number", required: true, min: "1" },
+            { key: "price_band_max" as keyof DemandCreate, label: td("priceMaxLabel"), type: "number", required: true, min: "1" },
           ].map((field) => (
             <label key={field.key} className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {field.label}
@@ -222,7 +281,10 @@ export default function BuyerPage() {
                 onChange={(e) => setForm({ ...form, [field.key]: field.type === "number" ? parseFloat(e.target.value) : e.target.value })}
                 placeholder={"placeholder" in field ? field.placeholder as string : undefined}
                 required={field.required}
-                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+                min={field.min}
+                step={field.type === "number" ? "any" : undefined}
+                disabled={field.disabled}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors disabled:bg-[var(--paper)] disabled:text-[var(--ink-soft)]"
               />
             </label>
           ))}
@@ -287,17 +349,94 @@ export default function BuyerPage() {
             </span>
           </label>
 
-          <div className="sm:col-span-2 pt-2">
-            <button 
-              type="submit" 
+          <div className="flex flex-wrap gap-3 sm:col-span-2 pt-2">
+            <button
+              type="submit"
               disabled={submitting}
               className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60"
             >
               <Icon name="handshake" size={18} />
-              {submitting ? td("submitting") : td("submit")}
+              {submitting
+                ? editingId !== null ? td("saving") : td("submitting")
+                : editingId !== null ? td("saveChanges") : td("submit")}
             </button>
+            {editingId !== null && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-xl border border-[var(--line)] px-5 py-3 font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]"
+              >
+                {td("cancelEdit")}
+              </button>
+            )}
           </div>
         </form>
+      </section>
+
+      {/* My demands */}
+      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">
+          {td("myDemandsTitle")}
+          {demands.length > 0 && (
+            <span className="ml-2 rounded-full bg-[var(--green-100)] px-2 py-0.5 text-xs font-bold text-[var(--green-700)]">
+              {demands.length}
+            </span>
+          )}
+        </h2>
+        {demands.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
+            <Icon name="handshake" size={28} className="text-[var(--green-400)]" />
+            <p className="text-sm text-[var(--ink-soft)]">{td("noDemands")}</p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {demands.map((d) => (
+              <li
+                key={d.id}
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-[var(--paper)] p-4 ${
+                  editingId === d.id ? "border-[var(--green-600)]" : "border-[var(--line)]"
+                }`}
+              >
+                <div className="min-w-0">
+                  <span className="font-bold text-[var(--ink)]">{d.crop}</span>
+                  <div className="mt-0.5 text-xs text-[var(--ink-soft)]">
+                    {(d.quantity_kg / 100).toFixed(2)} qtl · ₹{d.price_band_min}–{d.price_band_max}/qtl · {d.delivery_window}
+                  </div>
+                  <div className="text-xs text-[var(--ink-soft)]/70">
+                    {d.delivery_district || "—"}{d.quality_grade_min ? ` · min ${d.quality_grade_min}` : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {d.status === "open" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(d)}
+                        className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink)] transition hover:bg-white"
+                      >
+                        {td("edit")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleWithdraw(d)}
+                        className="rounded-lg border border-[var(--red-500)]/40 px-3 py-1 text-xs font-bold text-[var(--red-600)] transition hover:bg-[var(--red-100)]"
+                      >
+                        {td("withdraw")}
+                      </button>
+                    </>
+                  )}
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                    d.status === "open"
+                      ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                      : "bg-[var(--line)] text-[var(--ink-soft)]"
+                  }`}>
+                    {d.status}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* Matches list */}

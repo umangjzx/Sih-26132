@@ -68,3 +68,38 @@ def test_list_my_demands_own_only(buyer_client, buyer_user):
 def test_list_my_demands_farmer_forbidden(farmer_client):
     resp = farmer_client.get("/api/demands/mine")
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# PATCH / DELETE  (edit + withdraw a still-open demand)
+# ---------------------------------------------------------------------------
+
+def test_update_own_open_demand(buyer_client):
+    did = buyer_client.post("/api/demands/", json=DEMAND_BODY).json()["id"]
+    resp = buyer_client.patch(f"/api/demands/{did}", json={"price_band_min": 2500, "price_band_max": 3200})
+    assert resp.status_code == 200, resp.text
+    b = resp.json()
+    assert b["price_band_min"] == 2500 and b["price_band_max"] == 3200
+
+
+def test_update_demand_inverted_band_rejected(buyer_client):
+    did = buyer_client.post("/api/demands/", json=DEMAND_BODY).json()["id"]
+    # only the max, pushing it below the stored min
+    resp = buyer_client.patch(f"/api/demands/{did}", json={"price_band_max": 1})
+    assert resp.status_code == 422
+
+
+def test_withdraw_own_open_demand(buyer_client, db):
+    from app.models.demand import Demand
+    did = buyer_client.post("/api/demands/", json=DEMAND_BODY).json()["id"]
+    assert buyer_client.delete(f"/api/demands/{did}").status_code == 200
+    db.expire_all()
+    assert db.get(Demand, did).status == "closed"
+
+
+def test_cannot_edit_matched_demand(buyer_client, db):
+    from app.models.demand import Demand
+    did = buyer_client.post("/api/demands/", json=DEMAND_BODY).json()["id"]
+    db.get(Demand, did).status = "matched"
+    db.commit()
+    assert buyer_client.patch(f"/api/demands/{did}", json={"price_band_min": 2500}).status_code == 409

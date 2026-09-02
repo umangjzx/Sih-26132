@@ -128,6 +128,9 @@ export type DemandResponse = {
   price_band_min: number;
   price_band_max: number;
   delivery_window: string;
+  delivery_district?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   status: string;
 };
 
@@ -521,6 +524,14 @@ export function createLot(body: LotCreate, token: string): Promise<LotResponse> 
   return postJson("/api/lots/", body, token);
 }
 
+export type LotUpdate = Partial<Omit<LotCreate, "crop">>;
+export function updateLot(id: number, body: LotUpdate, token: string): Promise<LotResponse> {
+  return patchJson(`/api/lots/${id}`, body, token);
+}
+export function withdrawLot(id: number, token: string): Promise<{ detail: string }> {
+  return request(`/api/lots/${id}`, { method: "DELETE" }, token);
+}
+
 export function listMyLots(token: string): Promise<LotResponse[]> {
   return getJson("/api/lots/mine", token);
 }
@@ -756,6 +767,14 @@ export function createDemand(
   token: string,
 ): Promise<DemandResponse> {
   return postJson("/api/demands/", body, token);
+}
+
+export type DemandUpdate = Partial<Omit<DemandCreate, "crop">>;
+export function updateDemand(id: number, body: DemandUpdate, token: string): Promise<DemandResponse> {
+  return patchJson(`/api/demands/${id}`, body, token);
+}
+export function withdrawDemand(id: number, token: string): Promise<{ detail: string }> {
+  return request(`/api/demands/${id}`, { method: "DELETE" }, token);
 }
 
 export function listMyDemands(token: string): Promise<DemandResponse[]> {

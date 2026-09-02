@@ -1,22 +1,56 @@
-"""Lot endpoints: create, list own, browse nearby (buyer), express interest, get by id."""
+"""Lot endpoints: create, edit, withdraw, list own, browse nearby (buyer),
+express interest, get by id."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.core.security import CurrentUser, require_role
 from app.models.demand import Demand
 from app.models.lot import Lot
 from app.models.match import Match
-from app.schemas.lot import BrowseLotOut, ExpressInterestResult, LotCreate, LotResponse
+from app.schemas.lot import (
+    BrowseLotOut,
+    ExpressInterestResult,
+    LotCreate,
+    LotResponse,
+    LotUpdate,
+)
 
 router = APIRouter(prefix="/api/lots", tags=["lots"])
+logger = logging.getLogger(__name__)
 
-# Role-gated CurrentUser aliases for this router.
-_FarmerOnly = Annotated[Lot, require_role("farmer")]
+_CREATE_LIMIT, _CREATE_WINDOW_S = 40, 600  # 40 create/edit ops / 10 min per user
+
+
+def _geocode_into(lot: Lot, location: str, db: Session) -> None:
+    """Best-effort village-level geocoding for weather / road-distance features.
+    Never blocks the write."""
+    try:
+        from app.services.geocode import geocode
+
+        geo = geocode(location, db)
+        if geo:
+            lot.latitude = geo["latitude"]
+            lot.longitude = geo["longitude"]
+    except Exception:  # noqa: BLE001
+        logger.debug("lot geocode failed for %r", location, exc_info=True)
+
+
+def _rematch(db: Session) -> None:
+    """Run the matcher, but never let a matcher error fail the write that
+    already committed."""
+    try:
+        from app.services.matching import run_matching
+
+        run_matching(db)
+    except Exception:  # noqa: BLE001
+        logger.exception("run_matching failed after lot write")
 
 
 @router.post("/", response_model=LotResponse, status_code=status.HTTP_201_CREATED)
@@ -28,27 +62,82 @@ def create_lot(
 ) -> LotResponse:
     """Create a new lot for the authenticated farmer, geocode its location, then
     trigger match scoring."""
+    if not ratelimit.check(f"lot_write:{current_user.id}",
+                           limit=_CREATE_LIMIT, window_s=_CREATE_WINDOW_S):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many listing changes in a short time. Please slow down.")
+
     lot = Lot(farmer_id=current_user.id, **body.model_dump())
-
-    # Best-effort village-level geocoding for weather / road-distance features.
-    try:
-        from app.services.geocode import geocode
-
-        geo = geocode(body.location, db)
-        if geo:
-            lot.latitude = geo["latitude"]
-            lot.longitude = geo["longitude"]
-    except Exception:  # noqa: BLE001 - geocoding never blocks lot creation
-        pass
+    _geocode_into(lot, body.location, db)
 
     db.add(lot)
     db.commit()
     db.refresh(lot)
-
-    from app.services.matching import run_matching
-    run_matching(db)
-
+    _rematch(db)
     return LotResponse.model_validate(lot)
+
+
+@router.patch("/{lot_id}", response_model=LotResponse)
+def update_lot(
+    lot_id: int,
+    body: LotUpdate,
+    current_user: CurrentUser,
+    _role: Annotated[None, require_role("farmer")] = None,
+    db: Session = Depends(get_db),
+) -> LotResponse:
+    """Edit one of your own lots while it is still open. Re-geocodes and
+    re-runs matching if the location changed."""
+    if not ratelimit.check(f"lot_write:{current_user.id}",
+                           limit=_CREATE_LIMIT, window_s=_CREATE_WINDOW_S):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many listing changes in a short time. Please slow down.")
+
+    lot = db.get(Lot, lot_id)
+    if lot is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lot not found")
+    if lot.farmer_id != current_user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your lot")
+    if lot.status != "open":
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "This lot is already in a deal and can't be edited.")
+
+    data = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    loc_changed = "location" in data and data["location"] != lot.location
+    for field, value in data.items():
+        setattr(lot, field, value)
+    if loc_changed:
+        _geocode_into(lot, lot.location, db)
+
+    db.commit()
+    db.refresh(lot)
+    _rematch(db)
+    return LotResponse.model_validate(lot)
+
+
+@router.delete("/{lot_id}", status_code=status.HTTP_200_OK)
+def withdraw_lot(
+    lot_id: int,
+    current_user: CurrentUser,
+    _role: Annotated[None, require_role("farmer")] = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Withdraw one of your own open lots (soft delete → status 'closed')."""
+    lot = db.get(Lot, lot_id)
+    if lot is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lot not found")
+    if lot.farmer_id != current_user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your lot")
+    if lot.status != "open":
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "This lot is in a deal and can't be withdrawn.")
+    lot.status = "closed"
+    # drop its still-open matches so they don't linger on buyers' boards
+    for m in db.execute(
+        select(Match).where(Match.lot_id == lot.id, Match.status.in_(("proposed", "offered")))
+    ).scalars().all():
+        m.status = "rejected"
+    db.commit()
+    return {"detail": "Lot withdrawn", "lot_id": lot.id}
 
 
 @router.get("/mine", response_model=list[LotResponse])
@@ -114,6 +203,9 @@ def express_interest_in_lot(
 
     from app.services.matching import try_pair
 
+    # Stop at the first demand that clears the bar (try_pair upserts a Match as
+    # a side effect, so we must not fan it out across every demand); otherwise
+    # report the closest near-miss.
     best: dict | None = None
     for dem in demands:
         r = try_pair(db, lot, dem)
