@@ -13,6 +13,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import { createPool, listPools, type PoolCreate, type PoolSummary } from "@/lib/api";
+import { useLocation } from "@/lib/useLocation";
+import { NEARBY_RADIUS_KM } from "@/lib/useCropMarket";
 
 const EMPTY: PoolForm = {
   crop: "",
@@ -98,11 +100,18 @@ export default function PoolsPage() {
     if (ready && (!isAuthenticated || user?.role !== "farmer")) router.replace("/login");
   }, [ready, isAuthenticated, user, router]);
 
+  const { location } = useLocation();
+  const precise = !!location && location.source !== "state" && location.lat != null && location.lon != null;
+
   const load = useCallback(async () => {
     if (!token) return;
     try {
       const [o, m] = await Promise.all([
-        listPools(token),
+        listPools(token, {
+          lat: location?.lat ?? null,
+          lon: location?.lon ?? null,
+          radiusKm: precise ? NEARBY_RADIUS_KM : null,
+        }),
         listPools(token, { mine: true }),
       ]);
       setOpen(o);
@@ -112,7 +121,7 @@ export default function PoolsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, location?.lat, location?.lon, precise]);
 
   useEffect(() => { load(); }, [load]);
 

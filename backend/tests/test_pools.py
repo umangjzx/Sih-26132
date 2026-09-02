@@ -156,3 +156,71 @@ def test_non_organizer_cannot_change_status(farmer_client, db):
     pool.organizer_id = other.id
     db.commit()
     assert farmer_client.post(f"/api/pools/{pid}/status", json={"status": "closed"}).status_code == 403
+
+
+# --------------------------------------------------------------------------- #
+# v1.4 phase 3 — status guards + pool -> deal handoff
+# --------------------------------------------------------------------------- #
+
+def test_pool_status_transition_is_guarded(farmer_client):
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 1000, "floor_price": 2000,
+    }).json()["id"]
+    # open -> matched is not a legal jump (must go via locked + a demand)
+    assert farmer_client.post(f"/api/pools/{pid}/status", json={"status": "matched"}).status_code == 409
+    # open -> closed is fine
+    assert farmer_client.post(f"/api/pools/{pid}/status", json={"status": "closed"}).status_code == 200
+    # closed -> open is not
+    assert farmer_client.post(f"/api/pools/{pid}/status", json={"status": "open"}).status_code == 409
+
+
+def test_pool_accept_demand_creates_a_deal(farmer_client, db):
+    from app.models.pool import Pool
+    from app.models.deal import Deal
+
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "Kongu onion pool", "target_quantity_kg": 5000,
+        "floor_price": 2300, "grade": "A", "delivery_window": "Within 2 weeks", "location": "Pune",
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join", json={"quantity_kg": 2000, "expected_price": 2450})
+
+    buyer = User(role="buyer", name="Bulk Onion Co", phone="+91bulk", district="Pune", taluka="")
+    db.add(buyer); db.commit()
+    dem = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=5000, quality_spec="Grade A",
+                 price_band_min=2200, price_band_max=2800, delivery_window="Within 2 weeks",
+                 delivery_district="Pune", status="open")
+    db.add(dem); db.commit()
+
+    r = farmer_client.post(f"/api/pools/{pid}/accept-demand", json={"demand_id": dem.id})
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["agreed_quantity_kg"] == 2000
+    assert body["agreed_price"] == 2450  # weighted == effective here
+
+    # pool + demand are now matched, the deal exists
+    db.expire_all()
+    pool = db.get(Pool, pid)
+    assert pool.status == "matched" and pool.matched_deal_id == body["deal_id"]
+    assert db.get(Demand, dem.id).status == "matched"
+    deal = db.get(Deal, body["deal_id"])
+    assert deal.agreed_quantity == 2000 and deal.pipeline_status == "matched"
+
+    # members can no longer withdraw
+    assert farmer_client.post(f"/api/pools/{pid}/withdraw").status_code == 409
+
+
+def test_pool_accept_demand_is_farmer_only(buyer_client):
+    # role gate fires before anything else — a buyer is 403 regardless of the pool
+    assert buyer_client.post("/api/pools/1/accept-demand", json={"demand_id": 1}).status_code == 403
+
+
+def test_pool_accept_demand_non_organizer_forbidden(farmer_client, db):
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 1000, "floor_price": 2000,
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join", json={"quantity_kg": 500, "expected_price": 2200})
+    other = User(role="farmer", name="Other", phone="+91other2", district="Pune", taluka="")
+    db.add(other); db.commit()
+    db.get(Pool, pid).organizer_id = other.id
+    db.commit()
+    assert farmer_client.post(f"/api/pools/{pid}/accept-demand", json={"demand_id": 1}).status_code == 403

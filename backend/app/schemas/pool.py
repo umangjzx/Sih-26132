@@ -46,6 +46,26 @@ class PoolStatusUpdate(BaseModel):
         return v
 
 
+class PoolAcceptDemand(BaseModel):
+    demand_id: int
+    agreed_price: float | None = None  # ₹/quintal; defaults to the pool's effective price
+
+    @field_validator("agreed_price")
+    @classmethod
+    def _positive(cls, v: float | None) -> float | None:
+        if v is not None and v <= 0:
+            raise ValueError("must be greater than 0")
+        return v
+
+
+class PoolDealResult(BaseModel):
+    deal_id: int
+    lot_id: int
+    match_id: int
+    agreed_price: float
+    agreed_quantity_kg: float
+
+
 class PoolMemberOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -72,6 +92,7 @@ class PoolSummary(BaseModel):
     delivery_window: str
     location: str
     status: str
+    matched_deal_id: int | None = None
     created_at: datetime
     members: int = 0
     committed_quantity_kg: float = 0.0

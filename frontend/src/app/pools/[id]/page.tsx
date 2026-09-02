@@ -13,6 +13,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import {
+  acceptDemandForPool,
   getPool,
   joinPool,
   setPoolStatus,
@@ -28,7 +29,17 @@ const TIER_STYLE: Record<string, string> = {
   weak: "bg-[var(--line)] text-[var(--ink-soft)]",
 };
 
-function CandidateRow({ c }: { c: PoolDemandCandidate }) {
+function CandidateRow({
+  c,
+  canAccept,
+  busy,
+  onAccept,
+}: {
+  c: PoolDemandCandidate;
+  canAccept: boolean;
+  busy: boolean;
+  onAccept: (demandId: number) => void;
+}) {
   const t = useTranslations("pools");
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4">
@@ -47,10 +58,20 @@ function CandidateRow({ c }: { c: PoolDemandCandidate }) {
           {c.delivery_window ? ` · ${c.delivery_window}` : ""}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${TIER_STYLE[c.tier] ?? TIER_STYLE.weak}`}>
           {t("scoreLabel")} {Math.round(c.score)}%
         </span>
+        {canAccept && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAccept(c.demand_id)}
+            className="rounded-lg bg-[var(--green-700)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--green-900)] disabled:opacity-60"
+          >
+            {t("acceptDemand")}
+          </button>
+        )}
       </div>
     </li>
   );
@@ -130,6 +151,17 @@ export default function PoolDetailPage() {
     }
   }
 
+  async function acceptDemand(demandId: number) {
+    if (!token) return;
+    setBusy(true);
+    try {
+      const r = await acceptDemandForPool(poolId, { demand_id: demandId }, token);
+      router.push(`/deals/${r.deal_id}`);
+    } catch {
+      setBusy(false);
+    }
+  }
+
   if (!ready || !isAuthenticated) return null;
 
   if (loading) {
@@ -157,6 +189,16 @@ export default function PoolDetailPage() {
         title={pool.title}
         subtitle={`${pool.crop} · ${pool.location || "—"} · ${t(`status_${pool.status}` as "status_open")}`}
       />
+
+      {pool.status === "matched" && pool.matched_deal_id && (
+        <Link
+          href={`/deals/${pool.matched_deal_id}`}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--green-600)]/40 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)] hover:bg-[var(--green-100)]/70"
+        >
+          <span className="flex items-center gap-2"><Icon name="check" size={16} /> {t("poolMatched")}</span>
+          <span className="underline">{t("viewDeal")} →</span>
+        </Link>
+      )}
 
       {pool.is_organizer && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4">
@@ -271,7 +313,15 @@ export default function PoolDetailPage() {
             <p className="text-sm text-[var(--ink-soft)]">{t("noCandidates")}</p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {pool.candidates.map((c) => <CandidateRow key={c.demand_id} c={c} />)}
+              {pool.candidates.map((c) => (
+                <CandidateRow
+                  key={c.demand_id}
+                  c={c}
+                  canAccept={(pool.status === "open" || pool.status === "locked") && agg.quantity_kg > 0}
+                  busy={busy}
+                  onAccept={acceptDemand}
+                />
+              ))}
             </ul>
           )}
         </section>

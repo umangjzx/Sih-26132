@@ -23,4 +23,7 @@ class Lot(Base):
     # Geocoded from `location` on create (best-effort; nullable when geocoding fails).
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # set when this lot is the aggregate of an FPO Pool (organizer-created).
+    # Plain int, not a FK — avoids a pools↔deals↔matches↔lots cycle.
+    pool_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open")

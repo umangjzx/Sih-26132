@@ -661,7 +661,10 @@
     "organizerBadge": "You organize this pool",
     "backToPools": "All pools",
     "scoreLabel": "Match",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "acceptDemand": "Create deal",
+    "poolMatched": "This pool is matched to a buyer",
+    "viewDeal": "View deal"
   },
   "profile": {
     "title": "Profile & verification",

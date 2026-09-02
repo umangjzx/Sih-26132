@@ -635,11 +635,20 @@ export type PoolDemandCandidate = {
 };
 
 export type PoolDetail = PoolSummary & {
+  matched_deal_id: number | null;
   aggregate: PoolAggregate;
   member_list: PoolMemberOut[];
   candidates: PoolDemandCandidate[];
   is_organizer: boolean;
   my_membership: PoolMemberOut | null;
+};
+
+export type PoolDealResult = {
+  deal_id: number;
+  lot_id: number;
+  match_id: number;
+  agreed_price: number;
+  agreed_quantity_kg: number;
 };
 
 export type PoolCreate = {
@@ -654,11 +663,16 @@ export type PoolCreate = {
 
 export function listPools(
   token: string,
-  opts: { crop?: string; mine?: boolean } = {},
+  opts: { crop?: string; mine?: boolean; lat?: number | null; lon?: number | null; radiusKm?: number | null } = {},
 ): Promise<PoolSummary[]> {
   const p = new URLSearchParams();
   if (opts.crop) p.set("crop", opts.crop);
   if (opts.mine) p.set("mine", "true");
+  if (typeof opts.lat === "number" && typeof opts.lon === "number") {
+    p.set("lat", String(opts.lat));
+    p.set("lon", String(opts.lon));
+    if (typeof opts.radiusKm === "number") p.set("radius_km", String(opts.radiusKm));
+  }
   const qs = p.toString();
   return getJson(`/api/pools${qs ? `?${qs}` : ""}`, token);
 }
@@ -689,6 +703,14 @@ export function setPoolStatus(
   token: string,
 ): Promise<PoolSummary> {
   return postJson(`/api/pools/${id}/status`, { status }, token);
+}
+
+export function acceptDemandForPool(
+  poolId: number,
+  body: { demand_id: number; agreed_price?: number },
+  token: string,
+): Promise<PoolDealResult> {
+  return postJson(`/api/pools/${poolId}/accept-demand`, body, token);
 }
 
 // ---------------------------------------------------------------------------

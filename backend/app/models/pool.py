@@ -37,6 +37,8 @@ class Pool(Base):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    # set once the organizer converts a buyer demand into a deal for the pool
+    matched_deal_id: Mapped[int | None] = mapped_column(ForeignKey("deals.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

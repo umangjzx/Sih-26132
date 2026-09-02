@@ -661,7 +661,10 @@
     "organizerBadge": "You organize this pool",
     "backToPools": "सर्व पूल",
     "scoreLabel": "Match",
-    "cancel": "रद्द करा"
+    "cancel": "रद्द करा",
+    "acceptDemand": "व्यवहार तयार करा",
+    "poolMatched": "हा पूल एका खरेदीदाराशी जुळला",
+    "viewDeal": "व्यवहार पहा"
   },
   "profile": {
     "title": "प्रोफाइल आणि पडताळणी",
