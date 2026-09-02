@@ -126,6 +126,27 @@ def test_options_state_filter(db):
         app.dependency_overrides.clear()
 
 
+def test_options_radius_filter_drops_far_markets(db):
+    # A farmer near Coimbatore should not see a mandi 400 km away in Chennai.
+    # `_seed` sets district == market, so use names that exist in the district
+    # coordinate table.
+    _seed(db, "Tamil Nadu", "Coimbatore", "Onion")     # 0 km
+    _seed(db, "Tamil Nadu", "Erode", "Tomato")         # ~90 km
+    for m in ("Chennai", "Vellore", "Thanjavur", "Nagapattinam"):
+        _seed(db, "Tamil Nadu", m, "Onion")            # 200-450 km away
+    client = _client(db)
+    cbe = {"lat": 11.0168, "lon": 76.9558}
+    try:
+        wide = client.get("/api/options", params=cbe).json()
+        assert len({r["market"] for r in wide}) == 6           # all six, just sorted
+        near = client.get("/api/options", params={**cbe, "radius_km": 200}).json()
+        kept = {r["market"] for r in near}
+        assert "Chennai" not in kept and "Nagapattinam" not in kept
+        assert {"Coimbatore", "Erode"} <= kept
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_public_overview_state_filter(db):
     _seed(db, "Maharashtra", "Pune", "Onion")
     _seed(db, "Punjab", "Ludhiana", "Wheat")

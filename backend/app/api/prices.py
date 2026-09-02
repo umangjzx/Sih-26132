@@ -32,6 +32,7 @@ def list_options(
     state: str | None = None,
     lat: float | None = None,
     lon: float | None = None,
+    radius_km: float | None = Query(None, gt=0, le=3000),
     db: Session = Depends(get_db),
 ) -> list[CropMarketOption]:
     stmt = select(
@@ -47,26 +48,34 @@ def list_options(
 
     # When the caller shares a location, order markets nearest-first (and crops
     # by how close their nearest market is) so a big state's picker is usable.
+    # With `radius_km` we also *drop* markets/crops outside that range so a
+    # farmer near Coimbatore never sees a mandi 400 km away in the picker.
     if lat is not None and lon is not None:
         from app.services.geo import _district_coord, haversine_km
 
         origin = (lat, lon)
-
-        def dist(o: CropMarketOption) -> float:
-            c = market_coords(o.market) or _district_coord(o.district)
-            return haversine_km(origin, c) if c else 1e9
-
         cache: dict[tuple[str, str], float] = {}
 
         def dkey(o: CropMarketOption) -> float:
             k = (o.market, o.district)
             if k not in cache:
-                cache[k] = dist(o)
+                c = market_coords(o.market) or _district_coord(o.district)
+                cache[k] = haversine_km(origin, c) if c else float("inf")
             return cache[k]
+
+        if radius_km is not None:
+            in_range = [o for o in opts if dkey(o) <= radius_km]
+            if in_range:
+                opts = in_range
+            else:
+                # Nothing placeable within range (sparse data / bad geo) — fall
+                # back to the 25 nearest so the page still works.
+                placeable = [o for o in opts if dkey(o) != float("inf")]
+                opts = sorted(placeable, key=dkey)[:25] or opts
 
         best_for_crop: dict[str, float] = {}
         for o in opts:
-            best_for_crop[o.crop] = min(best_for_crop.get(o.crop, 1e9), dkey(o))
+            best_for_crop[o.crop] = min(best_for_crop.get(o.crop, float("inf")), dkey(o))
         opts.sort(key=lambda o: (best_for_crop[o.crop], o.crop, dkey(o), o.market))
     else:
         opts.sort(key=lambda o: (o.crop, o.market))

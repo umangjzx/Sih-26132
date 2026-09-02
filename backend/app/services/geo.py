@@ -270,11 +270,21 @@ _EXTRA_DISTRICT_COORDS: dict[str, tuple[float, float]] = {
     "Dehradun": (30.3165, 78.0322), "Raipur": (21.2514, 81.6296),
 }
 
+from app.services.district_coords import DISTRICT_COORDS_INDIA
+
 DISTRICT_COORDS: dict[str, tuple[float, float]] = {
     **{d: (lat, lon) for (lat, lon), (_s, d) in CITY_COORDS.items()},
+    **DISTRICT_COORDS_INDIA,
     **_EXTRA_DISTRICT_COORDS,
     **DISTRICT_CENTROIDS,  # detailed Maharashtra set wins
 }
+
+# Loose-match index: strip everything but letters so "Kancheepuram" ≈ "kancheepuram",
+# "Ropar (Rupnagar)" ≈ "roparrupnagar", "Kozhikode(Calicut)" ≈ "kozhikodecalicut".
+_NORM_DISTRICT: dict[str, tuple[float, float]] = {}
+for _k, _v in DISTRICT_COORDS.items():
+    _norm = "".join(c for c in _k.lower() if c.isalpha())
+    _NORM_DISTRICT.setdefault(_norm, _v)
 
 
 def _district_coord(name: str) -> tuple[float, float] | None:
@@ -287,7 +297,11 @@ def _district_coord(name: str) -> tuple[float, float] | None:
     for suffix in (" district", " District"):
         if base.endswith(suffix):
             base = base[: -len(suffix)].strip()
-    return DISTRICT_COORDS.get(base)
+    if base in DISTRICT_COORDS:
+        return DISTRICT_COORDS[base]
+    # letters-only loose match ("Thiruvellore" vs a differently-punctuated key)
+    norm = "".join(c for c in name.lower() if c.isalpha())
+    return _NORM_DISTRICT.get(norm)
 
 
 def district_distance_km(district_a: str, district_b: str) -> float | None:

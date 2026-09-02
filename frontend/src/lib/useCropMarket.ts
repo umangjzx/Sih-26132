@@ -12,6 +12,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchOptions, type CropMarketOption } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
 
+/** Crops/markets beyond this range from a precise location are hidden. */
+export const NEARBY_RADIUS_KM = 200;
+
 export type CropMarketState = {
   options: CropMarketOption[];
   crops: string[];
@@ -39,6 +42,9 @@ export function useCropMarket(): CropMarketState {
   const stateScope = location?.state;
   const lat = location?.lat ?? null;
   const lon = location?.lon ?? null;
+  // A precise fix (GPS or a geocoded town) filters the picker to NEARBY_RADIUS_KM;
+  // a bare state pick (source "state") shows the whole state.
+  const precise = !!location && location.source !== "state" && lat != null && lon != null;
 
   const [options, setOptions] = useState<CropMarketOption[]>([]);
   const [ready, setReady] = useState(false);
@@ -47,15 +53,20 @@ export function useCropMarket(): CropMarketState {
   const loadOptions = useCallback(async () => {
     setError(false);
     try {
-      // coords -> markets sorted nearest-first (a big state's picker is huge)
-      const opts = await fetchOptions(stateScope, { lat, lon });
+      // precise fix -> only crops/markets within NEARBY_RADIUS_KM; otherwise
+      // just sort nearest-first (a big state's picker is huge)
+      const opts = await fetchOptions(stateScope, {
+        lat,
+        lon,
+        radiusKm: precise ? NEARBY_RADIUS_KM : null,
+      });
       setOptions(opts);
       setReady(true);
     } catch {
       setError(true);
     }
     // warmTick: refetch once a background per-state price warm completes
-  }, [stateScope, lat, lon, warmTick]);
+  }, [stateScope, lat, lon, precise, warmTick]);
 
   useEffect(() => {
     loadOptions();

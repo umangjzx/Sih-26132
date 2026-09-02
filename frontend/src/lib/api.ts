@@ -316,13 +316,14 @@ export async function patchJson<T>(
 
 export function fetchOptions(
   state?: string,
-  coords?: { lat?: number | null; lon?: number | null },
+  coords?: { lat?: number | null; lon?: number | null; radiusKm?: number | null },
 ): Promise<CropMarketOption[]> {
   const p = new URLSearchParams();
   if (state) p.set("state", state);
   if (typeof coords?.lat === "number" && typeof coords?.lon === "number") {
     p.set("lat", String(coords.lat));
     p.set("lon", String(coords.lon));
+    if (typeof coords.radiusKm === "number") p.set("radius_km", String(coords.radiusKm));
   }
   const q = p.toString();
   return getJson(`/api/options${q ? `?${q}` : ""}`);
