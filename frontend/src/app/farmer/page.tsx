@@ -8,7 +8,7 @@
  *         flushes queue on reconnect via window "online" event.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -16,7 +16,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { NearbyResources } from "@/components/NearbyResources";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
-import { createLot, listMyLots, type LotCreate, type LotResponse } from "@/lib/api";
+import { createLot, listMyLots, scanLotSlip, type LotCreate, type LotResponse } from "@/lib/api";
 
 const DRAFT_KEY = "agrilink.lot_draft";
 const QUEUE_KEY = "agrilink.lot_queue";
@@ -63,6 +63,8 @@ export default function FarmerPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [queueCount, setQueueCount] = useState(0);
+  const [scanning, setScanning] = useState(false);
+  const slipInputRef = useRef<HTMLInputElement>(null);
 
   // Guard
   useEffect(() => {
@@ -107,6 +109,43 @@ export default function FarmerPage() {
     const next = { ...form, [field]: value };
     setForm(next);
     localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+  }
+
+  async function handleSlip(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // let the same file be picked again
+    if (!file || !token) return;
+    setScanning(true);
+    try {
+      const d = await scanLotSlip(file, token);
+      if (!d.available) {
+        setToast(t("scanFailed"));
+        setTimeout(() => setToast(null), 4000);
+        return;
+      }
+      const next: FormState = {
+        ...form,
+        crop: d.crop ?? form.crop,
+        quantity_kg: d.quantity_kg != null ? String(d.quantity_kg) : form.quantity_kg,
+        quality_grade: d.grade && d.grade !== "FAQ" ? d.grade : form.quality_grade,
+        expected_price: d.expected_price != null ? String(d.expected_price) : form.expected_price,
+        available_from: d.available_from ?? form.available_from,
+      };
+      setForm(next);
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      const filledAll = d.crop && d.quantity_kg != null && d.expected_price != null;
+      setToast(
+        d.confidence != null && d.confidence < 0.5
+          ? t("scanLowConfidence")
+          : filledAll ? t("scanFilled") : t("scanPartial"),
+      );
+      setTimeout(() => setToast(null), 5000);
+    } catch {
+      setToast(t("scanFailed"));
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setScanning(false);
+    }
   }
 
   async function flushQueue() {
@@ -227,15 +266,33 @@ export default function FarmerPage() {
 
       {/* Create lot form */}
       <section id="create-lot" className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
-        <div className="mb-5 flex items-center gap-3">
+        <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
             <Icon name="leaf" size={20} />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="font-heading text-base font-bold text-[var(--ink)]">{t("createTitle")}</h2>
             <p className="text-xs text-[var(--ink-soft)]">{tdash("createLotHint")}</p>
           </div>
+          <input
+            ref={slipInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            onChange={handleSlip}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => slipInputRef.current?.click()}
+            disabled={scanning}
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-[var(--green-600)] px-4 py-2 text-sm font-bold text-[var(--green-700)] transition hover:bg-[var(--green-100)] disabled:opacity-60"
+          >
+            <Icon name={scanning ? "clock" : "camera"} size={16} />
+            {scanning ? t("scanning") : t("scanSlip")}
+          </button>
         </div>
+        <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("scanHint")}</p>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {[
             { key: "crop" as keyof FormState, label: t("cropLabel"), type: "text", placeholder: t("cropPlaceholder"), required: true },

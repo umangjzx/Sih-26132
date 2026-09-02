@@ -89,6 +89,47 @@ def chat(
 
 
 # --------------------------------------------------------------------------- #
+# Vision — read a photographed mandi slip / handwritten lot note
+# --------------------------------------------------------------------------- #
+
+def vision(system: str, user: str, image_data_url: str, *, max_tokens: int = 400) -> str | None:
+    """Single-image chat completion. `image_data_url` is a `data:image/...;base64,`
+    string. Returns the assistant text or None on any failure. Not cached — every
+    slip photo is unique."""
+    if not settings.openrouter_api_key or not image_data_url:
+        return None
+    try:
+        with httpx.Client(timeout=45.0) as client:
+            resp = client.post(
+                settings.openrouter_url,
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "HTTP-Referer": "https://github.com/umangjzx/Sih-26132",
+                    "X-Title": "AgriLink",
+                    "Content-Type": "application/json",
+                },
+                content=json.dumps({
+                    "model": settings.openrouter_model,
+                    "max_tokens": max_tokens,
+                    "temperature": 0.0,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": [
+                            {"type": "text", "text": user},
+                            {"type": "image_url", "image_url": {"url": image_data_url}},
+                        ]},
+                    ],
+                }),
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        return (data["choices"][0]["message"]["content"] or "").strip() or None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("OpenRouter vision call failed (%s)", exc)
+        return None
+
+
+# --------------------------------------------------------------------------- #
 # Translation of short live strings (weather conditions, API notes)
 # --------------------------------------------------------------------------- #
 

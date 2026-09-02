@@ -404,6 +404,29 @@ export function listMyLots(token: string): Promise<LotResponse[]> {
   return getJson("/api/lots/mine", token);
 }
 
+export type OcrLotDraft = {
+  available: boolean;
+  crop: string | null;
+  quantity_kg: number | null;
+  grade: string | null;
+  expected_price: number | null;
+  available_from: string | null;
+  confidence: number | null;
+  note: string | null;
+};
+
+export async function scanLotSlip(file: File, token: string): Promise<OcrLotDraft> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`${API_URL}/api/ocr/lot-slip`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
+  });
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.json() as Promise<OcrLotDraft>;
+}
+
 // ---------------------------------------------------------------------------
 // Phase 2 demand fetch functions
 // ---------------------------------------------------------------------------

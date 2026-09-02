@@ -99,7 +99,14 @@
     "status_closed": "Closed",
     "queuedOffline": "{count, plural, one {# lot queued} other {# lots queued}} — will sync when back online",
     "offlineBanner": "You are offline. Lots will be saved and sent when you reconnect.",
-    "draftRestored": "Draft restored"
+    "draftRestored": "Draft restored",
+    "scanSlip": "Scan a slip",
+    "scanning": "Reading the photo…",
+    "scanFilled": "Filled from the slip — check every value before saving.",
+    "scanPartial": "Read some fields — please fill the rest and check them.",
+    "scanFailed": "Couldn't read that photo. Enter the details by hand.",
+    "scanHint": "Photo of a mandi slip or your own note — we pre-fill the form, you confirm.",
+    "scanLowConfidence": "The photo was hard to read — double-check each field."
   },
   "demands": {
     "title": "My Demands",
