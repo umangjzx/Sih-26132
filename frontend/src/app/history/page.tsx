@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 
 export default function HistoryPage() {
-  const { token, isAuthenticated, ready } = useAuth();
+  const { token, isAuthenticated, ready, user } = useAuth();
   const router = useRouter();
   const t = useTranslations("history");
   const tdeals = useTranslations("deals");
@@ -27,8 +27,10 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready && !isAuthenticated) router.replace("/login");
-  }, [ready, isAuthenticated, router]);
+    if (!ready) return;
+    if (!isAuthenticated) router.replace("/login");
+    else if (user?.role === "admin") router.replace("/admin");
+  }, [ready, isAuthenticated, user, router]);
 
   const load = useCallback(async () => {
     if (!token) return;

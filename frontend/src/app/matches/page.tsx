@@ -75,8 +75,10 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (ready && !isAuthenticated) router.replace("/login");
-  }, [ready, isAuthenticated, router]);
+    if (!ready) return;
+    if (!isAuthenticated) router.replace("/login");
+    else if (user?.role === "admin") router.replace("/admin");
+  }, [ready, isAuthenticated, user, router]);
 
   const loadData = useCallback(async () => {
     if (!token) return;

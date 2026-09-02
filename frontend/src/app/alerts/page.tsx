@@ -21,7 +21,7 @@ import {
 } from "@/lib/api";
 
 export default function AlertsPage() {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, ready } = useAuth();
   const t = useTranslations("alerts");
   const tc = useTranslations("common");
   const tn = useTranslations("nav");
@@ -44,6 +44,8 @@ export default function AlertsPage() {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  if (!ready) return null;
 
   if (!isAuthenticated) {
     return (

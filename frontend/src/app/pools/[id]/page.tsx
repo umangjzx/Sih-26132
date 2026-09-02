@@ -70,8 +70,11 @@ export default function PoolDetailPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (ready && !isAuthenticated) router.replace("/login");
-  }, [ready, isAuthenticated, router]);
+    if (!ready) return;
+    if (!isAuthenticated) router.replace("/login");
+    else if (user?.role === "buyer") router.replace("/buyer");
+    else if (user?.role === "admin") router.replace("/admin");
+  }, [ready, isAuthenticated, user, router]);
 
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(poolId)) return;
