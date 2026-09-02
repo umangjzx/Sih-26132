@@ -108,6 +108,9 @@ export type DemandCreate = {
   price_band_min: number;
   price_band_max: number;
   delivery_window: string;
+  delivery_district?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type DemandResponse = {
@@ -139,6 +142,7 @@ export type CounterpartySummary = {
   name: string;
   district: string;
   kyc_status: string;
+  verification_status?: "unverified" | "pending" | "verified" | "rejected";
 };
 
 export type LotSummary = {
@@ -197,6 +201,8 @@ export type DealResponse = {
   logistics_mode: string;
   payment_status: string;
   pipeline_status: string;
+  payment_method?: string | null;
+  payment_reference?: string | null;
   created_at: string;
 };
 
@@ -383,6 +389,9 @@ type AuthPayload = {
   user: import("@/lib/auth").StoredUser;
 };
 
+export type LatLon = { latitude?: number | null; longitude?: number | null };
+export type SignupLocation = LatLon & { district?: string | null; state?: string | null };
+
 export function login(phone: string, password: string): Promise<AuthPayload> {
   return postJson("/api/auth/login", { phone, password });
 }
@@ -392,14 +401,82 @@ export function register(
   name: string,
   role: string,
   password: string,
+  location?: SignupLocation,
 ): Promise<AuthPayload> {
-  return postJson("/api/auth/register", { phone, name, role, password });
+  return postJson("/api/auth/register", { phone, name, role, password, ...(location ?? {}) });
 }
 
 export function refreshTokens(
   refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string }> {
   return postJson("/api/auth/refresh", { refresh_token: refreshToken });
+}
+
+export type ProfilePatch = {
+  name?: string;
+  district?: string;
+  state?: string;
+  taluka?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+export function updateProfile(
+  patch: ProfilePatch,
+  token: string,
+): Promise<import("@/lib/auth").StoredUser> {
+  return patchJson("/api/auth/me", patch, token);
+}
+
+export function requestVerification(
+  body: { note?: string; reference?: string },
+  token: string,
+): Promise<import("@/lib/auth").StoredUser> {
+  return postJson("/api/auth/me/request-verification", body, token);
+}
+
+// ---- admin user management -------------------------------------------------
+export type AdminUser = {
+  id: number;
+  name: string;
+  phone: string;
+  role: string;
+  district: string;
+  state: string;
+  kyc_status: string;
+  verification_status: "unverified" | "pending" | "verified" | "rejected";
+  verification_note: string | null;
+  verification_ref: string | null;
+  is_active: boolean;
+  created_at: string | null;
+  lots: number;
+  demands: number;
+  deals: number;
+};
+
+export function getAdminUsers(
+  token: string,
+  opts: { role?: string; verification?: string; q?: string } = {},
+): Promise<AdminUser[]> {
+  const p = new URLSearchParams();
+  if (opts.role) p.set("role", opts.role);
+  if (opts.verification) p.set("verification", opts.verification);
+  if (opts.q) p.set("q", opts.q);
+  const qs = p.toString();
+  return getJson(`/api/admin/users${qs ? `?${qs}` : ""}`, token);
+}
+
+export function verifyUser(
+  id: number,
+  status: "verified" | "rejected" | "unverified",
+  note: string | undefined,
+  token: string,
+): Promise<AdminUser> {
+  return patchJson(`/api/admin/users/${id}/verify`, { status, note }, token);
+}
+
+export function setUserActive(id: number, isActive: boolean, token: string): Promise<AdminUser> {
+  return patchJson(`/api/admin/users/${id}/active`, { is_active: isActive }, token);
 }
 
 // ---------------------------------------------------------------------------
@@ -631,8 +708,9 @@ export function getDealById(
 export function advanceDeal(
   dealId: number | string,
   token: string,
+  body: { payment_method?: string; payment_reference?: string; note?: string } = {},
 ): Promise<DealDetailResponse> {
-  return patchJson(`/api/deals/${dealId}/advance`, {}, token);
+  return patchJson(`/api/deals/${dealId}/advance`, body, token);
 }
 
 export function getDealDisputes(

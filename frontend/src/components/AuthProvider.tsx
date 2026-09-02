@@ -10,6 +10,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   clearAuth,
+  getRefreshToken,
   getStoredUser,
   getToken,
   saveAuth,
@@ -23,6 +24,8 @@ type AuthContextValue = {
   /** false until the stored session has been read on mount — guards redirects */
   ready: boolean;
   login: (accessToken: string, refreshToken: string, user: StoredUser) => void;
+  /** replace the stored user in place (e.g. after a profile / verification change) */
+  updateUser: (user: StoredUser) => void;
   logout: () => void;
 };
 
@@ -60,6 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   }
 
+  function updateUser(next: StoredUser): void {
+    const at = getToken();
+    const rt = getRefreshToken();
+    if (at && rt) saveAuth(at, rt, next);
+    setUser(next);
+  }
+
   function logout(): void {
     clearAuth();
     setToken(null);
@@ -74,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!token && !!user,
         ready,
         login,
+        updateUser,
         logout,
       }}
     >

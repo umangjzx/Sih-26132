@@ -33,6 +33,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     tradeLinks.push({ href: "/history", label: t("history"), icon: "clock" });
     tradeLinks.push({ href: "/alerts", label: t("alerts"), icon: "bell" });
   }
+  if (isAuthenticated) tradeLinks.push({ href: "/profile", label: t("profile"), icon: "users" });
 
   const renderLink = (link: NavLink) => {
     const active =
@@ -90,16 +91,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         </nav>
 
         {user?.role === "admin" && (
-          <div className="border-t border-white/10 p-4">
-            <Link
-              href="/admin"
-              onClick={onClose}
-              aria-current={pathname.startsWith("/admin") ? "page" : undefined}
-              className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--green-50)] hover:bg-white/10 hover:text-white"
-            >
-              <Icon name="shield" size={20} className="opacity-80" />
-              {t("administration")}
-            </Link>
+          <div className="flex flex-col gap-1.5 border-t border-white/10 p-4">
+            {renderLink({ href: "/admin", label: t("administration"), icon: "shield" })}
+            {renderLink({ href: "/admin/users", label: t("users"), icon: "users" })}
           </div>
         )}
 

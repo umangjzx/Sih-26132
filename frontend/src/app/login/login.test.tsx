@@ -84,7 +84,9 @@ it("register tab reveals name + role and calls register()", async () => {
   await userEvent.type(screen.getByLabelText(/Password/i), "s3cret!!");
   await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 
-  expect(api.register).toHaveBeenCalledWith("+910000000001", "Ravi", "farmer", "s3cret!!");
+  expect(api.register).toHaveBeenCalledWith(
+    "+910000000001", "Ravi", "farmer", "s3cret!!", expect.any(Object),
+  );
   expect(mockLogin).toHaveBeenCalledWith("tok", "ref", expect.objectContaining({ role: "farmer" }));
 });
 

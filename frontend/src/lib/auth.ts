@@ -16,7 +16,12 @@ export type StoredUser = {
   role: "farmer" | "buyer" | "admin";
   district: string;
   taluka: string;
+  state?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   kyc_status: string;
+  verification_status?: "unverified" | "pending" | "verified" | "rejected";
+  verification_note?: string | null;
   is_active: boolean;
 };
 

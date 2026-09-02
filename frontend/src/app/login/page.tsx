@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
+import { useLocation } from "@/lib/useLocation";
 import { login as loginRequest, register as registerRequest } from "@/lib/api";
 
 type Mode = "signin" | "register";
@@ -32,6 +33,7 @@ function destFor(role: string): string {
 
 export default function LoginPage() {
   const { isAuthenticated, user, login } = useAuth();
+  const { location } = useLocation();
   const router = useRouter();
   const t = useTranslations("auth");
 
@@ -85,7 +87,12 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await registerRequest(phone.trim(), name.trim(), role, password);
+      const data = await registerRequest(phone.trim(), name.trim(), role, password, {
+        district: location?.district || null,
+        state: location?.state || null,
+        latitude: location?.lat ?? null,
+        longitude: location?.lon ?? null,
+      });
       login(data.access_token, data.refresh_token, data.user);
       router.replace(destFor(data.user.role));
     } catch (err) {
