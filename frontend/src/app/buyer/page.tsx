@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
+import { StatCards, type Stat } from "@/components/StatCards";
 import { Icon } from "@/components/ui";
 import {
   createDemand,
@@ -24,6 +25,15 @@ import {
   type MatchResponse,
   type ScoreDetail,
 } from "@/lib/api";
+
+function tierOf(m: MatchResponse): string {
+  try {
+    const d = m.score_detail ? (JSON.parse(m.score_detail) as { tier?: string }) : null;
+    return d?.tier ?? (m.score >= 75 ? "strong" : m.score >= 50 ? "good" : "fair");
+  } catch {
+    return m.score >= 75 ? "strong" : "fair";
+  }
+}
 
 function parseScoreDetail(raw: string | null): ScoreDetail | null {
   if (!raw) return null;
@@ -87,6 +97,36 @@ export default function BuyerPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const openDemands = demands.filter((d) => d.status === "open");
+  const totalKg = openDemands.reduce((s, d) => s + d.quantity_kg, 0);
+  const estSpend = openDemands.reduce(
+    (s, d) => s + (d.quantity_kg / 100) * ((d.price_band_min + d.price_band_max) / 2),
+    0,
+  );
+  const strongMatches = matches.filter((m) => tierOf(m) === "strong").length;
+  const verifiedFarmers = new Set(
+    matches.filter((m) => m.counterparty?.kyc_status === "verified").map((m) => m.counterparty?.id),
+  ).size;
+
+  const stats: Stat[] = [
+    { label: td("statOpenDemands"), value: String(openDemands.length), sub: `${demands.length} ${td("statAllTime")}`, icon: "handshake" },
+    { label: td("statSought"), value: `${(totalKg / 100).toFixed(1)} qtl`, sub: td("statAcross", { n: openDemands.length }), icon: "chart" },
+    {
+      label: td("statEstSpend"),
+      value: estSpend >= 1e5 ? `₹${(estSpend / 1e5).toFixed(2)}L` : `₹${Math.round(estSpend).toLocaleString()}`,
+      sub: td("statAtMidBand"),
+      icon: "coins",
+      tone: "good",
+    },
+    {
+      label: td("statMatches"),
+      value: String(matches.length),
+      sub: strongMatches ? td("statStrong", { n: strongMatches }) : verifiedFarmers ? td("statVerified", { n: verifiedFarmers }) : td("statNoneYet"),
+      icon: "connection",
+      tone: matches.length ? "good" : "neutral",
+    },
+  ];
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -113,6 +153,8 @@ export default function BuyerPage() {
         title={tdash("buyerTitle")}
         subtitle={tdash("buyerSubtitle")}
       />
+
+      <StatCards stats={stats} />
 
       {toast && (
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">

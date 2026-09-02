@@ -111,7 +111,17 @@
     "scanPartial": "कुछ फ़ील्ड पढ़े — बाकी भरें और जांचें।",
     "scanFailed": "यह फोटो पढ़ी नहीं जा सकी। विवरण हाथ से भरें।",
     "scanHint": "मंडी पर्ची या अपने नोट की फोटो — हम फ़ॉर्म भर देते हैं, आप पुष्टि करें।",
-    "scanLowConfidence": "फोटो पढ़ना मुश्किल था — हर फ़ील्ड दोबारा जांचें।"
+    "scanLowConfidence": "फोटो पढ़ना मुश्किल था — हर फ़ील्ड दोबारा जांचें।",
+    "statOpenLots": "खुले लॉट",
+    "statAllTime": "कुल",
+    "statListed": "सूचीबद्ध",
+    "statAcrossLots": "{n} खुले लॉट में",
+    "statEstValue": "अनु. मूल्य",
+    "statAtAsking": "आपके मांगे मूल्य पर",
+    "statMatches": "सजीव मैच",
+    "statStrong": "{n} मजबूत",
+    "statVerified": "{n} सत्यापित खरीदार",
+    "statNoneYet": "अभी कोई नहीं"
   },
   "demands": {
     "title": "मेरी मांगें",
@@ -128,7 +138,17 @@
     "submit": "मांग पोस्ट करें",
     "submitting": "पोस्ट हो रही है...",
     "success": "मांग सफलतापूर्वक पोस्ट की गई",
-    "noDemands": "आपके पास कोई सक्रिय मांग नहीं है"
+    "noDemands": "आपके पास कोई सक्रिय मांग नहीं है",
+    "statOpenDemands": "खुली मांग",
+    "statAllTime": "कुल",
+    "statSought": "मांगी गई",
+    "statAcross": "{n} खुली मांगों में",
+    "statEstSpend": "अनु. खर्च",
+    "statAtMidBand": "मध्य मूल्य पर",
+    "statMatches": "सजीव मैच",
+    "statStrong": "{n} मजबूत",
+    "statVerified": "{n} सत्यापित विक्रेता",
+    "statNoneYet": "अभी कोई नहीं"
   },
   "matching": {
     "title": "मेरे मिलान",

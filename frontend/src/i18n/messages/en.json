@@ -111,7 +111,17 @@
     "scanPartial": "Read some fields — please fill the rest and check them.",
     "scanFailed": "Couldn't read that photo. Enter the details by hand.",
     "scanHint": "Photo of a mandi slip or your own note — we pre-fill the form, you confirm.",
-    "scanLowConfidence": "The photo was hard to read — double-check each field."
+    "scanLowConfidence": "The photo was hard to read — double-check each field.",
+    "statOpenLots": "Open lots",
+    "statAllTime": "all-time",
+    "statListed": "Listed",
+    "statAcrossLots": "across {n} open lots",
+    "statEstValue": "Est. value",
+    "statAtAsking": "at your asking price",
+    "statMatches": "Live matches",
+    "statStrong": "{n} strong",
+    "statVerified": "{n} verified buyers",
+    "statNoneYet": "none yet"
   },
   "demands": {
     "title": "My Demands",
@@ -128,7 +138,17 @@
     "submit": "Post Demand",
     "submitting": "Posting...",
     "success": "Demand posted successfully",
-    "noDemands": "You have no active demands"
+    "noDemands": "You have no active demands",
+    "statOpenDemands": "Open demands",
+    "statAllTime": "all-time",
+    "statSought": "Sought",
+    "statAcross": "across {n} open demands",
+    "statEstSpend": "Est. spend",
+    "statAtMidBand": "at mid price band",
+    "statMatches": "Live matches",
+    "statStrong": "{n} strong",
+    "statVerified": "{n} verified sellers",
+    "statNoneYet": "none yet"
   },
   "matching": {
     "title": "My Matches",

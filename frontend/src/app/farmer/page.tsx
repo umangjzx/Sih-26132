@@ -15,8 +15,26 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { NearbyResources } from "@/components/NearbyResources";
 import { PageHeader } from "@/components/PageHeader";
+import { StatCards, type Stat } from "@/components/StatCards";
 import { Icon } from "@/components/ui";
-import { createLot, listMyLots, scanLotSlip, type LotCreate, type LotResponse } from "@/lib/api";
+import {
+  createLot,
+  listMyLots,
+  listMyMatches,
+  scanLotSlip,
+  type LotCreate,
+  type LotResponse,
+  type MatchResponse,
+} from "@/lib/api";
+
+function matchTier(m: MatchResponse): string {
+  try {
+    const d = m.score_detail ? (JSON.parse(m.score_detail) as { tier?: string }) : null;
+    return d?.tier ?? (m.score >= 75 ? "strong" : m.score >= 50 ? "good" : "fair");
+  } catch {
+    return m.score >= 75 ? "strong" : "fair";
+  }
+}
 
 const DRAFT_KEY = "agrilink.lot_draft";
 const QUEUE_KEY = "agrilink.lot_queue";
@@ -59,6 +77,7 @@ export default function FarmerPage() {
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [lots, setLots] = useState<LotResponse[]>([]);
+  const [matches, setMatches] = useState<MatchResponse[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -101,9 +120,39 @@ export default function FarmerPage() {
       const data = await listMyLots(token);
       setLots(data);
     } catch { /* non-fatal */ }
+    try {
+      setMatches(await listMyMatches(token));
+    } catch { /* non-fatal */ }
   }, [token]);
 
   useEffect(() => { loadLots(); }, [loadLots]);
+
+  const openLots = lots.filter((l) => l.status === "open");
+  const totalKg = openLots.reduce((s, l) => s + l.quantity_kg, 0);
+  const estValue = openLots.reduce((s, l) => s + (l.quantity_kg / 100) * l.expected_price, 0);
+  const strongMatches = matches.filter((m) => matchTier(m) === "strong").length;
+  const verifiedBuyers = new Set(
+    matches.filter((m) => m.counterparty?.kyc_status === "verified").map((m) => m.counterparty?.id),
+  ).size;
+
+  const stats: Stat[] = [
+    { label: t("statOpenLots"), value: String(openLots.length), sub: `${lots.length} ${t("statAllTime")}`, icon: "leaf" },
+    { label: t("statListed"), value: `${(totalKg / 100).toFixed(1)} qtl`, sub: t("statAcrossLots", { n: openLots.length }), icon: "chart" },
+    {
+      label: t("statEstValue"),
+      value: estValue >= 1e5 ? `₹${(estValue / 1e5).toFixed(2)}L` : `₹${Math.round(estValue).toLocaleString()}`,
+      sub: t("statAtAsking"),
+      icon: "coins",
+      tone: "good",
+    },
+    {
+      label: t("statMatches"),
+      value: String(matches.length),
+      sub: strongMatches ? t("statStrong", { n: strongMatches }) : verifiedBuyers ? t("statVerified", { n: verifiedBuyers }) : t("statNoneYet"),
+      icon: "connection",
+      tone: matches.length ? "good" : "neutral",
+    },
+  ];
 
   function updateField(field: keyof FormState, value: string) {
     const next = { ...form, [field]: value };
@@ -222,6 +271,8 @@ export default function FarmerPage() {
         title={tdash("farmerTitle")}
         subtitle={tdash("farmerSubtitle")}
       />
+
+      <StatCards stats={stats} />
 
       {/* Status Banners */}
       {!isOnline && (
