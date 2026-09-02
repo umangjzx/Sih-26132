@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models.price_cache import PriceCache
 from app.services.freight import freight_rate
-from app.services.geo import DISTRICT_CENTROIDS
+from app.services.geo import _district_coord
 from app.services.market_towns import market_coords
 from app.services.routing import road_distance
 
@@ -23,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 def _coords_for(market: str, district: str) -> tuple[float, float] | None:
-    return market_coords(market) or DISTRICT_CENTROIDS.get(district)
+    # all-India district table (~470 HQ coords), not the 36-entry Maharashtra
+    # centroid set — otherwise every non-MH market is silently dropped and the
+    # "best market" ranking 404s outside Maharashtra.
+    return market_coords(market) or _district_coord(district)
 
 
 def best_markets(

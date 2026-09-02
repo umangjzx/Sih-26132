@@ -100,6 +100,25 @@ def test_best_markets_ranks_by_net_price(db):
     assert nets == sorted(nets, reverse=True)
 
 
+def test_best_markets_places_non_maharashtra_markets(db):
+    """Regression: markets outside the 36-entry Maharashtra centroid table must
+    still be placed via the all-India district table — otherwise best-market
+    404s for the whole Tamil Nadu / Coimbatore cluster."""
+    today = date(2026, 9, 1)
+    db.add_all([
+        PriceCache(crop="Onion", variety="", market="Erode Uzhavar Sandhai", district="Erode",
+                   state="Tamil Nadu", date=today, min_price=5200, max_price=5600,
+                   modal_price=5400, arrival_volume=None),
+        PriceCache(crop="Onion", variety="", market="Palladam", district="Tiruppur",
+                   state="Tamil Nadu", date=today, min_price=5000, max_price=5400,
+                   modal_price=5200, arrival_volume=None),
+    ])
+    db.commit()
+    # origin ~ Coimbatore
+    ranked = best_markets(db, "Onion", origin=(11.0168, 76.9558), use_routing=False, limit=10)
+    assert {"Erode Uzhavar Sandhai", "Palladam"} <= {r["market"] for r in ranked}
+
+
 # --------------------------------------------------------------------------- #
 # API smoke
 # --------------------------------------------------------------------------- #

@@ -17,7 +17,6 @@ from app.services import holidays as holidays_svc
 from app.services import reference as ref
 from app.services import weather as weather_svc
 from app.services.best_market import best_markets
-from app.services.geo import DISTRICT_CENTROIDS
 from app.services.market_towns import market_coords
 
 router = APIRouter(prefix="/api", tags=["intel"])

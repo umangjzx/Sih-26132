@@ -272,8 +272,22 @@ def accept_offer(
     for o in other_pending:
         o.status = "declined"
 
-    # Advance match status
+    # Advance match status, and take the lot + demand off the open market so the
+    # matcher and the discovery board stop offering an already-committed lot.
     match.status = "accepted"
+    lot.status = "matched"
+    demand.status = "matched"
+
+    # Any other still-open matches for this lot or demand are now moot.
+    siblings = db.execute(
+        select(Match).where(
+            Match.id != match.id,
+            Match.status.in_(("proposed", "offered")),
+            (Match.lot_id == lot.id) | (Match.demand_id == demand.id),
+        )
+    ).scalars().all()
+    for sib in siblings:
+        sib.status = "rejected"
 
     # Create the Deal
     deal = Deal(

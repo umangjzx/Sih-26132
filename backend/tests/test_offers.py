@@ -197,6 +197,43 @@ def test_accept_offer_creates_deal(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_accept_offer_takes_lot_and_demand_off_the_market(db, farmer_user, buyer_user):
+    """Accepting an offer must flip the lot + demand to 'matched' (so the matcher
+    and discovery board stop offering an already-committed lot) and reject any
+    other still-open matches involving either of them."""
+    from app.models.demand import Demand
+    from app.models.lot import Lot
+
+    match = _seed_match(db, farmer_user, buyer_user)
+    lot = db.get(Lot, match.lot_id)
+    demand = db.get(Demand, match.demand_id)
+
+    # a sibling match on the same lot, still open
+    other_demand = Demand(
+        buyer_id=buyer_user.id, crop="Onion", quantity_kg=500, quality_spec="Grade A",
+        price_band_min=2000, price_band_max=2800, delivery_window="7 days", status="open",
+    )
+    db.add(other_demand)
+    db.commit()
+    sibling = Match(lot_id=lot.id, demand_id=other_demand.id, score=70.0, status="proposed")
+    db.add(sibling)
+    db.commit()
+
+    client, _ = _make_clients(db, farmer_user, buyer_user)
+    try:
+        _as_farmer(farmer_user)
+        offer_id = client.post(f"/api/matches/{match.id}/offers", json=OFFER_BODY).json()["id"]
+        _as_buyer(buyer_user)
+        assert client.post(f"/api/offers/{offer_id}/accept").status_code == 200
+
+        db.expire_all()
+        assert db.get(Lot, lot.id).status == "matched"
+        assert db.get(Demand, demand.id).status == "matched"
+        assert db.get(Match, sibling.id).status == "rejected"
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_accept_own_offer_forbidden(db, farmer_user, buyer_user):
     match = _seed_match(db, farmer_user, buyer_user)
     app.dependency_overrides[get_db] = lambda: db
