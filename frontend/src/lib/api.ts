@@ -1403,11 +1403,25 @@ export function fetchAdvisorSummary(
   return getJson(`/api/advisor/summary?${qs({ crop, market, lang })}`);
 }
 
+export type AssistantSource = { title: string; topic: string; score: number };
 export function askAssistant(body: {
   question: string;
   crop?: string;
   market?: string;
   lang: string;
-}): Promise<{ available: boolean; answer: string | null; lang?: string }> {
+}): Promise<{
+  available: boolean;
+  answer: string | null;
+  lang?: string;
+  sources?: AssistantSource[];
+  reference?: { title: string; text: string }[];
+}> {
   return postJson("/api/assistant/ask", body);
+}
+
+export function assistantSearch(
+  q: string,
+  k = 5,
+): Promise<{ query: string; results: { title: string; topic: string; score: number; text: string }[] }> {
+  return getJson(`/api/assistant/search?${qs({ q, k })}`);
 }

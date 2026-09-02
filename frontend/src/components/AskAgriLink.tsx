@@ -8,7 +8,11 @@ import { useAppLocale } from "@/i18n/LocaleProvider";
 import { askAssistant } from "@/lib/api";
 import { Icon } from "./ui";
 
-type Turn = { role: "user" | "ai"; text: string };
+type Turn = {
+  role: "user" | "ai";
+  text: string;
+  sources?: { title: string }[];
+};
 
 export function AskAgriLink() {
   const t = useTranslations("assistant");
@@ -33,11 +37,21 @@ export function AskAgriLink() {
     setBusy(true);
     try {
       const r = await askAssistant({ question, crop, market, lang: locale });
-      if (!r.available) {
+      if (r.available) {
+        setTurns((s) => [
+          ...s,
+          { role: "ai", text: r.answer ?? t("error"), sources: r.sources },
+        ]);
+      } else if (r.reference && r.reference.length > 0) {
+        // No LLM key, but the knowledge base still has grounded text — show it.
+        const text = r.reference.map((ref) => `${ref.title}\n${ref.text}`).join("\n\n");
+        setTurns((s) => [
+          ...s,
+          { role: "ai", text, sources: r.reference!.map((ref) => ({ title: ref.title })) },
+        ]);
+      } else {
         setUnavailable(true);
         setTurns((s) => [...s, { role: "ai", text: t("unavailable") }]);
-      } else {
-        setTurns((s) => [...s, { role: "ai", text: r.answer ?? t("error") }]);
       }
     } catch {
       setTurns((s) => [...s, { role: "ai", text: t("error") }]);
@@ -75,15 +89,28 @@ export function AskAgriLink() {
               <p className="px-1 text-xs text-[var(--ink-soft)]">{t("hint")}</p>
             )}
             {turns.map((turn, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-                  turn.role === "user"
-                    ? "ml-auto bg-[var(--green-600)] text-white"
-                    : "bg-[var(--paper)] text-[var(--ink)]"
-                }`}
-              >
-                {turn.text}
+              <div key={i} className={turn.role === "user" ? "flex flex-col items-end" : "flex flex-col items-start"}>
+                <div
+                  className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
+                    turn.role === "user"
+                      ? "bg-[var(--green-600)] text-white"
+                      : "bg-[var(--paper)] text-[var(--ink)]"
+                  }`}
+                >
+                  {turn.text}
+                </div>
+                {turn.role === "ai" && turn.sources && turn.sources.length > 0 && (
+                  <div className="mt-1 flex max-w-[85%] flex-wrap gap-1">
+                    {turn.sources.slice(0, 4).map((src, j) => (
+                      <span
+                        key={j}
+                        className="rounded-full bg-[var(--green-100)] px-2 py-0.5 text-[10px] font-medium text-[var(--green-700)]"
+                      >
+                        {src.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {busy && (

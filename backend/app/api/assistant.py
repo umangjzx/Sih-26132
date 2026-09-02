@@ -94,15 +94,16 @@ _SYS_SUMMARY = (
 
 _SYS_ASSISTANT = (
     "You are AgriLink, a mandi-price assistant for Indian farmers and buyers. "
-    "Answer in 1-4 short sentences IN {lang}. For anything about the specific "
+    "Answer in 1-5 short sentences IN {lang}. For anything about the specific "
     "crop/market (price, whether to sell or wait, weather, MSP, calendar) use "
     "ONLY the CONTEXT below and never invent a number, date or market name — if "
     "it isn't in the context, say you don't have that information (AgriLink has "
-    "no price forecasts and no traded-volume data). You MAY explain in general "
-    "terms how AgriLink works: it aggregates official AGMARKNET mandi prices and "
-    "gives a transparent rule-based sell/wait signal from price momentum vs the "
-    "7- and 30-day averages, weather, MSP and the crop calendar. Be concrete and "
-    "practical, never give financial guarantees."
+    "no price forecasts and no traded-volume data). For how-it-works and policy "
+    "questions (MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, "
+    "schemes, how AgriLink computes its signal or freight) you MAY use the "
+    "REFERENCE section below — treat it as trusted background and summarise it in "
+    "plain words. If neither section covers the question, say so briefly. Be "
+    "concrete and practical, never give financial guarantees."
 )
 
 
@@ -130,17 +131,54 @@ class AskBody(BaseModel):
 
 @router.post("/assistant/ask")
 def assistant_ask(body: AskBody, db: Session = Depends(get_db)) -> dict:
+    from app.services import knowledge
+
+    hits = knowledge.search(body.question, k=4)
+    sources = [{"title": h.doc.title, "topic": h.doc.topic, "score": h.score} for h in hits]
+
     if not llm.available():
-        return {"available": False, "answer": None}
+        # No key: still return the grounded reference text so the client can show
+        # something useful instead of nothing.
+        if hits:
+            return {
+                "available": False,
+                "answer": None,
+                "reference": [{"title": h.doc.title, "text": h.doc.text} for h in hits],
+                "sources": sources,
+            }
+        return {"available": False, "answer": None, "sources": []}
+
     ctx = _context(db, body.crop, body.market) if body.crop and body.market else {}
-    user = f"CONTEXT:\n{_as_lines(ctx) or '(no crop/market selected)'}\n\nQUESTION: {body.question}"
+    reference = "\n\n".join(f"[{h.doc.title}]\n{h.doc.text}" for h in hits)
+    user = (
+        f"CONTEXT:\n{_as_lines(ctx) or '(no crop/market selected)'}\n\n"
+        f"REFERENCE:\n{reference or '(no matching reference)'}\n\n"
+        f"QUESTION: {body.question}"
+    )
     answer = llm.chat(
         _SYS_ASSISTANT.format(lang=llm.lang_name(body.lang)),
         user,
-        max_tokens=350,
+        max_tokens=380,
         cache=False,
     )
-    return {"available": True, "answer": answer, "lang": body.lang}
+    return {"available": True, "answer": answer, "lang": body.lang, "sources": sources}
+
+
+@router.get("/assistant/search")
+def assistant_search(q: str, k: int = 5) -> dict:
+    """Transparency endpoint: which knowledge-base chunks a question retrieves,
+    with scores. Works with or without an LLM key."""
+    from app.services import knowledge
+
+    k = max(1, min(k, 10))
+    hits = knowledge.search(q, k=k)
+    return {
+        "query": q,
+        "results": [
+            {"title": h.doc.title, "topic": h.doc.topic, "score": h.score, "text": h.doc.text}
+            for h in hits
+        ],
+    }
 
 
 def _as_lines(ctx: dict) -> str:

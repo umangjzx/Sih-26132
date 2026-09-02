@@ -33,7 +33,11 @@ def test_summary_and_ask_degrade_without_key(db, monkeypatch):
         r = client.get("/api/advisor/summary", params={"crop": "Onion", "market": "Pune"})
         assert r.json() == {"available": False, "summary": None}
         r = client.post("/api/assistant/ask", json={"question": "sell now?"})
-        assert r.json() == {"available": False, "answer": None}
+        body = r.json()
+        # No key: the LLM answer degrades to None, but grounded reference text
+        # (when any matches) may still be returned for the client to show.
+        assert body["available"] is False
+        assert body["answer"] is None
     finally:
         app.dependency_overrides.clear()
 
