@@ -21,6 +21,10 @@ export type CropMarketState = {
   district: string;
   ready: boolean;
   error: boolean;
+  /** loaded, but the active state has no price data (e.g. a just-picked state) */
+  noDataForState: boolean;
+  /** the scoping state, if any (for a "reset to Maharashtra" affordance) */
+  scopeState?: string;
   setCrop: (crop: string) => void;
   setMarket: (market: string) => void;
   retry: () => void;
@@ -98,6 +102,9 @@ export function useCropMarket(): CropMarketState {
     district,
     ready,
     error,
+    noDataForState:
+      ready && options.length === 0 && !!stateScope && stateScope !== "Maharashtra",
+    scopeState: stateScope,
     setCrop,
     setMarket,
     retry: loadOptions,

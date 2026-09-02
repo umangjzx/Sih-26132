@@ -72,12 +72,19 @@ def geocode(name: str, db: Session) -> dict | None:
         with httpx.Client(timeout=8.0) as client:
             resp = client.get(
                 GEOCODE_URL,
-                params={"name": key, "count": 1, "country": "IN", "language": "en"},
+                params={"name": key, "count": 5, "country": "IN", "language": "en"},
             )
             resp.raise_for_status()
             hits = resp.json().get("results") or []
-            if hits:
-                h = hits[0]
+            # `country=IN` is only a hint — Open-Meteo still returns same-named
+            # places elsewhere (e.g. "Punjab" -> a village in Sindh, PK). Keep
+            # only Indian hits; if none, fall through to the static fallback.
+            h = next(
+                (x for x in hits
+                 if x.get("country_code") == "IN" or x.get("country") == "India"),
+                None,
+            )
+            if h is not None:
                 result = {
                     "latitude": float(h["latitude"]),
                     "longitude": float(h["longitude"]),
@@ -149,6 +156,9 @@ def reverse_geocode(lat: float, lon: float, db: Session) -> dict:
             )
             resp.raise_for_status()
             j = resp.json()
+            # Only trust the result if it's actually in India.
+            if (j.get("countryCode") or "").upper() not in ("IN", ""):
+                j = {}
             state = j.get("principalSubdivision") or ""
             # BigDataCloud nests admin levels; the deepest one that isn't the
             # state or the country is usually the district.

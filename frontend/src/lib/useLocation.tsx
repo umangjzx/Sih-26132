@@ -94,6 +94,39 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * Resolve fast (no server-side ingest), persist immediately, then warm that
+   * state's prices in the background so a dropdown pick never blocks the UI.
+   */
+  const resolveAndWarm = useCallback(
+    async (args: { lat?: number; lon?: number; place?: string }) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const r = await resolveLocation({ ...args, ensurePrices: false });
+        persist(toAppLocation(r));
+        if (r.state && r.has_prices === false) {
+          // fire-and-forget: pull this state's live data, refresh label on success
+          void resolveLocation({ ...args, ensurePrices: true })
+            .then((warm) => {
+              if (warm.has_prices) persist(toAppLocation(warm));
+            })
+            .catch(() => {});
+        }
+      } catch {
+        if (args.place) {
+          persist({ state: args.place, district: "", label: args.place,
+                    lat: null, lon: null, source: "manual" });
+        } else {
+          setError("resolve");
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [persist],
+  );
+
   const detect = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setError("unsupported");
@@ -102,65 +135,23 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const r = await resolveLocation({
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude,
-            ensurePrices: true,
-          });
-          persist(toAppLocation(r));
-        } catch {
-          setError("resolve");
-        } finally {
-          setLoading(false);
-        }
-      },
+      (pos) => resolveAndWarm({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
       () => {
         setError("denied");
         setLoading(false);
       },
       { timeout: 10000, maximumAge: 600000 },
     );
-  }, [persist]);
+  }, [resolveAndWarm]);
 
   const setPlace = useCallback(
-    async (place: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const r = await resolveLocation({ place, ensurePrices: true });
-        persist(toAppLocation(r));
-      } catch {
-        setError("resolve");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [persist],
+    (place: string) => resolveAndWarm({ place }),
+    [resolveAndWarm],
   );
 
   const setStateName = useCallback(
-    async (state: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const r = await resolveLocation({ place: state, ensurePrices: true });
-        persist(toAppLocation(r));
-      } catch {
-        persist({
-          state,
-          district: "",
-          label: state,
-          lat: null,
-          lon: null,
-          source: "manual",
-        });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [persist],
+    (state: string) => resolveAndWarm({ place: state }),
+    [resolveAndWarm],
   );
 
   const clear = useCallback(() => persist(null), [persist]);

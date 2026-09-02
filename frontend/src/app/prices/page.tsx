@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { CropMarketPicker } from "@/components/CropMarketPicker";
 import { PageHeader } from "@/components/PageHeader";
 import { PriceDetail } from "@/components/PriceDetail";
+import { StateDataNotice } from "@/components/StateDataNotice";
 import { Icon, Skeleton } from "@/components/ui";
 import { useCropMarket } from "@/lib/useCropMarket";
 
@@ -34,6 +35,8 @@ function PricesInner() {
         <div className="rounded-2xl border border-[var(--red-500)]/30 bg-[var(--red-100)] px-5 py-4 text-sm text-[var(--red-700)]">
           {t("loadError")}
         </div>
+      ) : cm.noDataForState ? (
+        <StateDataNotice state={cm.scopeState} />
       ) : (
         <PriceDetail cm={cm} />
       )}

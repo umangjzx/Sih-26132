@@ -32,6 +32,7 @@ const cm: CropMarketState = {
   district: "Pune",
   ready: true,
   error: false,
+  noDataForState: false,
   setCrop: vi.fn(),
   setMarket: vi.fn(),
   retry: vi.fn(),

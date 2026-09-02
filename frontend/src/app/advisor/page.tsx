@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { AdvisorDetail } from "@/components/AdvisorDetail";
 import { CropMarketPicker } from "@/components/CropMarketPicker";
+import { StateDataNotice } from "@/components/StateDataNotice";
 import { Icon, Skeleton } from "@/components/ui";
 import { useCropMarket } from "@/lib/useCropMarket";
 
@@ -36,6 +37,8 @@ function AdvisorInner() {
         <p className="rounded-2xl bg-[var(--red-100)] px-5 py-4 text-sm text-[var(--red-700)]">
           {t("loadError")}
         </p>
+      ) : cm.noDataForState ? (
+        <StateDataNotice state={cm.scopeState} />
       ) : (
         <AdvisorDetail cm={cm} />
       )}

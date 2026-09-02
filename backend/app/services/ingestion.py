@@ -59,9 +59,12 @@ def _parse_float(value: str | None) -> float | None:
         return None
 
 
-def _fetch_state(client: httpx.Client, api_key: str, state: str | None) -> list[dict]:
+def _fetch_state(
+    client: httpx.Client, api_key: str, state: str | None, max_pages: int | None = None
+) -> list[dict]:
     rows: list[dict] = []
     offset = 0
+    pages = 0
     while True:
         params = {
             "api-key": api_key,
@@ -80,22 +83,35 @@ def _fetch_state(client: httpx.Client, api_key: str, state: str | None) -> list[
         rows.extend(records)
         total = int(payload.get("total", len(rows)))
         offset += len(records)
+        pages += 1
         if offset >= total or len(records) < PAGE_SIZE:
+            break
+        if max_pages is not None and pages >= max_pages:
             break
     return rows
 
 
-def fetch_agmarknet_rows(api_key: str, states: list[str] | None = None) -> list[dict]:
+def fetch_agmarknet_rows(
+    api_key: str,
+    states: list[str] | None = None,
+    *,
+    timeout: float = 20.0,
+    max_pages: int | None = None,
+) -> list[dict]:
     """Pages through the live AGMARKNET feed for the given states (or the whole
     of India when ``states`` is None). Raises on network/HTTP failure so the
-    caller can fall back to snapshot/fixtures."""
+    caller can fall back to snapshot/fixtures.
+
+    ``timeout`` / ``max_pages`` bound the work for the on-demand per-state pull
+    (the upstream API is slow); the scheduled job uses the generous defaults.
+    """
     rows: list[dict] = []
-    with httpx.Client(timeout=20.0) as client:
+    with httpx.Client(timeout=timeout) as client:
         if not states:
-            rows.extend(_fetch_state(client, api_key, None))
+            rows.extend(_fetch_state(client, api_key, None, max_pages))
         else:
             for state in states:
-                rows.extend(_fetch_state(client, api_key, state))
+                rows.extend(_fetch_state(client, api_key, state, max_pages))
     return rows
 
 

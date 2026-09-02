@@ -410,7 +410,9 @@
     "errorDenied": "Location permission was denied.",
     "errorUnsupported": "This device does not support location.",
     "errorResolve": "Could not resolve that location. Try a place name.",
-    "directoryScope": "Directory coverage for {state} is a representative sample for now."
+    "directoryScope": "Directory coverage for {state} is a representative sample for now.",
+    "noStateData": "Live mandi prices for {state} aren't loaded yet — the national feed is slow outside Maharashtra. Try again shortly, or switch back.",
+    "useMaharashtra": "Use Maharashtra"
   },
   "advisor": {
     "recommendation": "Our recommendation",

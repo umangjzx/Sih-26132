@@ -72,11 +72,19 @@ def test_run_ingestion_accepts_state_override(db, monkeypatch):
     assert captured["states"] == ["Karnataka"]
 
 
-def test_ensure_state_ingested_rate_limits(db, monkeypatch):
+def test_ensure_state_ingested_no_key(db, monkeypatch):
     locations._LAST_TRY.clear()
     monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "")
+    r = locations.ensure_state_ingested(db, "Punjab")
+    assert r == {"ingested": False, "reason": "no api key", "rows_upserted": 0}
+
+
+def test_ensure_state_ingested_rate_limits(db, monkeypatch):
+    locations._LAST_TRY.clear()
+    monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
+    monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", lambda *a, **k: [])
     r1 = locations.ensure_state_ingested(db, "Punjab")
-    assert r1["ingested"] is False
+    assert r1["ingested"] is False and r1["reason"] == "no-live-data"
     r2 = locations.ensure_state_ingested(db, "Punjab")
     assert r2["reason"] == "rate-limited"
 
@@ -126,6 +134,22 @@ def test_location_resolve_place(db, monkeypatch):
         assert r.json()["state"] == "Maharashtra"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_location_resolve_state_name_short_circuits(db, monkeypatch):
+    """A bare state/UT name (the /states dropdown) resolves to its centroid with
+    no geocoding — the free geocoder returns same-named villages abroad."""
+    from app.services import locations as loc
+
+    def boom(*_a, **_k):  # geocode() must not be reached for a known state name
+        raise AssertionError("state-name resolve must not call geocode()")
+
+    monkeypatch.setattr(loc, "geocode", boom)
+    r = loc.resolve_location(db, place="Punjab")
+    assert r["state"] == "Punjab" and r["source"] == "state"
+    assert r["latitude"] and r["longitude"]
+    # case-insensitive too
+    assert loc.resolve_location(db, place="  karnataka ")["state"] == "Karnataka"
 
 
 def test_location_resolve_needs_input(db):

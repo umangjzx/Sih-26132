@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { CropMarketPicker } from "@/components/CropMarketPicker";
+import { StateDataNotice } from "@/components/StateDataNotice";
 import { PriceTrendChart } from "@/components/PriceTrendChart";
 import { SignalGaugeChart } from "@/components/SignalGaugeChart";
 import { MarketComparisonChart } from "@/components/MarketComparisonChart";
@@ -203,6 +204,12 @@ function HomeInner() {
           </div>
         </div>
       </section>
+
+      {cm.noDataForState && (
+        <div className="mb-6">
+          <StateDataNotice state={cm.scopeState} />
+        </div>
+      )}
 
       {/* ─── ROW 1: Key Insight Cards ─── */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
