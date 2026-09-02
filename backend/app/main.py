@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from alembic import command
@@ -58,12 +59,20 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         if not ingestion.has_price_data(db):
+            # First boot on an empty DB — block so the app never serves nothing.
             result = ingestion.run_ingestion(db)
             logger.info("Initial ingestion: %s", result)
     finally:
         db.close()
 
     scheduler.add_job(_run_ingestion_job, "interval", hours=6, id="price_ingestion")
+    # Always refresh shortly after boot too, so a restart pulls the latest day
+    # (and today's rows accumulate into history via the upsert key).
+    scheduler.add_job(
+        _run_ingestion_job, "date",
+        run_date=datetime.now() + timedelta(seconds=20),
+        id="price_ingestion_boot",
+    )
     scheduler.start()
 
     yield
