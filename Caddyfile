@@ -1,0 +1,27 @@
+# AgriLink reverse proxy — one origin for the whole app.
+#   /api/*, /health, /docs, /openapi.json, /redoc  ->  backend:8000
+#   everything else                                ->  frontend:3000
+#
+# SITE_ADDRESS controls TLS:
+#   a hostname (agrilink.example.com)  -> Caddy gets a Let's Encrypt cert automatically
+#   :80                               -> plain HTTP, for an IP-only demo box
+
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# OCR lot-slip upload is capped at 6 MB server-side; give a little headroom.
+	request_body {
+		max_size 8MB
+	}
+
+	@api {
+		path /api/* /health /docs /openapi.json /redoc
+	}
+	handle @api {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

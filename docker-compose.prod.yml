@@ -1,0 +1,101 @@
+# AgriLink — production stack for a single VM.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml --profile seed run --rm seed   # once
+#
+# Variables are read from a .env file next to this one — see DEPLOYMENT.md.
+
+name: agrilink
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agrilink
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agrilink}
+      POSTGRES_DB: agrilink
+    volumes:
+      - agrilink_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrilink"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published to the host in production. Uncomment to inspect the DB directly.
+    # ports:
+    #   - "5433:5432"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://agrilink:${POSTGRES_PASSWORD:-agrilink}@db:5432/agrilink
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env (openssl rand -hex 32)}
+      CORS_ORIGINS: ${SITE_URL:-http://localhost}
+      INGEST_STATES: ${INGEST_STATES:-ALL}
+      DATA_GOV_IN_API_KEY: ${DATA_GOV_IN_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      WEATHER_API_KEY: ${WEATHER_API_KEY:-}
+      INGEST_TRIGGER_SECRET: ${INGEST_TRIGGER_SECRET:-}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Same-origin through Caddy — keep empty so the browser calls /api/... here.
+        NEXT_PUBLIC_API_URL: ""
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # A hostname => automatic HTTPS. ":80" => plain HTTP for an IP-only box.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  # One-shot demo-data seeder. Runs migrations first, then upserts the demo
+  # accounts (idempotent). Invoke with the "seed" profile after the stack is up:
+  #   docker compose -f docker-compose.prod.yml --profile seed run --rm seed
+  seed:
+    build: ./backend
+    profiles: ["seed"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://agrilink:${POSTGRES_PASSWORD:-agrilink}@db:5432/agrilink
+    command: ["sh", "-c", "alembic upgrade head && python -m scripts.seed_demo_users"]
+
+volumes:
+  agrilink_pgdata:
+  caddy_data:
+  caddy_config:

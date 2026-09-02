@@ -1,0 +1,27 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local DB / artifacts
+*.db
+*.sqlite
+*.sqlite3
+build.log
+
+# Secrets — never bake into an image
+.env
+.env.*
+*service_account*.json
+*credentials*.json
+gee_service_account.json
+
+# VCS / editor
+.git/
+.gitignore
+.vscode/
+.idea/

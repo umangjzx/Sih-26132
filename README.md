@@ -182,8 +182,12 @@ flowchart LR
 
 ```
 agrilink/
-├── docker-compose.yml          Postgres 16 → host :5433
+├── docker-compose.yml          local dev: Postgres 16 → host :5433
+├── docker-compose.prod.yml     production stack: db + backend + frontend + Caddy
+├── Caddyfile                   reverse proxy — one origin, /api → backend, else → frontend
 ├── README.md                   (this file)
+├── DEPLOYMENT.md               single-VM deploy guide
+├── backend/Dockerfile · frontend/Dockerfile   (+ .dockerignore each)
 ├── backend/
 │   ├── app/
 │   │   ├── main.py             FastAPI app, lifespan (migrate + seed + scheduler), CORS, routers
@@ -281,6 +285,9 @@ degrades to a neutral result.
 5. Open **http://localhost:3000**.
 
 To reset the database from scratch, see [backend/README.md](backend/README.md) → Migrations.
+
+For a real deployment (containerised, one domain, HTTPS), skip the steps above and
+follow [DEPLOYMENT.md](DEPLOYMENT.md) instead.
 
 ---
 
@@ -1046,8 +1053,26 @@ Both suites run **offline**.
 
 ---
 
+## Deployment
+
+[DEPLOYMENT.md](DEPLOYMENT.md) — single-VM deploy with Docker Compose: Postgres +
+backend + frontend + a Caddy reverse proxy that serves the whole app on **one
+origin** (auto-HTTPS with a domain, plain HTTP on an IP). `docker-compose.prod.yml`,
+per-service `Dockerfile`s, the `Caddyfile`, env checklist, a one-shot demo-user
+seeder, backup/restore, and the operational gotchas (single scheduler worker,
+DB-up-at-boot, build-time `NEXT_PUBLIC_API_URL`).
+
+```bash
+# on the VM, after cloning and creating .env (see DEPLOYMENT.md)
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml --profile seed run --rm seed
+```
+
+---
+
 ## More detail
 
+- [DEPLOYMENT.md](DEPLOYMENT.md) — production deploy (single VM + Docker Compose + Caddy)
 - [backend/README.md](backend/README.md) — run, migrations & DB reset, tests, env vars, data sources, the arrivals limitation
 - [frontend/README.md](frontend/README.md) — run, routes, tests, i18n model, config
 - `.planning/` — roadmap, per-phase research, plans, and summaries
