@@ -44,3 +44,25 @@ class LotResponse(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     status: str
+
+
+class BrowseLotOut(BaseModel):
+    id: int
+    crop: str
+    quantity_kg: float
+    quality_grade: str
+    expected_price: float
+    available_from: date
+    location: str
+    distance_km: float | None = None
+    farmer_id: int
+    farmer_name: str
+    farmer_district: str
+    farmer_verified: bool = False
+
+
+class ExpressInterestResult(BaseModel):
+    matched: bool
+    match_id: int | None = None
+    score: float | None = None
+    reason: str | None = None

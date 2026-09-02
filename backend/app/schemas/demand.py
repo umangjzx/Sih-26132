@@ -51,3 +51,19 @@ class DemandResponse(BaseModel):
     delivery_district: str = ""
     latitude: float | None = None
     longitude: float | None = None
+
+
+class BrowseDemandOut(BaseModel):
+    id: int
+    crop: str
+    quantity_kg: float
+    quality_spec: str
+    price_band_min: float
+    price_band_max: float
+    delivery_window: str
+    delivery_district: str
+    distance_km: float | None = None
+    buyer_id: int
+    buyer_name: str
+    buyer_district: str
+    buyer_verified: bool = False

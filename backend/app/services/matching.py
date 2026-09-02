@@ -335,6 +335,59 @@ def run_matching(db: Session) -> int:
     return upserted
 
 
+def try_pair(db: Session, lot: Lot, demand: Demand) -> dict:
+    """Score one specific lot×demand pair (used by the 'express interest' buttons
+    on the discovery boards). Upserts a proposed Match when it clears the veto
+    and MIN_SCORE. Returns {matched, match_id?, score?, reason?}."""
+    from app.core.config import settings
+
+    if lot.crop.strip().lower() != demand.crop.strip().lower():
+        return {"matched": False, "reason": "different crop"}
+
+    buyer = db.get(User, demand.buyer_id)
+    d_district = demand.delivery_district or (buyer.district if buyer else "") or ""
+    d_lat = demand.latitude if demand.latitude is not None else (buyer.latitude if buyer else None)
+    d_lon = demand.longitude if demand.longitude is not None else (buyer.longitude if buyer else None)
+    d_coords = (d_lat, d_lon) if d_lat is not None and d_lon is not None else None
+    lot_coords = (
+        (lot.latitude, lot.longitude)
+        if lot.latitude is not None and lot.longitude is not None
+        else None
+    )
+
+    dist = pair_distance_km(lot.location, d_district, lot_coords, d_coords)
+    if dist is not None and dist > settings.match_max_km:
+        return {"matched": False, "reason": f"about {round(dist)} km apart — beyond range"}
+
+    total, detail = score_pair(
+        lot_qty=lot.quantity_kg, lot_expected_price=lot.expected_price, lot_location=lot.location,
+        demand_qty=demand.quantity_kg, demand_band_min=demand.price_band_min,
+        demand_band_max=demand.price_band_max, buyer_district=d_district,
+        lot_coords=lot_coords, demand_coords=d_coords,
+        lot_grade=lot.quality_grade or "", lot_available_from=lot.available_from,
+        demand_quality_spec=demand.quality_spec or "",
+        demand_delivery_window=demand.delivery_window or "",
+    )
+    if total < MIN_SCORE:
+        return {"matched": False, "score": total, "reason": "quantity / price / distance don't line up well enough yet"}
+
+    existing = db.execute(
+        select(Match).where(Match.lot_id == lot.id, Match.demand_id == demand.id)
+    ).scalar_one_or_none()
+    if existing is not None:
+        if existing.status in ("proposed", "offered"):
+            existing.score = total
+            existing.score_detail = detail
+        db.commit()
+        return {"matched": True, "match_id": existing.id, "score": total}
+
+    m = Match(lot_id=lot.id, demand_id=demand.id, score=total, score_detail=detail, status="proposed")
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return {"matched": True, "match_id": m.id, "score": total}
+
+
 # ---------------------------------------------------------------------------
 # Validation — is the stored match set still any good?
 # ---------------------------------------------------------------------------

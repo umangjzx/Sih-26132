@@ -26,7 +26,8 @@
     "administration": "प्रशासन",
     "pools": "पूल",
     "profile": "प्रोफाइल",
-    "users": "वापरकर्ते"
+    "users": "वापरकर्ते",
+    "browse": "ब्राउझ करा"
   },
   "dashboard": {
     "title": "बाजार भाव माहिती",
@@ -698,5 +699,31 @@
     "reject": "नाकारा",
     "deactivate": "निष्क्रिय",
     "activate": "सक्रिय"
+  },
+  "browse": {
+    "titleBuyer": "Browse lots near you",
+    "titleFarmer": "Browse buyer demands near you",
+    "subBuyer": "Open produce lots within range of your location.",
+    "subFarmer": "Open buyer demands within range of your location.",
+    "noLocation": "Set your location to see who's nearby.",
+    "setLocation": "Set location",
+    "cropFilter": "Filter by crop",
+    "allIndia": "All India",
+    "within": "Within {km} km",
+    "empty": "Nothing open in range right now.",
+    "grade": "Grade",
+    "from": "from",
+    "wants": "Wants",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "distHere": "here",
+    "distUnknown": "distance unknown",
+    "interest": "Express interest",
+    "matchOpened": "Match opened ({score}%).",
+    "openMatch": "Open match",
+    "noMatchYet": "Not a match yet.",
+    "needDemand": "Post an open demand for this crop first.",
+    "needLot": "List an open lot of this crop first.",
+    "error": "Something went wrong — try again."
   }
 }

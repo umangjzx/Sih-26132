@@ -491,6 +491,69 @@ export function listMyLots(token: string): Promise<LotResponse[]> {
   return getJson("/api/lots/mine", token);
 }
 
+// ---- discovery boards (v1.4 phase 2) ------------------------------------
+export type BrowseLot = {
+  id: number;
+  crop: string;
+  quantity_kg: number;
+  quality_grade: string;
+  expected_price: number;
+  available_from: string;
+  location: string;
+  distance_km: number | null;
+  farmer_id: number;
+  farmer_name: string;
+  farmer_district: string;
+  farmer_verified: boolean;
+};
+
+export type BrowseDemand = {
+  id: number;
+  crop: string;
+  quantity_kg: number;
+  quality_spec: string;
+  price_band_min: number;
+  price_band_max: number;
+  delivery_window: string;
+  delivery_district: string;
+  distance_km: number | null;
+  buyer_id: number;
+  buyer_name: string;
+  buyer_district: string;
+  buyer_verified: boolean;
+};
+
+export type ExpressInterestResult = {
+  matched: boolean;
+  match_id: number | null;
+  score: number | null;
+  reason: string | null;
+};
+
+function browseParams(o: { crop?: string; radiusKm?: number | null }): string {
+  const p = new URLSearchParams();
+  if (o.crop) p.set("crop", o.crop);
+  if (typeof o.radiusKm === "number") p.set("radius_km", String(o.radiusKm));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
+export function browseLots(token: string, o: { crop?: string; radiusKm?: number | null } = {}): Promise<BrowseLot[]> {
+  return getJson(`/api/lots/browse${browseParams(o)}`, token);
+}
+
+export function browseDemands(token: string, o: { crop?: string; radiusKm?: number | null } = {}): Promise<BrowseDemand[]> {
+  return getJson(`/api/demands/browse${browseParams(o)}`, token);
+}
+
+export function expressInterestInLot(lotId: number, token: string): Promise<ExpressInterestResult> {
+  return postJson(`/api/lots/${lotId}/express-interest`, {}, token);
+}
+
+export function expressInterestInDemand(demandId: number, token: string): Promise<ExpressInterestResult> {
+  return postJson(`/api/demands/${demandId}/express-interest`, {}, token);
+}
+
 export type OcrLotDraft = {
   available: boolean;
   crop: string | null;
