@@ -76,12 +76,15 @@ marked `pg` (the Postgres-only `on_conflict_do_update` upsert path) are opt-in:
 cd backend && venv/Scripts/python.exe -m pytest -q -m "not pg"   # skip the Postgres-only test
 ```
 
-`tests/` covers the sell/wait signal cases and MSP/weather factors, geo distance and
-`nearest_state`, ingestion normalize + live→snapshot→fixture fallback + state override,
-the weather OpenWeather enrichment, location resolve / state-filtered options + overview,
-the intelligence endpoints (MSP, calendar, storage/FPO, best-market), login + token
-refresh, lots / demands / matching / offers / deals / disputes / history, alerts, and
-the admin dashboard.
+`tests/` (37 files, 295 tests) covers the sell/wait signal cases and MSP/weather factors,
+the price forecast, the **Decision Brief**, **diesel-indexed freight**, the **knowledge
+base** retrieval, geo distance and `nearest_state`, ingestion normalize +
+live→snapshot→fixture fallback + state override, the weather OpenWeather enrichment,
+location resolve / state-filtered options + overview, the intelligence endpoints, login +
+token refresh, profile + verification, lots / demands / matching / offers / deals /
+disputes / history, the **negotiation-context** endpoint, deal **payments** + the
+append-only **audit** timeline, logistics, the **price-realisation** tracker, **forward
+contracts**, alerts, and the admin dashboard + analytics + user management.
 
 ## Data sources
 
@@ -114,7 +117,11 @@ All keyless except OpenWeatherMap, all wrapped so a failure returns a neutral/em
 Open-Meteo (forecast + geocoding), NASA POWER (rainfall anomaly), OSRM (road distance),
 BigDataCloud (reverse-geocode), Nager.Date (mandi holidays). MSP, the crop calendar, and
 the cold-storage / FPO directory are curated in `app/services/reference.py` — Maharashtra
-in detail plus a national sample of the major producing states.
+in detail plus a national sample of the major producing states. Two more curated,
+fully-offline datasets: `app/services/freight.py` (per-state retail diesel reference,
+indicative, with an `as_of` date — drives the diesel-indexed freight rate) and
+`app/services/knowledge.py` (the Ask AgriLink corpus, retrieved with keyword + fuzzy
+matching, no embeddings).
 
 ## Environment variables
 
@@ -128,7 +135,7 @@ Copy `.env.example` to `.env` (gitignored — never commit it). Placeholders onl
 | `INGEST_STATES` | Comma-separated states the scheduler ingests, or `ALL`. Default `Maharashtra` |
 | `JWT_SECRET_KEY` | Required for auth — long random string. Blank → tokens fail to verify (local demo only). Also `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS` |
 | `WEATHER_API_KEY` | Optional OpenWeatherMap key — enriches the forecast with current conditions. Blank → Open-Meteo only |
-| `TRANSPORT_COST_PER_QTL_KM` | ₹/quintal/km used by `markets/best`. Default `0.4` |
+| `TRANSPORT_COST_PER_QTL_KM` | Legacy flat ₹/quintal/km, default `0.4`. Superseded since v1.5 by the diesel-indexed rate in `app/services/freight.py`, which `markets/best` and deal-logistics cost now use |
 | `ARRIVALS_SOURCE_URL` | Leave blank (see PRICE-07 above) |
 | `CORS_ORIGINS` | Comma-separated; default `http://localhost:3000` |
 

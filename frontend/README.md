@@ -11,11 +11,12 @@ API, with no Next.js server actions or server-only features.
 |---|---|
 | `/` | Home — hero, crop/market picker, price + signal snapshot, statewide snapshot |
 | `/prices` | Trend area chart, min/modal/max, nearby-market comparison bars |
-| `/advisor` | Sell / wait / hold gauge with weather · MSP · calendar · holiday context |
+| `/advisor` | **Decision Brief** (one ranked action plan) + the full sell / wait / hold gauge with weather · MSP · calendar · holiday context |
 | `/directory` | Cold storage / FPOs near a location |
 | `/explore` | Public statewide transparency dashboard (movers, trend, activity) |
 | `/alerts` | Price alerts + notifications |
-| `/login` · `/farmer` · `/buyer` · `/history` · `/deals/[id]` · `/matches/[id]` · `/admin` | Auth + trade workflow |
+| `/forward` | Forward contracts — buyers post pre-harvest bids, farmers commit at a locked price |
+| `/login` · `/farmer` · `/buyer` · `/browse` · `/pools` · `/history` · `/deals/[id]` · `/matches/[id]` · `/admin` | Auth + trade workflow. `/history` carries the farmer price-realisation scorecard; `/matches/[id]` has price-referenced counter-offers; `/deals/[id]` has payments + the audit timeline + receipt |
 
 A header **location chip** (`useLocation` / `LocationProvider`) detects or picks a place,
 persists it to `localStorage['agrilink.location']`, and re-scopes prices to that state.
