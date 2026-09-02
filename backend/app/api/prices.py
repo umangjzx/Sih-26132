@@ -74,12 +74,44 @@ def list_options(
                 opts = sorted(placeable, key=dkey)[:25] or opts
 
         best_for_crop: dict[str, float] = {}
+        markets_per_crop: dict[str, int] = {}
         for o in opts:
             best_for_crop[o.crop] = min(best_for_crop.get(o.crop, float("inf")), dkey(o))
-        opts.sort(key=lambda o: (best_for_crop[o.crop], o.crop, dkey(o), o.market))
+            markets_per_crop[o.crop] = markets_per_crop.get(o.crop, 0) + 1
+        # Nearest first, but within the same ~25 km band lead with staple crops
+        # and the ones reported in the most markets — so the picker opens on
+        # Onion/Tomato, not "Amaranthus".
+        opts.sort(key=lambda o: (
+            int(min(best_for_crop[o.crop], 9_999) // 25),
+            _staple_rank(o.crop),
+            -markets_per_crop[o.crop],
+            o.crop,
+            dkey(o),
+            o.market,
+        ))
     else:
-        opts.sort(key=lambda o: (o.crop, o.market))
+        # No location: same idea, ordered purely by staple then reach.
+        markets_per_crop = {}
+        for o in opts:
+            markets_per_crop[o.crop] = markets_per_crop.get(o.crop, 0) + 1
+        opts.sort(
+            key=lambda o: (_staple_rank(o.crop), -markets_per_crop[o.crop], o.crop, o.market)
+        )
     return opts
+
+
+# Common, widely-traded crops surface first in the picker when we have no
+# location to sort by. Everything else falls back to "reported in most markets".
+_STAPLES = [
+    "onion", "tomato", "potato", "wheat", "rice", "paddy(common)", "maize",
+    "soyabean", "cotton", "groundnut", "bengal gram(gram)(whole)", "green chilli",
+    "banana", "sugarcane", "turmeric", "arhar (tur/red gram)(whole)", "mustard",
+]
+_STAPLE_INDEX = {name: i for i, name in enumerate(_STAPLES)}
+
+
+def _staple_rank(crop: str) -> int:
+    return _STAPLE_INDEX.get(crop.strip().lower(), len(_STAPLES))
 
 
 def _fetch_series(db: Session, crop: str, market: str, days: int) -> list[PriceCache]:
