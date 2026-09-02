@@ -65,7 +65,8 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 |---|---|
 | `/` | Hero + crop/market picker, latest modal price, the sell/wait call as a gauge, and a statewide price snapshot. |
 | `/prices` | 7/30/90-day trend as a gradient area chart; min / modal / max for the latest day; a horizontal bar comparison of the selected market against the nearest markets; and the transport-adjusted "best market" panel. |
-| `/advisor` | The full sell / wait / hold reasoning: price momentum vs 7- and 30-day averages, weather pressure, MSP gap, crop-calendar phase (with glut-risk warning), and the next mandi holiday. |
+| `/advisor` | The full sell / wait / hold reasoning: price momentum vs 7- and 30-day averages, weather pressure, MSP gap, crop-calendar phase (with glut-risk warning), and the next mandi holiday. An optional **"In plain words"** panel (LLM) restates that in 2-3 farmer-friendly sentences in the chosen language. |
+| **Ask AgriLink** | A floating assistant (LLM, optional) that answers questions strictly from the selected crop/market's live data — price, signal, weather, MSP, calendar — and says "I don't have that" when the answer isn't in scope. |
 | `/directory` | Cold storage / warehouses and FPOs near a district or state, with distance and capacity. |
 | `/explore` | Statewide price transparency — top gainers/fallers (7-day), a 30-day average-price trend, all-crops table, and activity counters (markets reporting, crops tracked, open lots/demands, deals, disputes). Re-scopes to the chosen state. |
 | `/alerts` | Create "notify me when crop X at market Y goes above/below ₹Z" alerts; an in-app notification bell polls unread count. (Managing alerts needs login.) |
@@ -282,6 +283,7 @@ All free; all with an offline fallback so the app runs air-gapped.
 | **OSRM** `/route/v1/driving` | road distance + drive time for "best market" | straight-line haversine |
 | **Nager.Date** `/PublicHolidays` | upcoming mandi holidays | built-in 2026 holiday list |
 | **curated** (`app/services/reference.py`) | MSP (₹/quintal, official CACP 2024‑25 / 2025‑26), crop calendar (MH-tuned), cold-storage / FPO directory (MH in detail + national sample) | — (static) |
+| **OpenRouter** *(needs `OPENROUTER_API_KEY`)* | readability layer only — plain-language advisor summary, the "Ask AgriLink" assistant, live-string translation. Never a source of truth. | features hidden; rule output / English shown |
 
 > data.gov.in also lists cold-storage / warehouse and MSP datasets, but they're
 > state-level aggregates with no API and no geolocation (MSP is the same CACP
