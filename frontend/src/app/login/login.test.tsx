@@ -88,6 +88,16 @@ it("register tab reveals name + role and calls register()", async () => {
   expect(mockLogin).toHaveBeenCalledWith("tok", "ref", expect.objectContaining({ role: "farmer" }));
 });
 
+it("a demo-account button signs in with that account's credentials", async () => {
+  vi.mocked(api.login).mockResolvedValue(AUTH);
+  renderWithIntl(<LoginPage />);
+
+  await userEvent.click(screen.getByRole("button", { name: /Anita Traders/i }));
+
+  expect(api.login).toHaveBeenCalledWith("+919000000003", "buyer123");
+  expect(mockLogin).toHaveBeenCalledWith("tok", "ref", expect.anything());
+});
+
 it("registering a taken phone flips back to sign in with a hint", async () => {
   vi.mocked(api.register).mockRejectedValue(new Error("Request failed: 409"));
   renderWithIntl(<LoginPage />);

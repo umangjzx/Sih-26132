@@ -16,6 +16,20 @@ import { login as loginRequest, register as registerRequest } from "@/lib/api";
 
 type Mode = "signin" | "register";
 
+const DEMO_ACCOUNTS: { role: "farmer" | "buyer" | "admin"; name: string; phone: string; password: string }[] = [
+  { role: "farmer", name: "Ravi Patil", phone: "+919000000001", password: "farmer123" },
+  { role: "farmer", name: "Sita Deshmukh", phone: "+919000000002", password: "farmer123" },
+  { role: "buyer", name: "Anita Traders", phone: "+919000000003", password: "buyer123" },
+  { role: "buyer", name: "Mega Foods Pvt", phone: "+919000000004", password: "buyer123" },
+  { role: "admin", name: "Platform Admin", phone: "+919000000009", password: "admin123" },
+];
+
+function destFor(role: string): string {
+  if (role === "farmer") return "/farmer";
+  if (role === "admin") return "/admin";
+  return "/buyer";
+}
+
 export default function LoginPage() {
   const { isAuthenticated, user, login } = useAuth();
   const router = useRouter();
@@ -31,7 +45,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.replace(user.role === "farmer" ? "/farmer" : "/buyer");
+      router.replace(destFor(user.role));
     }
   }, [isAuthenticated, user, router]);
 
@@ -40,24 +54,45 @@ export default function LoginPage() {
     setError(null);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function signIn(p: string, pw: string) {
     setError(null);
     setLoading(true);
     try {
-      const data =
-        mode === "register"
-          ? await registerRequest(phone.trim(), name.trim(), role, password)
-          : await loginRequest(phone.trim(), password);
+      const data = await loginRequest(p.trim(), pw);
       login(data.access_token, data.refresh_token, data.user);
-      router.replace(data.user.role === "farmer" ? "/farmer" : "/buyer");
+      router.replace(destFor(data.user.role));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (mode === "register" && msg.includes("409")) {
+      setError(msg.includes("401") ? t("badCredentials") : t("loginError"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function useDemo(acc: (typeof DEMO_ACCOUNTS)[number]) {
+    setMode("signin");
+    setPhone(acc.phone);
+    setPassword(acc.password);
+    void signIn(acc.phone, acc.password);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (mode === "signin") {
+      await signIn(phone, password);
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await registerRequest(phone.trim(), name.trim(), role, password);
+      login(data.access_token, data.refresh_token, data.user);
+      router.replace(destFor(data.user.role));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("409")) {
         setError(t("phoneTaken"));
         setMode("signin");
-      } else if (mode === "signin" && msg.includes("401")) {
-        setError(t("badCredentials"));
       } else {
         setError(t("loginError"));
       }
@@ -163,6 +198,35 @@ export default function LoginPage() {
           {loading ? t("loggingIn") : t("continueBtn")}
         </button>
       </form>
+
+      <section className="mt-8 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-brand)]">
+          {t("demoTitle")}
+        </p>
+        <p className="mt-0.5 mb-3 text-xs opacity-60">{t("demoNote")}</p>
+        <ul className="flex flex-col gap-1.5">
+          {DEMO_ACCOUNTS.map((acc) => (
+            <li key={acc.phone}>
+              <button
+                type="button"
+                onClick={() => useDemo(acc)}
+                disabled={loading}
+                className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-left text-sm transition-colors hover:border-[var(--color-brand)] disabled:opacity-60"
+              >
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate font-semibold">{acc.name}</span>
+                  <span className="text-xs opacity-60">
+                    {acc.phone} · {acc.password}
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-full bg-[var(--color-brand)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-brand)]">
+                  {acc.role === "farmer" ? t("roleFarmer") : acc.role === "buyer" ? t("roleBuyer") : t("roleAdmin")}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

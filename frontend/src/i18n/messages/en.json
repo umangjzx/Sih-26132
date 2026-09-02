@@ -76,7 +76,10 @@
     "passwordHint": "At least 6 characters.",
     "phoneTaken": "That phone number already has an account. Please sign in.",
     "badCredentials": "Wrong phone number or password.",
-    "continueBtn": "Continue"
+    "continueBtn": "Continue",
+    "demoTitle": "Demo accounts",
+    "demoNote": "Hackathon build — tap any account to sign in instantly.",
+    "roleAdmin": "Admin"
   },
   "lots": {
     "title": "My Lots",
