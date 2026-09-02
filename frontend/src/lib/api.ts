@@ -677,6 +677,38 @@ export function getMatchingHealth(token: string): Promise<MatchingHealth> {
   return getJson("/api/admin/matching-health", token);
 }
 
+export type AdminAnalytics = {
+  gmv_inr: number;
+  avg_deal_value_inr: number;
+  users_total: number;
+  users_by_role: Record<string, number>;
+  markets_tracked: number;
+  districts_tracked: number;
+  states_tracked: number;
+  price_index_latest: number;
+  price_index_change_pct: number;
+  match_conversion_pct: number;
+  funnel: { stage: string; count: number }[];
+  deal_pipeline: Record<string, number>;
+  supply_demand: {
+    crop: string;
+    supply_kg: number;
+    demand_kg: number;
+    open_lots: number;
+    open_demands: number;
+    tightness: number;
+  }[];
+  score_distribution: { label: string; count: number }[];
+  weekly_activity: { week: string; deals: number; offers: number; new_users: number }[];
+  price_pulse: { crop: string; latest: number; avg_30d: number; change_pct: number }[];
+  lots_by_crop: Record<string, number>;
+  demands_by_crop: Record<string, number>;
+};
+
+export function getAdminAnalytics(token: string): Promise<AdminAnalytics> {
+  return getJson("/api/admin/analytics", token);
+}
+
 // ===========================================================================
 // v1.1 — weather, MSP, calendar, storage/FPO, best market, alerts, public
 // ===========================================================================

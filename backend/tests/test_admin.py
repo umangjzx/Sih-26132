@@ -106,3 +106,63 @@ def test_dashboard_no_auth(db):
         assert client.get("/api/admin/dashboard").status_code == 401
     finally:
         app.dependency_overrides.clear()
+
+
+# --------------------------------------------------------------------------- #
+# GET /api/admin/analytics (v1.3)
+# --------------------------------------------------------------------------- #
+
+_ANALYTICS_FIELDS = {
+    "gmv_inr", "avg_deal_value_inr", "users_total", "users_by_role",
+    "markets_tracked", "districts_tracked", "states_tracked",
+    "price_index_latest", "price_index_change_pct", "match_conversion_pct",
+    "funnel", "deal_pipeline", "supply_demand", "score_distribution",
+    "weekly_activity", "price_pulse", "lots_by_crop", "demands_by_crop",
+}
+
+
+def test_analytics_shape_on_empty_db(db, admin_user):
+    client = _client(db)
+    try:
+        _as(admin_user)
+        r = client.get("/api/admin/analytics")
+        assert r.status_code == 200
+        body = r.json()
+        assert _ANALYTICS_FIELDS <= set(body)
+        assert [s["stage"] for s in body["funnel"]] == [
+            "Listings", "Matches", "Offers", "Deals", "Closed"
+        ]
+        assert list(body["deal_pipeline"]) == [
+            "matched", "offer_accepted", "logistics_arranged", "delivered", "paid", "closed"
+        ]
+        assert [b["label"] for b in body["score_distribution"]] == ["0-30", "30-50", "50-75", "75-100"]
+        assert len(body["weekly_activity"]) == 8
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_analytics_reflects_seeded_marketplace(db, admin_user, farmer_user, buyer_user):
+    _seed_lot_demand_deal(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(admin_user)
+        body = client.get("/api/admin/analytics").json()
+        # one Onion lot (500 kg) + one Onion demand (600 kg)
+        onion = next(c for c in body["supply_demand"] if c["crop"] == "Onion")
+        assert onion["supply_kg"] == 500 and onion["demand_kg"] == 600
+        assert onion["open_lots"] == 1 and onion["open_demands"] == 1
+        # one deal: 2500 ₹/qtl × 500 kg / 100 = 12500
+        assert body["gmv_inr"] == 12500.0
+        assert body["funnel"][0]["count"] == 2      # 1 lot + 1 demand
+        assert body["users_by_role"].get("farmer", 0) >= 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_analytics_farmer_forbidden(db, farmer_user):
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        assert client.get("/api/admin/analytics").status_code == 403
+    finally:
+        app.dependency_overrides.clear()

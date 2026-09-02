@@ -1,46 +1,131 @@
 "use client";
 
 /**
- * Admin oversight dashboard (Phase 3, ADMIN-01) — read only.
+ * Admin analytics dashboard — read only.
  *
- * Aggregate counts, a 30-day average-modal-price sparkline, and the open-dispute
- * queue from GET /api/admin/dashboard. Non-admins are redirected to /login.
- * Client component (Cordova constraint).
+ * Pulls three admin endpoints (/dashboard, /analytics, /matching-health) and
+ * renders a KPI strip plus chart blocks: marketplace funnel, supply vs demand,
+ * weekly activity, price index, deal pipeline, match-score spread, user mix,
+ * price movers, district price gaps, match-quality, disputes, anomalies.
+ * Non-admins are redirected. Client component (Cordova constraint).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
+  Area,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
+  ComposedChart,
+  Legend,
   Line,
-  LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { useAuth } from "@/components/AuthProvider";
+import { Icon } from "@/components/ui";
 import {
+  getAdminAnalytics,
   getAdminDashboard,
   getMatchingHealth,
+  type AdminAnalytics,
   type AdminDashboardResponse,
   type MatchingHealth,
 } from "@/lib/api";
 
+const C = {
+  green: "var(--chart-green)",
+  amber: "var(--chart-amber)",
+  red: "var(--chart-red)",
+  blue: "var(--chart-blue)",
+  purple: "var(--chart-purple)",
+};
+
+function inr(n: number): string {
+  if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
+  if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
+  if (n >= 1e3) return `₹${(n / 1e3).toFixed(1)}k`;
+  return `₹${Math.round(n)}`;
+}
+
+function Card({
+  title,
+  hint,
+  children,
+  className = "",
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm ${className}`}
+    >
+      <h2 className="text-sm font-bold text-[var(--color-text)]">{title}</h2>
+      {hint && <p className="mb-3 mt-0.5 text-xs opacity-55">{hint}</p>}
+      {!hint && <div className="mb-3" />}
+      {children}
+    </section>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  sub,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "neutral" | "up" | "down";
+}) {
+  const toneCls =
+    tone === "up"
+      ? "text-[var(--color-sell)]"
+      : tone === "down"
+        ? "text-[var(--color-wait)]"
+        : "text-[var(--color-brand-dark)]";
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+      <div className="text-[11px] font-semibold uppercase tracking-wider opacity-55">{label}</div>
+      <div className={`mt-1 font-serif text-2xl font-bold ${toneCls}`}>{value}</div>
+      {sub && <div className="mt-0.5 text-xs opacity-60">{sub}</div>}
+    </div>
+  );
+}
+
+const tooltipStyle = {
+  fontSize: 12,
+  borderRadius: 10,
+  border: "1px solid var(--color-border)",
+  background: "var(--color-surface)",
+};
+
 export default function AdminPage() {
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, token, isAuthenticated, ready } = useAuth();
   const router = useRouter();
   const t = useTranslations("admin");
 
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
+  const [an, setAn] = useState<AdminAnalytics | null>(null);
   const [health, setHealth] = useState<MatchingHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!ready) return;
     if (!isAuthenticated || user?.role !== "admin") router.replace("/login");
-  }, [isAuthenticated, user, router]);
+  }, [ready, isAuthenticated, user, router]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -51,9 +136,14 @@ export default function AdminPage() {
       setError(t("loadError"));
     }
     try {
+      setAn(await getAdminAnalytics(token));
+    } catch {
+      /* analytics block is optional */
+    }
+    try {
       setHealth(await getMatchingHealth(token));
     } catch {
-      // match-health panel is optional — don't block the dashboard
+      /* match-health panel is optional */
     }
   }, [token, t]);
 
@@ -61,7 +151,22 @@ export default function AdminPage() {
     load();
   }, [load]);
 
-  if (!isAuthenticated || user?.role !== "admin") return null;
+  const priceTrend = useMemo(
+    () =>
+      (data?.price_trend_summary ?? []).map((p) => ({
+        date: p.date.slice(5),
+        avg: Math.round(p.avg_modal_price),
+      })),
+    [data],
+  );
+
+  const roleData = useMemo(
+    () =>
+      Object.entries(an?.users_by_role ?? {}).map(([role, count]) => ({ role, count })),
+    [an],
+  );
+
+  if (!ready || !isAuthenticated || user?.role !== "admin") return null;
   if (error) {
     return (
       <p className="rounded-md border border-[var(--color-wait)] bg-[var(--color-wait)]/10 px-4 py-3 text-sm text-[var(--color-wait)]">
@@ -71,66 +176,247 @@ export default function AdminPage() {
   }
   if (!data) return <p className="text-sm opacity-60">…</p>;
 
-  const stats: [string, number][] = [
-    [t("totalLots"), data.total_lots],
-    [t("openLots"), data.open_lots],
-    [t("totalDemands"), data.total_demands],
-    [t("openDemands"), data.open_demands],
-    [t("totalDeals"), data.total_deals],
-    [t("openDisputes"), data.open_disputes_count],
-  ];
-
-  const chartData = data.price_trend_summary.map((p) => ({
-    date: p.date.slice(5),
-    avg: Math.round(p.avg_modal_price),
-  }));
+  const roleColors = [C.green, C.blue, C.purple, C.amber, C.red];
 
   return (
-    <div className="flex flex-col gap-8">
-      <h1 className="text-lg font-semibold">{t("title")}</h1>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-brand)]/10 text-[var(--color-brand-dark)]">
+          <Icon name="shield" size={20} />
+        </div>
+        <div>
+          <h1 className="font-serif text-lg font-bold">{t("title")}</h1>
+          <p className="text-xs opacity-55">{t("subtitle")}</p>
+        </div>
+      </div>
 
-      {/* Stats grid */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {stats.map(([label, value]) => (
-          <div
-            key={label}
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center"
-          >
-            <div className="font-serif text-2xl font-bold text-[var(--color-brand-dark)]">
-              {value}
-            </div>
-            <div className="text-xs opacity-60">{label}</div>
-          </div>
-        ))}
+      {/* ---- KPI strip ---- */}
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+        <Kpi
+          label={t("kpiGmv")}
+          value={an ? inr(an.gmv_inr) : "—"}
+          sub={an ? t("kpiGmvSub", { v: inr(an.avg_deal_value_inr) }) : undefined}
+        />
+        <Kpi label={t("totalDeals")} value={String(data.total_deals)} sub={t("kpiDealsSub", { closed: an?.deal_pipeline?.closed ?? 0 })} />
+        <Kpi
+          label={t("kpiMatchConv")}
+          value={an ? `${an.match_conversion_pct}%` : "—"}
+          sub={t("kpiMatchConvSub")}
+        />
+        <Kpi
+          label={t("kpiPriceIndex")}
+          value={an ? `₹${an.price_index_latest}` : "—"}
+          sub={an ? t("kpiPriceIndexSub", { pct: an.price_index_change_pct }) : undefined}
+          tone={an ? (an.price_index_change_pct >= 0 ? "up" : "down") : "neutral"}
+        />
+        <Kpi label={t("kpiUsers")} value={an ? String(an.users_total) : "—"} sub={
+          an
+            ? `${an.users_by_role.farmer ?? 0} ${t("roleFarmers")} · ${an.users_by_role.buyer ?? 0} ${t("roleBuyers")}`
+            : undefined
+        } />
+        <Kpi label={t("kpiCoverage")} value={an ? String(an.markets_tracked) : "—"} sub={
+          an ? t("kpiCoverageSub", { d: an.districts_tracked, s: an.states_tracked }) : undefined
+        } />
+        <Kpi label={t("openLots")} value={String(data.open_lots)} sub={`${data.total_lots} ${t("kpiAllTime")}`} />
+        <Kpi
+          label={t("openDisputes")}
+          value={String(data.open_disputes_count)}
+          tone={data.open_disputes_count > 0 ? "down" : "neutral"}
+        />
       </section>
 
-      {/* Match quality — every live match re-scored against the current lot & demand */}
+      {/* ---- charts grid ---- */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {an && (
+          <Card title={t("chFunnel")} hint={t("chFunnelHint")}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={an.funnel} layout="vertical" margin={{ left: 8, right: 24 }}>
+                  <CartesianGrid horizontal={false} stroke="var(--color-border)" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="stage" tick={{ fontSize: 11 }} width={72} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--color-border)", opacity: 0.3 }} />
+                  <Bar dataKey="count" fill={C.green} radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+
+        {an && an.supply_demand.length > 0 && (
+          <Card title={t("chSupplyDemand")} hint={t("chSupplyDemandHint")}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={an.supply_demand.slice(0, 7)} margin={{ left: 0, right: 8 }}>
+                  <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                  <XAxis dataKey="crop" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={48} />
+                  <YAxis tick={{ fontSize: 11 }} width={44} tickFormatter={(v) => `${Math.round(v / 1000)}t`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${Math.round(Number(v)).toLocaleString()} kg`} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar name={t("supply")} dataKey="supply_kg" fill={C.green} radius={[4, 4, 0, 0]} />
+                  <Bar name={t("demand")} dataKey="demand_kg" fill={C.blue} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+
+        {an && (
+          <Card title={t("chActivity")} hint={t("chActivityHint")}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={an.weekly_activity} margin={{ left: 0, right: 8 }}>
+                  <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                  <XAxis dataKey="week" tick={{ fontSize: 10 }} tickFormatter={(w: string) => w.slice(5)} />
+                  <YAxis tick={{ fontSize: 11 }} width={28} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Area name={t("deals")} type="monotone" dataKey="deals" stroke={C.green} fill={C.green} fillOpacity={0.15} />
+                  <Line name={t("offers")} type="monotone" dataKey="offers" stroke={C.amber} strokeWidth={2} dot={false} />
+                  <Line name={t("newUsers")} type="monotone" dataKey="new_users" stroke={C.purple} strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+
+        <Card title={t("priceTrend")} hint={t("chPriceTrendHint")}>
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={priceTrend} margin={{ left: 0, right: 8 }}>
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} minTickGap={24} />
+                <YAxis tick={{ fontSize: 11 }} width={44} domain={["auto", "auto"]} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v) => `₹${v}`} />
+                <Area type="monotone" dataKey="avg" stroke={C.green} fill={C.green} fillOpacity={0.15} strokeWidth={2} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {an && (
+          <Card title={t("chPipeline")} hint={t("chPipelineHint")}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={Object.entries(an.deal_pipeline).map(([k, v]) => ({ stage: t(`pipe_${k}` as "pipe_matched"), count: v }))}
+                  layout="vertical"
+                  margin={{ left: 8, right: 24 }}
+                >
+                  <CartesianGrid horizontal={false} stroke="var(--color-border)" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="stage" tick={{ fontSize: 10 }} width={96} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--color-border)", opacity: 0.3 }} />
+                  <Bar dataKey="count" fill={C.blue} radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+
+        {an && (
+          <Card title={t("chScoreDist")} hint={t("chScoreDistHint")}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={an.score_distribution} margin={{ left: 0, right: 8 }}>
+                  <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} width={28} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--color-border)", opacity: 0.3 }} />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {an.score_distribution.map((_, i) => (
+                      <Cell key={i} fill={[C.red, C.amber, C.blue, C.green][i]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+
+        {an && roleData.length > 0 && (
+          <Card title={t("chUserMix")} hint={t("chUserMixHint")}>
+            <div className="flex h-52 items-center">
+              <ResponsiveContainer width="55%" height="100%">
+                <PieChart>
+                  <Pie data={roleData} dataKey="count" nameKey="role" innerRadius={38} outerRadius={64} paddingAngle={2}>
+                    {roleData.map((_, i) => (
+                      <Cell key={i} fill={roleColors[i % roleColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+              <ul className="flex flex-col gap-1.5 text-sm">
+                {roleData.map((r, i) => (
+                  <li key={r.role} className="flex items-center gap-2">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ background: roleColors[i % roleColors.length] }}
+                    />
+                    <span className="capitalize">{r.role}</span>
+                    <span className="font-bold">{r.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Card>
+        )}
+
+        {an && an.price_pulse.length > 0 && (
+          <Card title={t("chMovers")} hint={t("chMoversHint")}>
+            <ul className="flex flex-col divide-y divide-[var(--color-border)]">
+              {an.price_pulse.slice(0, 7).map((p) => (
+                <li key={p.crop} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+                  <span className="truncate">{p.crop}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="opacity-60">₹{p.latest}</span>
+                    <span
+                      className={`w-16 text-right font-bold ${
+                        p.change_pct >= 0 ? "text-[var(--color-sell)]" : "text-[var(--color-wait)]"
+                      }`}
+                    >
+                      {p.change_pct >= 0 ? "+" : ""}
+                      {p.change_pct}%
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </div>
+
+      {/* ---- match quality ---- */}
       {health && (
-        <section>
-          <h2 className="mb-1 text-sm font-semibold opacity-80">{t("matchHealth")}</h2>
-          <p className="mb-3 text-xs opacity-60">{t("matchHealthSubtitle")}</p>
+        <Card title={t("matchHealth")} hint={t("matchHealthSubtitle")}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center">
-              <div className="font-serif text-2xl font-bold text-[var(--color-brand-dark)]">{health.total_matches}</div>
-              <div className="text-xs opacity-60">{t("mh_total")}</div>
-            </div>
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center">
-              <div className="font-serif text-2xl font-bold text-[var(--color-brand-dark)]">{Math.round(health.precision * 100)}%</div>
-              <div className="text-xs opacity-60">{t("mh_precision")}</div>
-            </div>
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center">
-              <div className="font-serif text-2xl font-bold text-[var(--color-brand-dark)]">{health.mean_abs_score_delta}</div>
-              <div className="text-xs opacity-60">{t("mh_drift")}</div>
-            </div>
-            <div
-              className={`rounded-xl border p-4 text-center ${
-                health.healthy
-                  ? "border-[var(--color-sell)]/40 bg-[var(--color-sell)]/10 text-[var(--color-sell)]"
-                  : "border-[var(--color-wait)]/40 bg-[var(--color-wait)]/10 text-[var(--color-wait)]"
-              }`}
-            >
-              <div className="font-serif text-lg font-bold">{health.healthy ? t("mh_healthy") : t("mh_unhealthy")}</div>
-            </div>
+            {(
+              [
+                [t("mh_total"), String(health.total_matches), "neutral"],
+                [t("mh_precision"), `${Math.round(health.precision * 100)}%`, "neutral"],
+                [t("mh_drift"), String(health.mean_abs_score_delta), "neutral"],
+                [
+                  health.healthy ? t("mh_healthy") : t("mh_unhealthy"),
+                  "",
+                  health.healthy ? "up" : "down",
+                ],
+              ] as [string, string, "neutral" | "up" | "down"][]
+            ).map(([label, value, tone], i) => (
+              <div
+                key={i}
+                className={`rounded-xl border p-3 text-center ${
+                  tone === "up"
+                    ? "border-[var(--color-sell)]/40 bg-[var(--color-sell)]/10 text-[var(--color-sell)]"
+                    : tone === "down"
+                      ? "border-[var(--color-wait)]/40 bg-[var(--color-wait)]/10 text-[var(--color-wait)]"
+                      : "border-[var(--color-border)] bg-[var(--color-bg)]"
+                }`}
+              >
+                {value && <div className="font-serif text-xl font-bold">{value}</div>}
+                <div className={`text-xs ${value ? "opacity-60" : "font-serif text-lg font-bold"}`}>{label}</div>
+              </div>
+            ))}
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             {(
@@ -141,159 +427,101 @@ export default function AdminPage() {
                 ["mh_orphaned", health.buckets.orphaned, "text-[var(--color-wait)]"],
               ] as const
             ).map(([key, n, cls]) => (
-              <span
-                key={key}
-                className="rounded-full border border-[var(--color-border)] bg-white/50 px-3 py-1"
-              >
+              <span key={key} className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1">
                 {t(key)}: <span className={`font-bold ${cls}`}>{n}</span>
               </span>
             ))}
           </div>
-        </section>
+        </Card>
       )}
 
-      {/* Price trend sparkline */}
-      <section>
-        <h2 className="mb-2 text-sm font-semibold opacity-80">{t("priceTrend")}</h2>
-        <div className="h-44 w-full" role="img" aria-label={t("priceTrend")}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={24} />
-              <YAxis tick={{ fontSize: 11 }} width={48} />
-              <Tooltip contentStyle={{ fontSize: 13, borderRadius: 8 }} />
-              <Line
-                type="monotone"
-                dataKey="avg"
-                stroke="var(--color-brand)"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* Dispute queue */}
-      <section>
-        <h2 className="mb-2 text-sm font-semibold opacity-80">{t("disputeQueue")}</h2>
-        {data.dispute_queue.length === 0 ? (
-          <p className="text-sm opacity-60">{t("noDisputes")}</p>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
-            <table className="w-full min-w-[420px] text-left text-sm">
-              <thead className="bg-[var(--color-border)]/40">
-                <tr>
-                  <th className="px-3 py-2 font-semibold">{t("dealId")}</th>
-                  <th className="px-3 py-2 font-semibold">{t("raisedBy")}</th>
-                  <th className="px-3 py-2 font-semibold">{t("reason")}</th>
-                  <th className="px-3 py-2 font-semibold">{t("date")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.dispute_queue.map((d) => (
-                  <tr key={d.id} className="border-t border-[var(--color-border)]">
-                    <td className="px-3 py-2">
-                      <Link
-                        href={`/deals/${d.deal_id}`}
-                        className="font-medium text-[var(--color-brand)] hover:underline"
-                      >
-                        #{d.deal_id}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2">{d.raised_by}</td>
-                    <td className="px-3 py-2">
-                      {d.reason.length > 60 ? `${d.reason.slice(0, 60)}…` : d.reason}
-                    </td>
-                    <td className="px-3 py-2">{d.created_at.slice(0, 10)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* v1.1 analytics */}
+      {/* ---- district price gaps ---- */}
       {data.district_price_gaps?.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold opacity-80">
-            District price-realisation gap (vs state average)
-          </h2>
-          <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
-            <table className="w-full min-w-[360px] text-left text-sm">
-              <thead className="bg-[var(--color-border)]/40">
-                <tr>
-                  <th className="px-3 py-2 font-semibold">District</th>
-                  <th className="px-3 py-2 font-semibold">Avg modal ₹</th>
-                  <th className="px-3 py-2 font-semibold">Gap vs state</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.district_price_gaps.slice(0, 12).map((g) => (
-                  <tr key={g.district} className="border-t border-[var(--color-border)]">
-                    <td className="px-3 py-2 font-medium">{g.district}</td>
-                    <td className="px-3 py-2">₹{g.avg_modal_price}</td>
-                    <td
-                      className={`px-3 py-2 font-semibold ${
-                        g.gap_vs_state_pct < 0 ? "text-[var(--color-wait)]" : "text-[var(--color-sell)]"
-                      }`}
-                    >
-                      {g.gap_vs_state_pct > 0 ? "+" : ""}
-                      {g.gap_vs_state_pct}%
-                    </td>
+        <Card title={t("chDistrictGap")} hint={t("chDistrictGapHint")}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[...data.district_price_gaps].sort((a, b) => a.gap_vs_state_pct - b.gap_vs_state_pct).slice(0, 14)}
+                layout="vertical"
+                margin={{ left: 8, right: 24 }}
+              >
+                <CartesianGrid horizontal={false} stroke="var(--color-border)" />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="district" tick={{ fontSize: 10 }} width={90} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${v}% vs state avg`} />
+                <Bar dataKey="gap_vs_state_pct" radius={[0, 4, 4, 0]}>
+                  {data.district_price_gaps
+                    .slice()
+                    .sort((a, b) => a.gap_vs_state_pct - b.gap_vs_state_pct)
+                    .slice(0, 14)
+                    .map((g, i) => (
+                      <Cell key={i} fill={g.gap_vs_state_pct < 0 ? C.red : C.green} />
+                    ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
+      {/* ---- disputes + anomalies ---- */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card title={t("disputeQueue")}>
+          {data.dispute_queue.length === 0 ? (
+            <p className="text-sm opacity-60">{t("noDisputes")}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[380px] text-left text-sm">
+                <thead className="border-b border-[var(--color-border)] text-xs uppercase opacity-55">
+                  <tr>
+                    <th className="py-2 font-semibold">{t("dealId")}</th>
+                    <th className="py-2 font-semibold">{t("reason")}</th>
+                    <th className="py-2 font-semibold">{t("date")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+                </thead>
+                <tbody>
+                  {data.dispute_queue.map((d) => (
+                    <tr key={d.id} className="border-b border-[var(--color-border)] last:border-0">
+                      <td className="py-2">
+                        <Link href={`/deals/${d.deal_id}`} className="font-medium text-[var(--color-brand)] hover:underline">
+                          #{d.deal_id}
+                        </Link>
+                      </td>
+                      <td className="py-2">{d.reason.length > 48 ? `${d.reason.slice(0, 48)}…` : d.reason}</td>
+                      <td className="py-2 opacity-60">{d.created_at.slice(0, 10)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
 
-      {data.price_anomalies?.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold opacity-80">
-            Price anomalies (latest modal vs its 7-day average)
-          </h2>
-          <ul className="flex flex-col gap-1.5">
-            {data.price_anomalies.map((an) => (
-              <li
-                key={`${an.crop}-${an.market}`}
-                className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-white/50 px-3 py-2 text-sm"
-              >
-                <span>
-                  <span className="font-semibold">{an.crop}</span> · {an.market}
-                </span>
-                <span
-                  className={`font-bold ${
-                    an.deviation_pct >= 0 ? "text-[var(--color-sell)]" : "text-[var(--color-wait)]"
-                  }`}
-                >
-                  ₹{an.modal_price} ({an.deviation_pct >= 0 ? "+" : ""}
-                  {an.deviation_pct}% vs ₹{an.avg_7d})
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {data.disputes_by_district && Object.keys(data.disputes_by_district).length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold opacity-80">Disputes by district</h2>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(data.disputes_by_district).map(([d, n]) => (
-              <span
-                key={d}
-                className="rounded-full border border-[var(--color-border)] bg-white/50 px-3 py-1 text-sm"
-              >
-                {d}: <span className="font-bold">{n}</span>
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
+        <Card title={t("chAnomalies")} hint={t("chAnomaliesHint")}>
+          {(!data.price_anomalies || data.price_anomalies.length === 0) ? (
+            <p className="text-sm opacity-60">{t("noAnomalies")}</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-[var(--color-border)]">
+              {data.price_anomalies.map((a) => (
+                <li key={`${a.crop}-${a.market}`} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+                  <span className="min-w-0 truncate">
+                    <span className="font-semibold">{a.crop}</span>
+                    <span className="opacity-55"> · {a.market}</span>
+                  </span>
+                  <span
+                    className={`shrink-0 font-bold ${
+                      a.deviation_pct >= 0 ? "text-[var(--color-sell)]" : "text-[var(--color-wait)]"
+                    }`}
+                  >
+                    ₹{a.modal_price} ({a.deviation_pct >= 0 ? "+" : ""}
+                    {a.deviation_pct}%)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

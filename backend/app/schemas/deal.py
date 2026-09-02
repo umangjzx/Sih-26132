@@ -106,3 +106,63 @@ class AdminDashboardResponse(BaseModel):
     district_price_gaps: list[DistrictPriceGap] = Field(default_factory=list)
     disputes_by_district: dict[str, int] = Field(default_factory=dict)
     price_anomalies: list[PriceAnomaly] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
+# v1.3 admin analytics (GET /api/admin/analytics) — charts & insight blocks
+# --------------------------------------------------------------------------- #
+
+class FunnelStage(BaseModel):
+    stage: str
+    count: int
+
+
+class CropSupplyDemand(BaseModel):
+    crop: str
+    supply_kg: float
+    demand_kg: float
+    open_lots: int
+    open_demands: int
+    tightness: float  # demand / max(supply, 1) — >1 means demand outstrips supply
+
+
+class ScoreBucket(BaseModel):
+    label: str       # "75-100"
+    count: int
+
+
+class WeeklyPoint(BaseModel):
+    week: str         # ISO date of the week's Monday
+    deals: int
+    offers: int
+    new_users: int
+
+
+class PricePulse(BaseModel):
+    crop: str
+    latest: float
+    avg_30d: float
+    change_pct: float
+
+
+class AdminAnalyticsResponse(BaseModel):
+    # headline KPIs
+    gmv_inr: float                       # Σ agreed_price/qtl × agreed_qty(kg)/100
+    avg_deal_value_inr: float
+    users_total: int
+    users_by_role: dict[str, int]
+    markets_tracked: int
+    districts_tracked: int
+    states_tracked: int
+    price_index_latest: float            # mean modal price, latest day
+    price_index_change_pct: float        # vs ~30 days ago
+    match_conversion_pct: float          # deals / matches
+    # charts
+    funnel: list[FunnelStage] = Field(default_factory=list)
+    deal_pipeline: dict[str, int] = Field(default_factory=dict)
+    supply_demand: list[CropSupplyDemand] = Field(default_factory=list)
+    score_distribution: list[ScoreBucket] = Field(default_factory=list)
+    weekly_activity: list[WeeklyPoint] = Field(default_factory=list)
+    price_pulse: list[PricePulse] = Field(default_factory=list)
+    lots_by_crop: dict[str, int] = Field(default_factory=dict)
+    demands_by_crop: dict[str, int] = Field(default_factory=dict)
