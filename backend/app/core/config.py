@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # v1.1: indicative road-freight cost, ₹ per quintal per km (shared-truck haulage).
     transport_cost_per_qtl_km: float = 0.4
 
+    # v1.4: lot x demand pairs measurably farther apart than this (km) are never
+    # stored as matches, regardless of price/quantity fit. Set generously so a
+    # missing coordinate never causes a silent exclusion.
+    match_max_km: float = 400.0
+
     # v1.3: optional LLM (OpenRouter) — a *readability layer* only. Plain-language
     # advisor summary, the "Ask AgriLink" assistant, and live-string translation.
     # Blank -> those features degrade to the rule-based output / English.

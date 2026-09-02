@@ -31,6 +31,7 @@ class CounterpartySummary(BaseModel):
     name: str
     district: str
     kyc_status: str
+    verification_status: str = "unverified"
 
 
 class MatchResponse(BaseModel):

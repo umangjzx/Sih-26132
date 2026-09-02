@@ -46,6 +46,7 @@ def _counterparty(user: User) -> CounterpartySummary:
         name=user.name,
         district=user.district,
         kyc_status=user.kyc_status,
+        verification_status=getattr(user, "verification_status", "unverified"),
     )
 
 

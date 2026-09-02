@@ -6,8 +6,8 @@ and a 30-day average-modal-price series across all crops (reused from PriceCache
 
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -20,6 +20,7 @@ from app.models.match import Match
 from app.models.offer import Offer
 from app.models.price_cache import PriceCache
 from app.models.user import User
+from app.schemas.auth import AdminUserOut, SetActiveBody, VerifyUserBody
 from app.schemas.deal import (
     AdminAnalyticsResponse,
     AdminDashboardResponse,
@@ -361,3 +362,107 @@ def admin_analytics(
         lots_by_crop=lots_by_crop,
         demands_by_crop=demands_by_crop,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Admin user management + verification (v1.4)
+# --------------------------------------------------------------------------- #
+
+@router.get("/api/admin/users", response_model=list[AdminUserOut])
+def admin_list_users(
+    current_user: CurrentUser,
+    role: str | None = None,
+    verification: str | None = None,
+    q: str | None = Query(None, description="name or phone substring"),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> list[AdminUserOut]:
+    stmt = select(User).order_by(User.id.desc())
+    if role:
+        stmt = stmt.where(User.role == role)
+    if verification:
+        stmt = stmt.where(User.verification_status == verification)
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(User.name.ilike(like), User.phone.ilike(like)))
+    users = list(db.execute(stmt.limit(limit)).scalars().all())
+
+    ids = [u.id for u in users] or [0]
+    lot_counts = dict(
+        db.execute(
+            select(Lot.farmer_id, func.count()).where(Lot.farmer_id.in_(ids)).group_by(Lot.farmer_id)
+        ).all()
+    )
+    dem_counts = dict(
+        db.execute(
+            select(Demand.buyer_id, func.count()).where(Demand.buyer_id.in_(ids)).group_by(Demand.buyer_id)
+        ).all()
+    )
+    # deals where the user is a party (farmer via lot, buyer via demand)
+    deal_rows = db.execute(
+        select(Lot.farmer_id, Demand.buyer_id)
+        .select_from(Deal)
+        .join(Match, Deal.match_id == Match.id)
+        .join(Lot, Match.lot_id == Lot.id)
+        .join(Demand, Match.demand_id == Demand.id)
+    ).all()
+    deal_counts: dict[int, int] = {}
+    for fid, bid in deal_rows:
+        deal_counts[fid] = deal_counts.get(fid, 0) + 1
+        deal_counts[bid] = deal_counts.get(bid, 0) + 1
+
+    out = []
+    for u in users:
+        row = AdminUserOut.model_validate(u)
+        row.lots = int(lot_counts.get(u.id, 0))
+        row.demands = int(dem_counts.get(u.id, 0))
+        row.deals = int(deal_counts.get(u.id, 0))
+        out.append(row)
+    return out
+
+
+@router.patch("/api/admin/users/{user_id}/verify", response_model=AdminUserOut)
+def admin_verify_user(
+    user_id: int,
+    body: VerifyUserBody,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> AdminUserOut:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    user.verification_status = body.status
+    user.verification_note = body.note
+    # keep the legacy badge field in sync
+    user.kyc_status = "verified" if body.status == "verified" else "unverified"
+    if body.status == "verified":
+        user.verified_at = datetime.now(tz=timezone.utc)
+        user.verified_by = current_user.id
+    else:
+        user.verified_at = None
+        user.verified_by = None
+    db.commit()
+    db.refresh(user)
+    return AdminUserOut.model_validate(user)
+
+
+@router.patch("/api/admin/users/{user_id}/active", response_model=AdminUserOut)
+def admin_set_user_active(
+    user_id: int,
+    body: SetActiveBody,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> AdminUserOut:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You cannot deactivate your own account")
+    user.is_active = body.is_active
+    db.commit()
+    db.refresh(user)
+    return AdminUserOut.model_validate(user)

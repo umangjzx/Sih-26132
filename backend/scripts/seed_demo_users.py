@@ -27,16 +27,16 @@ from app.models.pool import Pool, PoolMember
 from app.models.user import User
 
 DEMO_USERS = [
-    # phone, name, role, district, taluka, password
-    ("+919000000001", "Ravi Patil", "farmer", "Pune", "Haveli", "farmer123"),
-    ("+919000000002", "Sita Deshmukh", "farmer", "Nashik", "Niphad", "farmer123"),
-    ("+919000000003", "Anita Traders", "buyer", "Pune", "Haveli", "buyer123"),
-    ("+919000000004", "Mega Foods Pvt", "buyer", "Mumbai City", "Mumbai", "buyer123"),
-    ("+919000000009", "Platform Admin", "admin", "Pune", "Haveli", "admin123"),
+    # phone, name, role, district, taluka, password, state, lat, lon
+    ("+919000000001", "Ravi Patil", "farmer", "Pune", "Haveli", "farmer123", "Maharashtra", 18.5204, 73.8567),
+    ("+919000000002", "Sita Deshmukh", "farmer", "Nashik", "Niphad", "farmer123", "Maharashtra", 19.9975, 73.7898),
+    ("+919000000003", "Anita Traders", "buyer", "Pune", "Haveli", "buyer123", "Maharashtra", 18.5204, 73.8567),
+    ("+919000000004", "Mega Foods Pvt", "buyer", "Mumbai City", "Mumbai", "buyer123", "Maharashtra", 19.0760, 72.8777),
+    ("+919000000009", "Platform Admin", "admin", "Pune", "Haveli", "admin123", "Maharashtra", 18.5204, 73.8567),
 ]
 
 
-def _upsert_user(db, phone, name, role, district, taluka, password) -> User:
+def _upsert_user(db, phone, name, role, district, taluka, password, state, lat, lon) -> User:
     user = db.execute(select(User).where(User.phone == phone)).scalar_one_or_none()
     if user is None:
         user = User(phone=phone, name=name, role=role, district=district, taluka=taluka)
@@ -45,7 +45,11 @@ def _upsert_user(db, phone, name, role, district, taluka, password) -> User:
     user.role = role
     user.district = district
     user.taluka = taluka
+    user.state = state
+    user.latitude = lat
+    user.longitude = lon
     user.kyc_status = "verified"
+    user.verification_status = "verified"
     user.is_active = True
     user.password_hash = hash_password(password)
     db.flush()
@@ -76,6 +80,9 @@ def _upsert_demand(db, buyer, crop, qty, spec, lo, hi, window) -> Demand:
     if dem is None:
         dem = Demand(buyer_id=buyer.id, crop=crop, status="open")
         db.add(dem)
+    dem.delivery_district = buyer.district
+    dem.latitude = buyer.latitude
+    dem.longitude = buyer.longitude
     dem.quantity_kg = qty
     dem.quality_spec = spec
     dem.price_band_min = lo
@@ -143,7 +150,8 @@ def main() -> None:
         n = run_matching(db)
 
         print("Seeded:")
-        for phone, name, role, district, _tk, pw in DEMO_USERS:
+        for row in DEMO_USERS:
+            phone, name, role, district, _tk, pw = row[:6]
             print(f"  {role:6}  {phone} / {pw:9}  {name} ({district})")
         print(f"\n  3 lots, 3 demands, 1 pool (2 members). run_matching upserted {n} matches.")
     finally:

@@ -18,3 +18,9 @@ class Demand(Base):
     price_band_max: Mapped[float] = mapped_column(Float)
     delivery_window: Mapped[str] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(20), default="open")
+
+    # v1.4: where the buyer wants delivery (defaults to the buyer's own
+    # location on create). Used for distance-aware matching + the radius veto.
+    delivery_district: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)

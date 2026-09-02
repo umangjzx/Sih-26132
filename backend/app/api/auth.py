@@ -24,8 +24,10 @@ from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
     LoginBody,
+    ProfileUpdate,
     RefreshBody,
     RegisterBody,
+    RequestVerification,
     TokenResponse,
     UserResponse,
 )
@@ -67,8 +69,11 @@ def register(
         phone=body.phone,
         name=body.name,
         role=body.role,
-        district="",
+        district=body.district or "",
         taluka="",
+        state=body.state or "",
+        latitude=body.latitude,
+        longitude=body.longitude,
         password_hash=hash_password(body.password),
     )
     db.add(user)
@@ -150,4 +155,49 @@ def refresh_tokens(
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: CurrentUser) -> UserResponse:
     """Return the currently authenticated user's profile."""
+    return UserResponse.model_validate(current_user)
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/auth/me  — the user sets their own trading location / details
+# ---------------------------------------------------------------------------
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    body: ProfileUpdate,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    data = body.model_dump(exclude_unset=True)
+    if body.latitude is not None or body.longitude is not None:
+        if body.latitude is None or body.longitude is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                "latitude and longitude must be provided together")
+    for field, value in data.items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
+    return UserResponse.model_validate(current_user)
+
+
+# ---------------------------------------------------------------------------
+# POST /api/auth/me/request-verification  — user asks an admin to verify them
+# ---------------------------------------------------------------------------
+
+@router.post("/me/request-verification", response_model=UserResponse)
+def request_verification(
+    body: RequestVerification,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    if current_user.verification_status == "verified":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This account is already verified.")
+    current_user.verification_status = "pending"
+    if body.note is not None:
+        current_user.verification_note = body.note
+    if body.reference is not None:
+        current_user.verification_ref = body.reference
+    db.commit()
+    db.refresh(current_user)
+    logger.info("[AgriLink] verification requested by user %d", current_user.id)
     return UserResponse.model_validate(current_user)

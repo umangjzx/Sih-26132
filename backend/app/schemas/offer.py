@@ -48,4 +48,6 @@ class DealResponse(BaseModel):
     logistics_mode: str
     payment_status: str
     pipeline_status: str
+    payment_method: str | None = None
+    payment_reference: str | None = None
     created_at: datetime

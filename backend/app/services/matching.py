@@ -61,26 +61,39 @@ def _price_score(expected: float, band_min: float, band_max: float) -> float:
     return round(fraction * PRICE_MAX, 2)
 
 
+def pair_distance_km(
+    lot_location: str,
+    buyer_district: str,
+    lot_coords: tuple[float, float] | None = None,
+    demand_coords: tuple[float, float] | None = None,
+) -> float | None:
+    """Best-available distance (km) between a lot and where the buyer wants it.
+
+    Preference order: point-to-point (both geocoded) → lot coords ↔ buyer
+    district centroid → district ↔ district centroids → ``None`` when neither
+    side can be placed.
+    """
+    from app.services.geo import _district_coord, haversine_km
+
+    demand_c = demand_coords or _district_coord(buyer_district or "")
+    lot_c = lot_coords or _district_coord(lot_location or "")
+    if lot_c and demand_c:
+        return round(haversine_km(lot_c, demand_c), 1)
+    return district_distance_km(lot_location, buyer_district)
+
+
 def _distance_score(
     lot_location: str,
     buyer_district: str,
     lot_coords: tuple[float, float] | None = None,
+    demand_coords: tuple[float, float] | None = None,
 ) -> float:
-    """0–30 pts based on distance between the lot and the buyer's district.
+    """0–30 pts based on distance between the lot and where the buyer wants it.
 
-    Uses the lot's geocoded coordinates when available (more precise than the
-    district centroid), otherwise the district-centroid haversine.
     Brackets: ≤50 km → 30, 51–150 km → 20, 151–300 km → 10, >300 km → 0.
     Unknown → neutral 15 pts (don't penalise missing geo data).
     """
-    dist: float | None
-    if lot_coords is not None:
-        from app.services.geo import DISTRICT_CENTROIDS, haversine_km
-
-        buyer_c = DISTRICT_CENTROIDS.get(buyer_district)
-        dist = round(haversine_km(lot_coords, buyer_c), 1) if buyer_c else None
-    else:
-        dist = district_distance_km(lot_location, buyer_district)
+    dist = pair_distance_km(lot_location, buyer_district, lot_coords, demand_coords)
     if dist is None:
         return 15.0
     if dist <= 50:
@@ -180,6 +193,7 @@ def score_pair(
     buyer_district: str,
     lot_coords: tuple[float, float] | None = None,
     *,
+    demand_coords: tuple[float, float] | None = None,
     lot_grade: str = "",
     lot_available_from=None,
     demand_quality_spec: str = "",
@@ -194,7 +208,7 @@ def score_pair(
     """
     q = _quantity_score(lot_qty, demand_qty)
     p = _price_score(lot_expected_price, demand_band_min, demand_band_max)
-    d = _distance_score(lot_location, buyer_district, lot_coords)
+    d = _distance_score(lot_location, buyer_district, lot_coords, demand_coords)
     base = round(q + p + d, 2)
 
     qf = quality_factor(lot_grade, demand_quality_spec)
@@ -231,19 +245,31 @@ def run_matching(db: Session) -> int:
         select(Lot).where(Lot.status == "open")
     ).scalars().all()
 
-    # Load all open demands joined with buyer's district from users
-    open_demands_with_district = db.execute(
-        select(Demand, User.district.label("buyer_district"))
+    # Load all open demands with the buyer's district + coordinates so distance
+    # scoring works off the demand's own delivery point when it has one.
+    open_demands_with_buyer = db.execute(
+        select(
+            Demand,
+            User.district.label("buyer_district"),
+            User.latitude.label("buyer_lat"),
+            User.longitude.label("buyer_lon"),
+        )
         .join(User, Demand.buyer_id == User.id)
         .where(Demand.status == "open")
     ).all()
 
+    from app.core.config import settings
+    max_km = settings.match_max_km
+
     upserted = 0
 
     for lot in open_lots:
-        for row in open_demands_with_district:
+        for row in open_demands_with_buyer:
             demand = row[0]
-            buyer_district: str = row[1] or ""
+            demand_district: str = (demand.delivery_district or row[1] or "")
+            d_lat = demand.latitude if demand.latitude is not None else row[2]
+            d_lon = demand.longitude if demand.longitude is not None else row[3]
+            demand_coords = (d_lat, d_lon) if d_lat is not None and d_lon is not None else None
 
             # Only score if crops match (case-insensitive)
             if lot.crop.strip().lower() != demand.crop.strip().lower():
@@ -254,6 +280,14 @@ def run_matching(db: Session) -> int:
                 if lot.latitude is not None and lot.longitude is not None
                 else None
             )
+
+            # Hard radius veto: if we can measure the gap and it is beyond
+            # match_max_km, this pair is never a match no matter how well the
+            # price or quantity line up.
+            dist = pair_distance_km(lot.location, demand_district, lot_coords, demand_coords)
+            if dist is not None and dist > max_km:
+                continue
+
             total, detail = score_pair(
                 lot_qty=lot.quantity_kg,
                 lot_expected_price=lot.expected_price,
@@ -261,8 +295,9 @@ def run_matching(db: Session) -> int:
                 demand_qty=demand.quantity_kg,
                 demand_band_min=demand.price_band_min,
                 demand_band_max=demand.price_band_max,
-                buyer_district=buyer_district,
+                buyer_district=demand_district,
                 lot_coords=lot_coords,
+                demand_coords=demand_coords,
                 lot_grade=lot.quality_grade or "",
                 lot_available_from=lot.available_from,
                 demand_quality_spec=demand.quality_spec or "",
@@ -317,7 +352,12 @@ def matching_health(db: Session) -> dict:
       orphaned      — the lot or demand row is gone
     """
     rows = db.execute(
-        select(Match, Lot, Demand, User.district.label("bd"))
+        select(
+            Match, Lot, Demand,
+            User.district.label("bd"),
+            User.latitude.label("blat"),
+            User.longitude.label("blon"),
+        )
         .join(Lot, Match.lot_id == Lot.id, isouter=True)
         .join(Demand, Match.demand_id == Demand.id, isouter=True)
         .join(User, Demand.buyer_id == User.id, isouter=True)
@@ -328,7 +368,7 @@ def matching_health(db: Session) -> dict:
     deltas: list[float] = []
     tiers: dict[str, int] = {}
 
-    for match, lot, demand, bd in rows:
+    for match, lot, demand, bd, blat, blon in rows:
         if lot is None or demand is None:
             buckets["orphaned"] += 1
             continue
@@ -336,10 +376,15 @@ def matching_health(db: Session) -> dict:
             buckets["crop_mismatch"] += 1
             continue
         coords = (lot.latitude, lot.longitude) if lot.latitude is not None and lot.longitude is not None else None
+        d_district = demand.delivery_district or bd or ""
+        d_lat = demand.latitude if demand.latitude is not None else blat
+        d_lon = demand.longitude if demand.longitude is not None else blon
+        d_coords = (d_lat, d_lon) if d_lat is not None and d_lon is not None else None
         recomputed, detail = score_pair(
             lot.quantity_kg, lot.expected_price, lot.location,
             demand.quantity_kg, demand.price_band_min, demand.price_band_max,
-            bd or "", coords,
+            d_district, coords,
+            demand_coords=d_coords,
             lot_grade=lot.quality_grade or "", lot_available_from=lot.available_from,
             demand_quality_spec=demand.quality_spec or "",
             demand_delivery_window=demand.delivery_window or "",

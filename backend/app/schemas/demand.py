@@ -10,6 +10,10 @@ class DemandCreate(BaseModel):
     price_band_min: float
     price_band_max: float
     delivery_window: str
+    # Optional — defaults to the buyer's own location on the server.
+    delivery_district: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
     @field_validator("quantity_kg")
     @classmethod
@@ -44,3 +48,6 @@ class DemandResponse(BaseModel):
     price_band_max: float
     delivery_window: str
     status: str
+    delivery_district: str = ""
+    latitude: float | None = None
+    longitude: float | None = None

@@ -202,20 +202,42 @@ def test_advance_pipeline_buyer(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
-def test_advance_sets_payment_paid(db, farmer_user, buyer_user):
+def test_advance_to_delivered_requires_seller(db, farmer_user, buyer_user):
+    deal = _seed_deal(db, farmer_user, buyer_user, pipeline_status="logistics_arranged")
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        assert client.patch(f"/api/deals/{deal.id}/advance").status_code == 403
+        _as(farmer_user)
+        r = client.patch(f"/api/deals/{deal.id}/advance")
+        assert r.status_code == 200 and r.json()["pipeline_status"] == "delivered"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_advance_to_paid_requires_buyer_and_reference(db, farmer_user, buyer_user):
     deal = _seed_deal(db, farmer_user, buyer_user, pipeline_status="delivered")
     client = _client(db)
     try:
+        # seller cannot mark it paid
         _as(farmer_user)
-        resp = client.patch(f"/api/deals/{deal.id}/advance")
-        assert resp.status_code == 200, resp.text
-        body = resp.json()
-        assert body["pipeline_status"] == "paid"
-        assert body["payment_status"] == "paid"
+        assert client.patch(f"/api/deals/{deal.id}/advance").status_code == 403
+        # buyer, but no reference -> 422
+        _as(buyer_user)
+        assert client.patch(f"/api/deals/{deal.id}/advance").status_code == 422
+        # buyer with a reference -> paid, and it's recorded
+        r = client.patch(
+            f"/api/deals/{deal.id}/advance",
+            json={"payment_method": "UPI", "payment_reference": "UPI/2026/AX92"},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["pipeline_status"] == "paid" and body["payment_status"] == "paid"
+        assert body["payment_reference"] == "UPI/2026/AX92"
 
         db.expire_all()
         row = db.execute(select(Deal).where(Deal.id == deal.id)).scalar_one()
-        assert row.payment_status == "paid"
+        assert row.payment_status == "paid" and row.payment_method == "UPI"
     finally:
         app.dependency_overrides.clear()
 

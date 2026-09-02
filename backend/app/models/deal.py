@@ -21,4 +21,7 @@ class Deal(Base):
     logistics_mode: Mapped[str] = mapped_column(String(30), default="self_pickup")
     payment_status: Mapped[str] = mapped_column(String(20), default="pending")
     pipeline_status: Mapped[str] = mapped_column(String(30), default="matched")
+    # v1.4: recorded by the buyer when they mark the deal paid.
+    payment_method: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    payment_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

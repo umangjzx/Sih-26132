@@ -14,6 +14,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,6 +27,12 @@ from app.models.lot import Lot
 from app.models.match import Match
 from app.models.user import User
 from app.schemas.deal import DealDetailResponse
+
+
+class AdvanceBody(BaseModel):
+    payment_method: str | None = Field(default=None, max_length=40)
+    payment_reference: str | None = Field(default=None, max_length=120)
+    note: str | None = Field(default=None, max_length=500)
 
 router = APIRouter(tags=["deals"])
 logger = logging.getLogger(__name__)
@@ -91,6 +98,8 @@ def _assemble_detail(
         logistics_mode=deal.logistics_mode,
         payment_status=deal.payment_status,
         pipeline_status=deal.pipeline_status,
+        payment_method=deal.payment_method,
+        payment_reference=deal.payment_reference,
         created_at=deal.created_at,
         lot=_lot_summary(lot),
         demand=_demand_summary(demand),
@@ -145,13 +154,22 @@ def get_deal(
 # PATCH /api/deals/{deal_id}/advance
 # ---------------------------------------------------------------------------
 
+# Which party may move the deal INTO a given stage. Others → 403.
+#   delivered → the seller (lot owner) confirms dispatch/handover
+#   paid      → the buyer (demand owner) records the payment
+# Every other transition is shared coordination.
+_STAGE_ACTOR = {"delivered": "farmer", "paid": "buyer"}
+
+
 @router.patch("/api/deals/{deal_id}/advance", response_model=DealDetailResponse)
 def advance_deal(
     deal_id: int,
     current_user: CurrentUser,
+    body: AdvanceBody | None = None,
     db: Session = Depends(get_db),
 ) -> DealDetailResponse:
     deal, _match, lot, demand = _load_deal_with_access(deal_id, current_user, db)
+    body = body or AdvanceBody()
 
     try:
         idx = PIPELINE_STAGES.index(deal.pipeline_status)
@@ -168,13 +186,39 @@ def advance_deal(
         )
 
     new_status = PIPELINE_STAGES[idx + 1]
-    deal.pipeline_status = new_status
+
+    # Role gate: the seller confirms delivery, the buyer confirms payment.
+    # Admins may push any stage (they are not a party).
+    required = _STAGE_ACTOR.get(new_status)
+    if required and current_user.role != "admin":
+        is_seller = current_user.id == lot.farmer_id
+        is_buyer = current_user.id == demand.buyer_id
+        if (required == "farmer" and not is_seller) or (required == "buyer" and not is_buyer):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Only the seller can confirm delivery"
+                    if required == "farmer"
+                    else "Only the buyer can record the payment"
+                ),
+            )
+
     if new_status == "paid":
+        if current_user.role != "admin" and not (body.payment_reference or "").strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="A payment reference (UPI / bank txn id) is required to mark a deal paid",
+            )
         deal.payment_status = "paid"
+        deal.payment_method = body.payment_method
+        deal.payment_reference = body.payment_reference
+
+    deal.pipeline_status = new_status
     db.commit()
     db.refresh(deal)
 
     logger.info(
-        "Deal %d advanced to '%s' by user %d", deal.id, new_status, current_user.id
+        "Deal %d advanced to '%s' by user %d (%s)",
+        deal.id, new_status, current_user.id, current_user.role,
     )
     return _assemble_detail(deal, lot, demand, current_user, db)

@@ -21,8 +21,31 @@ def create_demand(
     _role: Annotated[None, require_role("buyer")] = None,
     db: Session = Depends(get_db),
 ) -> DemandResponse:
-    """Create a new demand for the authenticated buyer, then trigger match scoring."""
-    demand = Demand(buyer_id=current_user.id, **body.model_dump())
+    """Create a new demand for the authenticated buyer, then trigger match scoring.
+
+    Delivery location defaults to the buyer's own profile location when the
+    request doesn't carry one, so distance-aware matching has something to work
+    with. If the buyer supplied a district but no coordinates, geocode it.
+    """
+    fields = body.model_dump()
+    if not fields.get("delivery_district"):
+        fields["delivery_district"] = current_user.district or ""
+    if fields.get("latitude") is None or fields.get("longitude") is None:
+        if fields["delivery_district"] and fields["delivery_district"] == (current_user.district or ""):
+            fields["latitude"] = current_user.latitude
+            fields["longitude"] = current_user.longitude
+        elif fields["delivery_district"]:
+            try:
+                from app.services.geocode import geocode
+
+                geo = geocode(fields["delivery_district"], db)
+                if geo:
+                    fields["latitude"] = geo["latitude"]
+                    fields["longitude"] = geo["longitude"]
+            except Exception:  # noqa: BLE001 — geocoding never blocks demand creation
+                pass
+
+    demand = Demand(buyer_id=current_user.id, **fields)
     db.add(demand)
     db.commit()
     db.refresh(demand)
