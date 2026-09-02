@@ -23,13 +23,13 @@ logger = logging.getLogger(__name__)
 _WRITE_LIMIT, _WRITE_WINDOW_S = 40, 600
 
 
-def _rematch(db: Session) -> None:
+def _rematch(db: Session, demand: Demand) -> None:
     try:
-        from app.services.matching import run_matching
+        from app.services.matching import match_demand
 
-        run_matching(db)
+        match_demand(db, demand)
     except Exception:  # noqa: BLE001
-        logger.exception("run_matching failed after demand write")
+        logger.exception("match_demand failed after demand write")
 
 
 def _geocode_district(district: str, db: Session) -> tuple[float, float] | None:
@@ -78,7 +78,7 @@ def create_demand(
     db.add(demand)
     db.commit()
     db.refresh(demand)
-    _rematch(db)
+    _rematch(db, demand)
     return DemandResponse.model_validate(demand)
 
 
@@ -123,7 +123,7 @@ def update_demand(
 
     db.commit()
     db.refresh(demand)
-    _rematch(db)
+    _rematch(db, demand)
     return DemandResponse.model_validate(demand)
 
 

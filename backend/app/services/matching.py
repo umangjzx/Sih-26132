@@ -230,8 +230,120 @@ def score_pair(
 
 
 # ---------------------------------------------------------------------------
-# DB-level scoring run
+# DB-level scoring
 # ---------------------------------------------------------------------------
+
+def _demand_point(
+    demand: Demand, buyer_district: str | None, buyer_lat, buyer_lon
+) -> tuple[str, tuple[float, float] | None]:
+    """Where the buyer wants delivery: the demand's own district/coords when it
+    has them, otherwise the buyer's profile district/coords."""
+    district = demand.delivery_district or buyer_district or ""
+    lat = demand.latitude if demand.latitude is not None else buyer_lat
+    lon = demand.longitude if demand.longitude is not None else buyer_lon
+    coords = (lat, lon) if lat is not None and lon is not None else None
+    return district, coords
+
+
+def _lot_point(lot: Lot) -> tuple[float, float] | None:
+    if lot.latitude is not None and lot.longitude is not None:
+        return (lot.latitude, lot.longitude)
+    return None
+
+
+def _score_and_upsert(db: Session, lot: Lot, demand: Demand,
+                      district: str, coords: tuple[float, float] | None,
+                      max_km: float) -> int:
+    """Score one open lot × open demand pair. Upsert a proposed Match when it
+    clears the veto + MIN_SCORE; reject a now-stale proposed/offered Match when
+    it no longer does. Returns 1 if a row was written, else 0."""
+    if lot.crop.strip().lower() != demand.crop.strip().lower():
+        return 0
+
+    lot_coords = _lot_point(lot)
+    dist = pair_distance_km(lot.location, district, lot_coords, coords)
+    vetoed = dist is not None and dist > max_km
+
+    total = 0.0
+    detail = None
+    if not vetoed:
+        total, detail = score_pair(
+            lot_qty=lot.quantity_kg, lot_expected_price=lot.expected_price,
+            lot_location=lot.location, demand_qty=demand.quantity_kg,
+            demand_band_min=demand.price_band_min, demand_band_max=demand.price_band_max,
+            buyer_district=district, lot_coords=lot_coords, demand_coords=coords,
+            lot_grade=lot.quality_grade or "", lot_available_from=lot.available_from,
+            demand_quality_spec=demand.quality_grade_min or demand.quality_spec or "",
+            demand_delivery_window=demand.delivery_window or "",
+        )
+
+    existing = db.execute(
+        select(Match).where(Match.lot_id == lot.id, Match.demand_id == demand.id)
+    ).scalar_one_or_none()
+
+    if vetoed or total < MIN_SCORE:
+        # no longer a match — retire a stale proposal so it leaves the boards
+        if existing is not None and existing.status in ("proposed", "offered"):
+            existing.status = "rejected"
+            return 1
+        return 0
+
+    if existing is not None:
+        if existing.status in ("proposed", "offered"):
+            existing.score = total
+            existing.score_detail = detail
+            existing.status = "proposed"
+            return 1
+        return 0
+
+    db.add(Match(lot_id=lot.id, demand_id=demand.id, score=total,
+                 score_detail=detail, status="proposed"))
+    return 1
+
+
+def match_lot(db: Session, lot: Lot) -> int:
+    """Incremental: score one lot against every open demand (O(demands), not the
+    full O(lots×demands) sweep). Call after a lot is created or edited."""
+    if lot.status != "open":
+        return 0
+    from app.core.config import settings
+
+    rows = db.execute(
+        select(Demand, User.district, User.latitude, User.longitude)
+        .join(User, Demand.buyer_id == User.id)
+        .where(Demand.status == "open", Demand.crop.ilike(lot.crop.strip()))
+    ).all()
+    n = 0
+    for demand, bd, blat, blon in rows:
+        district, coords = _demand_point(demand, bd, blat, blon)
+        n += _score_and_upsert(db, lot, demand, district, coords, settings.match_max_km)
+    db.commit()
+    logger.info("match_lot(%s): %d matches touched", lot.id, n)
+    return n
+
+
+def match_demand(db: Session, demand: Demand) -> int:
+    """Incremental: score one demand against every open lot. Call after a demand
+    is created or edited."""
+    if demand.status != "open":
+        return 0
+    from app.core.config import settings
+
+    buyer = db.get(User, demand.buyer_id)
+    district, coords = _demand_point(
+        demand, buyer.district if buyer else None,
+        buyer.latitude if buyer else None, buyer.longitude if buyer else None,
+    )
+    lots = db.execute(
+        select(Lot).where(Lot.status == "open", Lot.crop.ilike(demand.crop.strip()))
+    ).scalars().all()
+    n = 0
+    for lot in lots:
+        n += _score_and_upsert(db, lot, demand, district, coords, settings.match_max_km)
+    db.commit()
+    logger.info("match_demand(%s): %d matches touched", demand.id, n)
+    return n
+
 
 def run_matching(db: Session) -> int:
     """Score all open lot×demand pairs sharing the same crop and upsert Match rows.
@@ -261,77 +373,19 @@ def run_matching(db: Session) -> int:
     from app.core.config import settings
     max_km = settings.match_max_km
 
+    # pre-resolve each demand's delivery point once
+    demand_points = [
+        (row[0], *_demand_point(row[0], row[1], row[2], row[3]))
+        for row in open_demands_with_buyer
+    ]
+
     upserted = 0
-
     for lot in open_lots:
-        for row in open_demands_with_buyer:
-            demand = row[0]
-            demand_district: str = (demand.delivery_district or row[1] or "")
-            d_lat = demand.latitude if demand.latitude is not None else row[2]
-            d_lon = demand.longitude if demand.longitude is not None else row[3]
-            demand_coords = (d_lat, d_lon) if d_lat is not None and d_lon is not None else None
-
-            # Only score if crops match (case-insensitive)
-            if lot.crop.strip().lower() != demand.crop.strip().lower():
-                continue
-
-            lot_coords = (
-                (lot.latitude, lot.longitude)
-                if lot.latitude is not None and lot.longitude is not None
-                else None
-            )
-
-            # Hard radius veto: if we can measure the gap and it is beyond
-            # match_max_km, this pair is never a match no matter how well the
-            # price or quantity line up.
-            dist = pair_distance_km(lot.location, demand_district, lot_coords, demand_coords)
-            if dist is not None and dist > max_km:
-                continue
-
-            total, detail = score_pair(
-                lot_qty=lot.quantity_kg,
-                lot_expected_price=lot.expected_price,
-                lot_location=lot.location,
-                demand_qty=demand.quantity_kg,
-                demand_band_min=demand.price_band_min,
-                demand_band_max=demand.price_band_max,
-                buyer_district=demand_district,
-                lot_coords=lot_coords,
-                demand_coords=demand_coords,
-                lot_grade=lot.quality_grade or "",
-                lot_available_from=lot.available_from,
-                demand_quality_spec=demand.quality_grade_min or demand.quality_spec or "",
-                demand_delivery_window=demand.delivery_window or "",
-            )
-
-            if total < MIN_SCORE:
-                continue
-
-            # Upsert: update existing proposed/offered match, insert if new
-            existing = db.execute(
-                select(Match).where(
-                    Match.lot_id == lot.id,
-                    Match.demand_id == demand.id,
-                )
-            ).scalar_one_or_none()
-
-            if existing is not None:
-                if existing.status in ("proposed", "offered"):
-                    existing.score = total
-                    existing.score_detail = detail
-                    upserted += 1
-            else:
-                db.add(Match(
-                    lot_id=lot.id,
-                    demand_id=demand.id,
-                    score=total,
-                    score_detail=detail,
-                    status="proposed",
-                ))
-                upserted += 1
+        for demand, district, coords in demand_points:
+            upserted += _score_and_upsert(db, lot, demand, district, coords, max_km)
 
     db.commit()
-    logger.info("run_matching: %d matches upserted", upserted)
+    logger.info("run_matching: %d matches touched", upserted)
     return upserted
 
 
@@ -345,15 +399,11 @@ def try_pair(db: Session, lot: Lot, demand: Demand) -> dict:
         return {"matched": False, "reason": "different crop"}
 
     buyer = db.get(User, demand.buyer_id)
-    d_district = demand.delivery_district or (buyer.district if buyer else "") or ""
-    d_lat = demand.latitude if demand.latitude is not None else (buyer.latitude if buyer else None)
-    d_lon = demand.longitude if demand.longitude is not None else (buyer.longitude if buyer else None)
-    d_coords = (d_lat, d_lon) if d_lat is not None and d_lon is not None else None
-    lot_coords = (
-        (lot.latitude, lot.longitude)
-        if lot.latitude is not None and lot.longitude is not None
-        else None
+    d_district, d_coords = _demand_point(
+        demand, buyer.district if buyer else None,
+        buyer.latitude if buyer else None, buyer.longitude if buyer else None,
     )
+    lot_coords = _lot_point(lot)
 
     dist = pair_distance_km(lot.location, d_district, lot_coords, d_coords)
     if dist is not None and dist > settings.match_max_km:
@@ -428,11 +478,8 @@ def matching_health(db: Session) -> dict:
         if lot.crop.strip().lower() != demand.crop.strip().lower():
             buckets["crop_mismatch"] += 1
             continue
-        coords = (lot.latitude, lot.longitude) if lot.latitude is not None and lot.longitude is not None else None
-        d_district = demand.delivery_district or bd or ""
-        d_lat = demand.latitude if demand.latitude is not None else blat
-        d_lon = demand.longitude if demand.longitude is not None else blon
-        d_coords = (d_lat, d_lon) if d_lat is not None and d_lon is not None else None
+        coords = _lot_point(lot)
+        d_district, d_coords = _demand_point(demand, bd, blat, blon)
         recomputed, detail = score_pair(
             lot.quantity_kg, lot.expected_price, lot.location,
             demand.quantity_kg, demand.price_band_min, demand.price_band_max,

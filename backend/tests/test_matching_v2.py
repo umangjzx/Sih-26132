@@ -109,3 +109,65 @@ def test_matching_health_flags_orphaned(db):
     db.delete(lot); db.commit()
     h = matching_health(db)
     assert h["buckets"]["orphaned"] == 1 and h["healthy"] is False
+
+
+# --------------------------------------------------------------------------- #
+# incremental matching (match_lot / match_demand) + stale-match retirement
+# --------------------------------------------------------------------------- #
+
+def test_match_lot_incrementally_creates_match(db):
+    from app.models.match import Match
+    from app.services.matching import match_lot
+
+    lot, dem = _mk(db)
+    n = match_lot(db, lot)              # no full run_matching()
+    assert n == 1
+    m = db.query(Match).one()
+    assert m.lot_id == lot.id and m.demand_id == dem.id and m.status == "proposed"
+
+
+def test_match_demand_incrementally_creates_match(db):
+    from app.models.match import Match
+    from app.services.matching import match_demand
+
+    lot, dem = _mk(db)
+    assert match_demand(db, dem) == 1
+    assert db.query(Match).count() == 1
+
+
+def test_editing_a_lot_out_of_range_retires_the_match(db):
+    from app.models.match import Match
+    from app.services.matching import match_lot
+
+    lot, dem = _mk(db)
+    match_lot(db, lot)
+    assert db.query(Match).filter(Match.status == "proposed").count() == 1
+
+    # farmer moves the lot 900 km away and drops it to a sliver of the order
+    # AND way outside the price band -> distance, quantity and price all
+    # collapse and the pair no longer scores >= MIN_SCORE.
+    lot.location = "Gadchiroli"
+    lot.latitude = lot.longitude = None
+    lot.quantity_kg = 60
+    lot.expected_price = 9000
+    db.commit()
+    match_lot(db, lot)
+
+    m = db.query(Match).one()
+    assert m.status == "rejected"          # stale proposal retired, not left stale
+
+
+def test_run_matching_also_retires_a_degraded_proposal(db):
+    from app.models.match import Match
+    from app.services.matching import run_matching
+
+    lot, dem = _mk(db)
+    run_matching(db)
+    buyer = db.query(User).filter(User.role == "buyer").one()
+    buyer.district = "Gadchiroli"
+    dem.price_band_min = 100
+    dem.price_band_max = 200
+    dem.quantity_kg = 5
+    db.commit()
+    run_matching(db)
+    assert db.query(Match).one().status == "rejected"

@@ -42,15 +42,15 @@ def _geocode_into(lot: Lot, location: str, db: Session) -> None:
         logger.debug("lot geocode failed for %r", location, exc_info=True)
 
 
-def _rematch(db: Session) -> None:
-    """Run the matcher, but never let a matcher error fail the write that
-    already committed."""
+def _rematch(db: Session, lot: Lot) -> None:
+    """Incrementally re-score just this lot; never let a matcher error fail the
+    write that already committed."""
     try:
-        from app.services.matching import run_matching
+        from app.services.matching import match_lot
 
-        run_matching(db)
+        match_lot(db, lot)
     except Exception:  # noqa: BLE001
-        logger.exception("run_matching failed after lot write")
+        logger.exception("match_lot failed after lot write")
 
 
 @router.post("/", response_model=LotResponse, status_code=status.HTTP_201_CREATED)
@@ -73,7 +73,7 @@ def create_lot(
     db.add(lot)
     db.commit()
     db.refresh(lot)
-    _rematch(db)
+    _rematch(db, lot)
     return LotResponse.model_validate(lot)
 
 
@@ -110,7 +110,7 @@ def update_lot(
 
     db.commit()
     db.refresh(lot)
-    _rematch(db)
+    _rematch(db, lot)
     return LotResponse.model_validate(lot)
 
 
