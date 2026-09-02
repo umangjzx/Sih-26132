@@ -10,6 +10,7 @@ Design decisions (from 2-CONTEXT.md):
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 from datetime import datetime, timezone
 from typing import Annotated
@@ -24,7 +25,30 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 
+logger = logging.getLogger(__name__)
 _bearer = HTTPBearer(auto_error=False)
+
+
+# ---------------------------------------------------------------------------
+# Signing secret
+# ---------------------------------------------------------------------------
+# JWT_SECRET_KEY must be set in any real deployment. If it is blank we must NOT
+# fall back to a well-known constant — that would let anyone forge tokens
+# (including admin tokens). Instead we mint a random per-process secret: tokens
+# still work within a single run, but they don't validate against a guessable
+# value and don't survive a restart (which is the correct, loud failure mode
+# for a misconfigured deployment).
+_EPHEMERAL_SECRET = secrets.token_hex(32)
+
+
+def _signing_secret() -> str:
+    if settings.jwt_secret_key:
+        return settings.jwt_secret_key
+    logger.warning(
+        "JWT_SECRET_KEY is not set — using a random per-process secret. "
+        "Tokens will not survive a restart. Set JWT_SECRET_KEY for production."
+    )
+    return _EPHEMERAL_SECRET
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +107,7 @@ def create_access_token(subject: str, extra: dict | None = None) -> str:
     }
     if extra:
         payload.update(extra)
-    return jwt.encode(payload, settings.jwt_secret_key or "dev-secret", algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, _signing_secret(), algorithm=settings.jwt_algorithm)
 
 
 def create_refresh_token(subject: str) -> str:
@@ -99,7 +123,7 @@ def create_refresh_token(subject: str) -> str:
         "iat": _utcnow(),
         "exp": _utcnow() + timedelta(days=settings.refresh_token_expire_days),
     }
-    return jwt.encode(payload, settings.jwt_secret_key or "dev-secret", algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, _signing_secret(), algorithm=settings.jwt_algorithm)
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +134,7 @@ def decode_token(token: str) -> dict:
     """Decode and validate a JWT.  Raises ``jose.JWTError`` on any failure."""
     return jwt.decode(
         token,
-        settings.jwt_secret_key or "dev-secret",
+        _signing_secret(),
         algorithms=[settings.jwt_algorithm],
     )
 

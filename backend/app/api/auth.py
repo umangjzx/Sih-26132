@@ -7,10 +7,13 @@ password. Both return a JWT access + refresh pair.
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from jose import JWTError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.core.security import (
     CurrentUser,
@@ -21,6 +24,23 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
+
+# A valid-but-wrong PBKDF2 hash. Verifying against this when the phone is unknown
+# keeps /login's response time constant, so it can't be used to enumerate which
+# phone numbers have accounts.
+_DUMMY_HASH = hash_password("x" * 24)
+
+_LOGIN_LIMIT, _LOGIN_WINDOW_S = 8, 300      # 8 attempts / 5 min per phone
+_REGISTER_LIMIT, _REGISTER_WINDOW_S = 10, 3600  # 10 signups / hour per client
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    return fwd.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+
+
+def _mask_phone(phone: str) -> str:
+    return f"***{phone[-4:]}" if len(phone) >= 4 else "***"
 from app.schemas.auth import (
     AuthResponse,
     LoginBody,
@@ -52,12 +72,19 @@ def _tokens_for(user: User) -> AuthResponse:
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register(
     body: RegisterBody,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> AuthResponse:
     """Create an account for a new phone number and sign it in.
 
-    409 if the phone is already registered.
+    409 if the phone is already registered. ``role`` can only be farmer or
+    buyer — admin accounts are provisioned out of band.
     """
+    if not ratelimit.check(f"register:{_client_ip(request)}",
+                           limit=_REGISTER_LIMIT, window_s=_REGISTER_WINDOW_S):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many sign-up attempts. Please try again later.")
+
     existing = db.execute(select(User).where(User.phone == body.phone)).scalar_one_or_none()
     if existing is not None:
         raise HTTPException(
@@ -77,9 +104,16 @@ def register(
         password_hash=hash_password(body.password),
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:  # lost the race on the unique phone constraint
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this phone number already exists. Please sign in.",
+        )
     db.refresh(user)
-    logger.info("[AgriLink] new account: %s (%s)", body.phone, body.role)
+    logger.info("[AgriLink] new account: %s (%s)", _mask_phone(body.phone), body.role)
     return _tokens_for(user)
 
 
@@ -90,6 +124,7 @@ def register(
 @router.post("/login", response_model=AuthResponse)
 def login(
     body: LoginBody,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> AuthResponse:
     """Verify phone + password and issue an access + refresh token pair."""
@@ -98,8 +133,18 @@ def login(
         detail="Wrong phone number or password",
     )
 
+    if not ratelimit.check(f"login:{body.phone}", limit=_LOGIN_LIMIT, window_s=_LOGIN_WINDOW_S):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many sign-in attempts for this number. Please wait a few minutes.",
+        )
+
     user = db.execute(select(User).where(User.phone == body.phone)).scalar_one_or_none()
-    if user is None or not verify_password(body.password, user.password_hash):
+    # Always run a hash comparison — against the real hash if the account exists,
+    # against a dummy otherwise — so an unknown phone can't be told apart from a
+    # wrong password by response time.
+    ok = verify_password(body.password, user.password_hash if user else _DUMMY_HASH)
+    if user is None or not ok:
         raise _401
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account inactive")
@@ -121,8 +166,6 @@ def refresh_tokens(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or expired refresh token",
     )
-
-    from jose import JWTError
 
     try:
         payload = decode_token(body.refresh_token)
@@ -173,7 +216,12 @@ def update_me(
         if body.latitude is None or body.longitude is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 "latitude and longitude must be provided together")
+    # PATCH semantics: only apply the fields the caller actually sent a value
+    # for. A blank/whitespace string arrives here as None (see ProfileUpdate)
+    # and is ignored rather than nulling a required column.
     for field, value in data.items():
+        if value is None:
+            continue
         setattr(current_user, field, value)
     db.commit()
     db.refresh(current_user)
@@ -193,6 +241,9 @@ def request_verification(
     if current_user.verification_status == "verified":
         raise HTTPException(status.HTTP_409_CONFLICT, "This account is already verified.")
     current_user.verification_status = "pending"
+    # a fresh request supersedes any earlier admin decision
+    current_user.verified_at = None
+    current_user.verified_by = None
     if body.note is not None:
         current_user.verification_note = body.note
     if body.reference is not None:

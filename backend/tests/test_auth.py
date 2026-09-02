@@ -92,6 +92,30 @@ def test_register_rejects_short_password(auth_client, db):
     assert resp.status_code == 422
 
 
+def test_register_cannot_self_assign_admin_role(auth_client, db):
+    """Self-service registration must not be able to mint an admin account."""
+    resp = auth_client.post(
+        "/api/auth/register",
+        json={"phone": "+910000000013", "name": "Sneaky", "role": "admin", "password": "abcdef1"},
+    )
+    assert resp.status_code == 422
+
+
+def test_login_rate_limited_after_repeated_failures(auth_client, db):
+    _register(auth_client, phone="+910000000030", password="rightpass")
+    last = None
+    for _ in range(12):
+        last = auth_client.post(
+            "/api/auth/login", json={"phone": "+910000000030", "password": "nope"}
+        )
+    assert last.status_code == 429
+    # a correct password is still refused while the window is hot
+    blocked = auth_client.post(
+        "/api/auth/login", json={"phone": "+910000000030", "password": "rightpass"}
+    )
+    assert blocked.status_code == 429
+
+
 # ---------------------------------------------------------------------------
 # Login
 # ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import {
   getStoredUser,
   getToken,
   saveAuth,
+  setAuthListeners,
   type StoredUser,
 } from "@/lib/auth";
 
@@ -51,6 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(storedToken);
     }
     setReady(true);
+  }, []);
+
+  // React to background token changes from the fetch layer: a successful
+  // silent refresh swaps in a new access token; a failed one logs us out.
+  useEffect(() => {
+    setAuthListeners({
+      onRefreshed: (t) => setToken(t),
+      onCleared: () => {
+        setToken(null);
+        setUser(null);
+      },
+    });
+    return () => setAuthListeners({});
   }, []);
 
   function login(

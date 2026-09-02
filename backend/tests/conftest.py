@@ -44,6 +44,17 @@ def db():
         engine.dispose()
 
 
+@pytest.fixture(autouse=True)
+def _reset_ratelimit():
+    """The auth rate limiter keeps module-level state; clear it between tests so
+    one test's login attempts don't trip the limit in the next."""
+    from app.core import ratelimit
+
+    ratelimit.reset()
+    yield
+    ratelimit.reset()
+
+
 @pytest.fixture()
 def seeded_db(db):
     db.add_all(PriceCache(**row) for row in generate_fixture_rows(days=40))

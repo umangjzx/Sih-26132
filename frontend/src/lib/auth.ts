@@ -58,3 +58,66 @@ export function getStoredUser(): StoredUser | null {
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Transparent access-token refresh
+// ---------------------------------------------------------------------------
+
+const API_URL =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
+  "http://localhost:8000";
+
+let _onCleared: (() => void) | null = null;
+let _onRefreshed: ((token: string) => void) | null = null;
+let _inFlight: Promise<string | null> | null = null;
+
+/** AuthProvider registers these so the React tree reacts to background
+ *  token changes (refresh success) and forced logout (refresh failure). */
+export function setAuthListeners(opts: {
+  onCleared?: () => void;
+  onRefreshed?: (token: string) => void;
+}): void {
+  _onCleared = opts.onCleared ?? null;
+  _onRefreshed = opts.onRefreshed ?? null;
+}
+
+function forceLogout(): void {
+  clearAuth();
+  _onCleared?.();
+}
+
+/** Exchange the stored refresh token for a new access token. De-duplicates
+ *  concurrent callers. Returns the new access token, or null (and clears the
+ *  session) if the refresh token is missing / rejected. */
+export function refreshAccessToken(): Promise<string | null> {
+  if (_inFlight) return _inFlight;
+  _inFlight = (async () => {
+    const rt = getRefreshToken();
+    const user = getStoredUser();
+    if (!rt || !user) {
+      forceLogout();
+      return null;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: rt }),
+      });
+      if (!res.ok) {
+        forceLogout();
+        return null;
+      }
+      const j = (await res.json()) as { access_token: string; refresh_token: string };
+      saveAuth(j.access_token, j.refresh_token, user);
+      _onRefreshed?.(j.access_token);
+      return j.access_token;
+    } catch {
+      // network blip — don't nuke the session, just fail this attempt
+      return null;
+    } finally {
+      _inFlight = null;
+    }
+  })();
+  return _inFlight;
+}

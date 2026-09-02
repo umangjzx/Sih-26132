@@ -1,3 +1,5 @@
+import { getRefreshToken, getToken, refreshAccessToken } from "@/lib/auth";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // ---------------------------------------------------------------------------
@@ -279,35 +281,69 @@ export type AdminDashboardResponse = {
 // Core fetch helpers
 // ---------------------------------------------------------------------------
 
-async function getJson<T>(path: string, token?: string): Promise<T> {
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { headers });
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
+/** Structured API error — carries the HTTP status and the backend `detail`. */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
   }
+}
+
+async function readError(res: Response): Promise<string> {
+  try {
+    const body = await res.clone().json();
+    if (body && typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body?.detail) && body.detail[0]?.msg) return body.detail[0].msg;
+  } catch {
+    /* not JSON */
+  }
+  const text = await res.text().catch(() => "");
+  return text || `Request failed: ${res.status}`;
+}
+
+/** One request, with a single transparent access-token refresh + retry on 401. */
+async function request<T>(
+  path: string,
+  init: RequestInit,
+  token?: string,
+  retried = false,
+): Promise<T> {
+  const stored = typeof window !== "undefined" ? getToken() : null;
+  const bearer = stored || token; // storage wins — it holds the freshest token
+  const headers = new Headers(init.headers);
+  if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
+
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+
+  if (
+    res.status === 401 &&
+    !retried &&
+    typeof window !== "undefined" &&
+    getRefreshToken()
+  ) {
+    const fresh = await refreshAccessToken();
+    if (fresh) return request<T>(path, init, fresh, true);
+  }
+
+  if (!res.ok) {
+    throw new ApiError(res.status, await readError(res));
+  }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
-export async function postJson<T>(
-  path: string,
-  body: unknown,
-  token?: string,
-): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Request failed: ${res.status} ${text}`);
-  }
-  return res.json() as Promise<T>;
+async function getJson<T>(path: string, token?: string): Promise<T> {
+  return request<T>(path, { method: "GET" }, token);
+}
+
+export async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+  return request<T>(
+    path,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) },
+    token,
+  );
 }
 
 export async function patchJson<T>(
@@ -316,18 +352,11 @@ export async function patchJson<T>(
   token?: string,
   method: "PATCH" | "PUT" = "PATCH",
 ): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Request failed: ${res.status} ${text}`);
-  }
-  return res.json() as Promise<T>;
+  return request<T>(
+    path,
+    { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) },
+    token,
+  );
 }
 
 // ---------------------------------------------------------------------------

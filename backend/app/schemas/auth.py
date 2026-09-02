@@ -18,12 +18,21 @@ def _clean_phone(v: str) -> str:
 
 
 class RegisterBody(BaseModel):
-    """Create an account: phone is the identity, password is the credential."""
+    """Create an account: phone is the identity, password is the credential.
+
+    ``role`` is farmer or buyer only — admin accounts are provisioned out of
+    band (seed / DB), never via self-service registration.
+    """
 
     phone: str
     name: str = Field(min_length=1, max_length=200)
-    role: Literal["farmer", "buyer", "admin"] = "farmer"
+    role: Literal["farmer", "buyer"] = "farmer"
     password: str = Field(min_length=6, max_length=128)
+    # Optional trading location, captured from the browser at sign-up.
+    district: str | None = Field(default=None, max_length=120)
+    state: str | None = Field(default=None, max_length=120)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
     @field_validator("phone")
     @classmethod
@@ -37,11 +46,6 @@ class RegisterBody(BaseModel):
         if not v:
             raise ValueError("Name is required")
         return v
-    # Optional trading location, captured from the browser at sign-up.
-    district: str | None = Field(default=None, max_length=120)
-    state: str | None = Field(default=None, max_length=120)
-    latitude: float | None = Field(default=None, ge=-90, le=90)
-    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class LoginBody(BaseModel):
@@ -88,7 +92,8 @@ class UserResponse(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    """Fields a user may change on their own account."""
+    """Fields a user may change on their own account. Note: role, phone,
+    verification status and is_active are deliberately not here."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     district: str | None = Field(default=None, max_length=120)
@@ -96,6 +101,14 @@ class ProfileUpdate(BaseModel):
     state: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
+
+    @field_validator("name", "district", "taluka", "state")
+    @classmethod
+    def _strip(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
 
 
 class RequestVerification(BaseModel):
