@@ -4,7 +4,9 @@
     "loading": "Loading...",
     "error": "Something went wrong",
     "retry": "Retry",
-    "loginRequired": "Login required"
+    "loginRequired": "Login required",
+    "source": "Source",
+    "asOf": "as of"
   },
   "nav": {
     "prices": "Prices",
@@ -372,7 +374,16 @@
     "activityTitle": "Activity ledger",
     "activityHint": "Append-only record of every offer, deal, payment and dispute action.",
     "downloadCsv": "Download CSV",
-    "noActivity": "No activity recorded yet."
+    "noActivity": "No activity recorded yet.",
+    "dhTitle": "Deal health",
+    "dhHint": "Where deals get stuck and how fast they close.",
+    "dhSuccess": "Success rate",
+    "dhTimeToDeal": "Time to deal",
+    "dhPaymentSplit": "Payment status of all deals",
+    "dhMspTitle": "Price realisation vs MSP",
+    "dhMspHint": "Latest modal price vs the Minimum Support Price, by crop.",
+    "dhMspNone": "No MSP-backed crops in the current data.",
+    "dhMspGap": "Gap vs MSP"
   },
   "weather": {
     "title": "7-Day Weather",

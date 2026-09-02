@@ -138,6 +138,13 @@ class WeeklyPoint(BaseModel):
     new_users: int
 
 
+class PriceVsMsp(BaseModel):
+    crop: str
+    modal_price: float
+    msp: float
+    gap_pct: float                                # (modal - msp) / msp * 100
+
+
 class PricePulse(BaseModel):
     crop: str
     latest: float
@@ -166,3 +173,8 @@ class AdminAnalyticsResponse(BaseModel):
     price_pulse: list[PricePulse] = Field(default_factory=list)
     lots_by_crop: dict[str, int] = Field(default_factory=dict)
     demands_by_crop: dict[str, int] = Field(default_factory=dict)
+    # v1.4 phase 4 additions
+    deal_success_rate_pct: float = 0.0            # closed / created deals
+    payment_status_split: dict[str, int] = Field(default_factory=dict)  # pending | paid
+    avg_hours_to_deal: float | None = None        # first offer -> deal
+    price_vs_msp: list[PriceVsMsp] = Field(default_factory=list)

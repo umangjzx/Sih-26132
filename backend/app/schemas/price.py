@@ -23,6 +23,8 @@ class PriceTrendResponse(BaseModel):
     market: str
     district: str
     points: list[PricePoint]
+    data_source: str = "AGMARKNET (data.gov.in)"
+    as_of: date | None = None            # latest data point's date
 
 
 class NearestMarketComparison(BaseModel):

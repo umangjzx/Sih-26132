@@ -183,7 +183,23 @@ export default function AdminPage() {
       </p>
     );
   }
-  if (!data) return <p className="text-sm opacity-60">…</p>;
+  if (!data) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-8 w-48 animate-pulse rounded-lg bg-[var(--color-border)]/50" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-2xl bg-[var(--color-border)]/40" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-56 animate-pulse rounded-2xl bg-[var(--color-border)]/40" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const roleColors = [C.green, C.blue, C.purple, C.amber, C.red];
 
@@ -395,6 +411,70 @@ export default function AdminPage() {
           </Card>
         )}
       </div>
+
+      {/* ---- deal health (v1.4 phase 4) ---- */}
+      {an && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card title={t("dhTitle")} hint={t("dhHint")}>
+            <div className="grid grid-cols-2 gap-3">
+              <Kpi
+                label={t("dhSuccess")}
+                value={`${an.deal_success_rate_pct}%`}
+                tone={an.deal_success_rate_pct >= 50 ? "up" : "down"}
+              />
+              <Kpi
+                label={t("dhTimeToDeal")}
+                value={an.avg_hours_to_deal == null ? "—" : an.avg_hours_to_deal < 48
+                  ? `${an.avg_hours_to_deal.toFixed(0)} h`
+                  : `${(an.avg_hours_to_deal / 24).toFixed(1)} d`}
+              />
+            </div>
+            <div className="mt-3 h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={Object.entries(an.payment_status_split).map(([name, value]) => ({ name, value }))}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={30}
+                    outerRadius={55}
+                    paddingAngle={2}
+                  >
+                    {Object.keys(an.payment_status_split).map((k, i) => (
+                      <Cell key={k} fill={k === "paid" ? C.green : C.amber} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend iconSize={9} wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-center text-[11px] opacity-55">{t("dhPaymentSplit")}</p>
+          </Card>
+
+          <Card title={t("dhMspTitle")} hint={t("dhMspHint")}>
+            {an.price_vs_msp.length === 0 ? (
+              <p className="text-sm opacity-60">{t("dhMspNone")}</p>
+            ) : (
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={an.price_vs_msp.slice(0, 8)} layout="vertical" margin={{ left: 8, right: 24 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10 }} unit="%" />
+                    <YAxis type="category" dataKey="crop" tick={{ fontSize: 10 }} width={90} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v}%`, t("dhMspGap")]} />
+                    <Bar dataKey="gap_pct" radius={[0, 4, 4, 0]}>
+                      {an.price_vs_msp.slice(0, 8).map((p, i) => (
+                        <Cell key={i} fill={p.gap_pct < 0 ? C.red : C.green} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
       {/* ---- match quality ---- */}
       {health && (

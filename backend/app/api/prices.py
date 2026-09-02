@@ -152,6 +152,7 @@ def price_trend(
         crop=crop,
         market=market,
         district=rows[-1].district,
+        as_of=rows[-1].date,
         points=[
             PricePoint(
                 date=r.date,

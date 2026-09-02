@@ -14,6 +14,7 @@ import {
   type PriceTrendResponse,
 } from "@/lib/api";
 import type { CropMarketState } from "@/lib/useCropMarket";
+import { DataProvenance } from "./DataProvenance";
 import { BestMarketPanel } from "./intel";
 import { MarketComparisonChart } from "./MarketComparisonChart";
 import { PriceTrendChart } from "./PriceTrendChart";
@@ -131,6 +132,11 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
                 </div>
               </dl>
               <p className="mt-2 text-center text-xs font-medium text-[var(--ink-soft)]">{t("perQuintal")}</p>
+              <DataProvenance
+                source={trend.data_source}
+                asOf={trend.as_of ?? last?.date}
+                className="mt-3 justify-center border-t border-[var(--line)] pt-2"
+              />
             </Card>
           ) : (
             <Card>{t("noData")}</Card>

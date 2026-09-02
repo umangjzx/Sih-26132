@@ -31,6 +31,7 @@ from app.schemas.deal import (
     PriceAnomaly,
     PricePulse,
     PriceTrendPoint,
+    PriceVsMsp,
     ScoreBucket,
     WeeklyPoint,
 )
@@ -363,6 +364,57 @@ def admin_analytics(
         price_pulse.sort(key=lambda p: abs(p.change_pct), reverse=True)
         price_pulse = price_pulse[:12]
 
+    # ---- v1.4 phase 4: deal health -----------------------------------------
+    deal_success_rate = round(n_closed / n_deals * 100, 1) if n_deals else 0.0
+
+    pay_rows = db.execute(
+        select(Deal.payment_status, func.count()).group_by(Deal.payment_status)
+    ).all()
+    payment_status_split = {s or "unknown": int(n) for s, n in pay_rows}
+
+    # first offer on the match -> deal created
+    offer_first = db.execute(
+        select(Offer.match_id, func.min(Offer.created_at)).group_by(Offer.match_id)
+    ).all()
+    first_by_match = {mid: t for mid, t in offer_first}
+    deal_rows = db.execute(select(Deal.match_id, Deal.created_at)).all()
+    hrs: list[float] = []
+    for mid, dt in deal_rows:
+        ot = first_by_match.get(mid)
+        if ot is None or dt is None:
+            continue
+        if ot.tzinfo is None:
+            ot = ot.replace(tzinfo=timezone.utc)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        delta = (dt - ot).total_seconds() / 3600.0
+        if delta >= 0:
+            hrs.append(delta)
+    avg_hours_to_deal = round(sum(hrs) / len(hrs), 1) if hrs else None
+
+    # latest modal price vs MSP, per crop (only crops that have an MSP)
+    from app.services import reference as _ref
+
+    price_vs_msp: list[PriceVsMsp] = []
+    if latest_date is not None:
+        latest_crop_rows = db.execute(
+            select(PriceCache.crop, func.avg(PriceCache.modal_price))
+            .where(PriceCache.date == latest_date)
+            .group_by(PriceCache.crop)
+        ).all()
+        for c, modal in latest_crop_rows:
+            m = _ref.msp_for(c)
+            if not m or not m.get("price"):
+                continue
+            modal = float(modal)
+            msp = float(m["price"])
+            price_vs_msp.append(PriceVsMsp(
+                crop=c, modal_price=round(modal, 0), msp=round(msp, 0),
+                gap_pct=round((modal - msp) / msp * 100, 1),
+            ))
+        price_vs_msp.sort(key=lambda p: p.gap_pct)
+        price_vs_msp = price_vs_msp[:12]
+
     return AdminAnalyticsResponse(
         gmv_inr=round(gmv, 2),
         avg_deal_value_inr=avg_deal,
@@ -382,6 +434,10 @@ def admin_analytics(
         price_pulse=price_pulse,
         lots_by_crop=lots_by_crop,
         demands_by_crop=demands_by_crop,
+        deal_success_rate_pct=deal_success_rate,
+        payment_status_split=payment_status_split,
+        avg_hours_to_deal=avg_hours_to_deal,
+        price_vs_msp=price_vs_msp,
     )
 
 

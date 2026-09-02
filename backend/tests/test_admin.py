@@ -118,6 +118,7 @@ _ANALYTICS_FIELDS = {
     "price_index_latest", "price_index_change_pct", "match_conversion_pct",
     "funnel", "deal_pipeline", "supply_demand", "score_distribution",
     "weekly_activity", "price_pulse", "lots_by_crop", "demands_by_crop",
+    "deal_success_rate_pct", "payment_status_split", "avg_hours_to_deal", "price_vs_msp",
 }
 
 
@@ -155,6 +156,10 @@ def test_analytics_reflects_seeded_marketplace(db, admin_user, farmer_user, buye
         assert body["gmv_inr"] == 12500.0
         assert body["funnel"][0]["count"] == 2      # 1 lot + 1 demand
         assert body["users_by_role"].get("farmer", 0) >= 1
+        # phase 4 fields present and sane
+        assert 0 <= body["deal_success_rate_pct"] <= 100
+        assert body["payment_status_split"].get("pending", 0) == 1
+        assert isinstance(body["price_vs_msp"], list)
     finally:
         app.dependency_overrides.clear()
 

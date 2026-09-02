@@ -24,6 +24,8 @@ export type PriceTrendResponse = {
   market: string;
   district: string;
   points: PricePoint[];
+  data_source?: string;
+  as_of?: string | null;
 };
 
 export type NearestMarketComparison = {
@@ -1036,6 +1038,10 @@ export type AdminAnalytics = {
   price_pulse: { crop: string; latest: number; avg_30d: number; change_pct: number }[];
   lots_by_crop: Record<string, number>;
   demands_by_crop: Record<string, number>;
+  deal_success_rate_pct: number;
+  payment_status_split: Record<string, number>;
+  avg_hours_to_deal: number | null;
+  price_vs_msp: { crop: string; modal_price: number; msp: number; gap_pct: number }[];
 };
 
 export function getAdminAnalytics(token: string): Promise<AdminAnalytics> {
