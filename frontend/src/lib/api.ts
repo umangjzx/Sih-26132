@@ -310,11 +310,12 @@ export async function patchJson<T>(
   path: string,
   body: unknown,
   token?: string,
+  method: "PATCH" | "PUT" = "PATCH",
 ): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_URL}${path}`, {
-    method: "PATCH",
+    method,
     headers,
     body: JSON.stringify(body ?? {}),
   });
@@ -774,6 +775,112 @@ export function advanceDeal(
   body: { payment_method?: string; payment_reference?: string; note?: string } = {},
 ): Promise<DealDetailResponse> {
   return patchJson(`/api/deals/${dealId}/advance`, body, token);
+}
+
+export type DealLogistics = {
+  deal_id: number;
+  mode: string;
+  transporter_name: string | null;
+  transporter_phone: string | null;
+  vehicle_type: string | null;
+  pickup_date: string | null;
+  pickup_point: string | null;
+  drop_point: string | null;
+  distance_km: number | null;
+  est_cost_inr: number | null;
+  status: string;
+  notes: string | null;
+  updated_at: string | null;
+  is_draft: boolean;
+};
+
+export function getDealLogistics(dealId: number | string, token: string): Promise<DealLogistics> {
+  return getJson(`/api/deals/${dealId}/logistics`, token);
+}
+
+export function saveDealLogistics(
+  dealId: number | string,
+  body: Partial<Omit<DealLogistics, "deal_id" | "is_draft" | "updated_at" | "distance_km">>,
+  token: string,
+): Promise<DealLogistics> {
+  return patchJson(`/api/deals/${dealId}/logistics`, body, token, "PUT");
+}
+
+// ---- payments, audit timeline, transporters, receipt (v1.4 phase 2) ------
+export type DealPayment = {
+  id: number;
+  deal_id: number;
+  payer_id: number;
+  amount_inr: number;
+  method: string;
+  reference: string | null;
+  note: string | null;
+  paid_at: string;
+};
+
+export type DealEvent = {
+  id: number;
+  actor_id: number | null;
+  entity_type: string;
+  entity_id: number;
+  action: string;
+  detail: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
+export type Transporter = {
+  id: number;
+  name: string;
+  phone: string | null;
+  district: string | null;
+  state: string | null;
+  vehicle_types: string | null;
+  rate_per_km_per_qtl: number | null;
+  max_capacity_tonnes: number | null;
+  distance_km: number | null;
+};
+
+export function getDealPayments(dealId: number | string, token: string): Promise<DealPayment[]> {
+  return getJson(`/api/deals/${dealId}/payments`, token);
+}
+
+export function recordPayment(
+  dealId: number | string,
+  body: { amount_inr: number; method?: string; reference?: string | null; note?: string | null },
+  token: string,
+): Promise<DealPayment> {
+  return postJson(`/api/deals/${dealId}/payments`, body, token);
+}
+
+export function getDealEvents(dealId: number | string, token: string): Promise<DealEvent[]> {
+  return getJson(`/api/deals/${dealId}/events`, token);
+}
+
+export function nearbyTransporters(
+  opts: { district?: string; state?: string; lat?: number | null; lon?: number | null; limit?: number },
+  token: string,
+): Promise<Transporter[]> {
+  const p = new URLSearchParams();
+  if (opts.district) p.set("district", opts.district);
+  if (opts.state) p.set("state", opts.state);
+  if (typeof opts.lat === "number" && typeof opts.lon === "number") {
+    p.set("lat", String(opts.lat));
+    p.set("lon", String(opts.lon));
+  }
+  if (opts.limit) p.set("limit", String(opts.limit));
+  return getJson(`/api/transporters/nearby?${p.toString()}`, token);
+}
+
+/** Fetch the printable receipt HTML with auth and open it in a new tab. */
+export async function openDealReceipt(dealId: number | string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/deals/${dealId}/receipt`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  const html = await res.text();
+  const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+  window.open(url, "_blank", "noopener");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function getDealDisputes(

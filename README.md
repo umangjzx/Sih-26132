@@ -9,23 +9,27 @@ recommendation where every number that drove the call is shown on screen — in
 **English, Hindi, or Marathi**. On top of prices it layers weather, Minimum
 Support Price (MSP), crop-calendar timing, a transport-cost-adjusted "best
 market", cold-storage / FPO discovery, price alerts, and a public
-price-transparency dashboard. Phone-based accounts then connect farmers and buyers
+price-transparency dashboard. Phone-based accounts connect farmers and buyers
 through scored matches, an offer thread, a deal pipeline, and a dispute + admin
-workflow.
+workflow. Farmers can pool produce for collective bargaining through FPO-style
+groups, browse nearby trade opportunities, photograph a mandi slip to auto-fill a
+lot, and get plain-language advice from an optional LLM layer.
 
 Built **Maharashtra-first** (the SIH problem statement is Govt. of Maharashtra /
 MSInS) but **location-aware across India** — detect or pick a location and prices
 re-scope to that state; MSP and the storage/FPO directory are national.
 
-**Status — Phases 1–3 complete, plus v1.1 and v1.2:**
+**Status — Phases 1–3 complete, plus v1.1 through v1.4:**
 
-| Phase | Scope | State |
+| Phase / Release | Scope | State |
 |---|---|---|
 | 1 · Price Discovery & i18n Shell | prices, trends, nearby markets, sell/wait signal, en/hi/mr | ✅ |
 | 2 · Auth & Matching | phone login, lots, demands, scored matches, offers | ✅ |
 | 3 · Deal Tracking & Admin | deal pipeline, disputes, admin dashboard | ✅ |
 | v1.1 · Intelligence layer | weather, MSP, calendar, best-market, storage/FPO, alerts, public overview | ✅ |
 | v1.2 · Location awareness | geo/place picker, state-scoped prices, all-India directory, optional OpenWeather | ✅ |
+| v1.3 · LLM, OCR & FPO Pools | plain-language advisor, Ask AgriLink chat, mandi-slip OCR, pooled lots | ✅ |
+| v1.4 · Identity, Discovery & Logistics | user profiles + verification, discovery board, deal logistics, price forecast, admin analytics | ✅ |
 | 4 · Cordova Android wrap | (planned — every route is already a client component) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -45,8 +49,15 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 - [API reference](#api-reference)
 - [Database schema](#database-schema)
 - [The sell / wait / hold signal](#the-sell--wait--hold-signal)
+- [Price forecast](#price-forecast)
 - [Match scoring](#match-scoring)
 - [Deal pipeline](#deal-pipeline)
+- [Deal logistics](#deal-logistics)
+- [FPO pools (collective bargaining)](#fpo-pools-collective-bargaining)
+- [Discovery board](#discovery-board)
+- [User profiles & verification](#user-profiles--verification)
+- [LLM readability layer](#llm-readability-layer)
+- [OCR lot-slip assist](#ocr-lot-slip-assist)
 - [Authentication](#authentication)
 - [Price ingestion pipeline](#price-ingestion-pipeline)
 - [Location awareness (v1.2)](#location-awareness-v12)
@@ -64,7 +75,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | Route | What you get |
 |---|---|
 | `/` | Hero + crop/market picker, latest modal price, the sell/wait call as a gauge, and a statewide price snapshot. |
-| `/prices` | 7/30/90-day trend as a gradient area chart; min / modal / max for the latest day; a horizontal bar comparison of the selected market against the nearest markets; and the transport-adjusted "best market" panel. |
+| `/prices` | 7/30/90-day trend as a gradient area chart with a **dashed 30-day forecast line and prediction band**; min / modal / max for the latest day; a horizontal bar comparison of the selected market against the nearest markets; and the transport-adjusted "best market" panel. |
 | `/advisor` | The full sell / wait / hold reasoning: price momentum vs 7- and 30-day averages, weather pressure, MSP gap, crop-calendar phase (with glut-risk warning), and the next mandi holiday. An optional **"In plain words"** panel (LLM) restates that in 2-3 farmer-friendly sentences in the chosen language. |
 | **Ask AgriLink** | A floating assistant (LLM, optional) that answers questions strictly from the selected crop/market's live data — price, signal, weather, MSP, calendar — and says "I don't have that" when the answer isn't in scope. |
 | `/directory` | Cold storage / warehouses and FPOs near a district or state, with distance and capacity. |
@@ -78,13 +89,17 @@ state picker) sets the active location, persisted in `localStorage`.
 
 | Route | Role | What you do |
 |---|---|---|
-| `/login` | any | Two tabs on one screen: **Sign in** (phone + password) or **Create account** (phone + name + role + password). Returns access + refresh tokens. Passwords are PBKDF2-hashed; no OTP / SMS. |
-| `/farmer` | farmer | List produce **lots** (crop, quantity, grade, expected price, availability date, location). Offline-safe: drafts autosave, submissions queue in `localStorage` and sync on reconnect. Shows nearby storage/FPOs. |
-| `/buyer` | buyer | Post **demands** (crop, quantity, quality spec, price band, delivery window). |
+| `/login` | any | Two tabs on one screen: **Sign in** (phone + password) or **Create account** (phone + name + role + district + state + password). Returns access + refresh tokens. Passwords are PBKDF2-hashed; no OTP / SMS. |
+| `/farmer` | farmer | List produce **lots** (crop, quantity, grade, expected price, availability date, location). **OCR assist** — photograph a mandi slip and the fields auto-fill from the image. Offline-safe: drafts autosave, submissions queue in `localStorage` and sync on reconnect. Shows nearby storage/FPOs. |
+| `/buyer` | buyer | Post **demands** (crop, quantity, quality spec, price band, delivery window, delivery district). |
 | `/matches/[id]` | farmer/buyer | Scored lot×demand match with a component breakdown; an **offer thread** (propose price/quantity, counter, accept, decline). Accepting an offer creates a **deal**. |
+| `/browse` | farmer/buyer | **Discovery board** — buyers browse open lots nearby; farmers browse open demands nearby. Radius filter (nearby / all-India), crop filter, verified-seller badge, and a one-tap "Express interest" that opens a match or explains why no match yet. |
+| `/pools` | farmer | **FPO-style pooled lots** — create or join a collective for one crop. The pool aggregates committed members into a single virtual lot (quantity-weighted price, floored at the organizer's floor price) and scores it against open buyer demands, showing ranked candidates. |
+| `/pools/[id]` | farmer | Pool detail: aggregate stats (fill %, effective price), member list, and — for the organizer — the ranked demand candidates to negotiate with. |
+| `/profile` | any | **User profile & verification** — set trading location (GPS, header chip, or manual entry) so distance-aware matching and radius filters work accurately. Request admin verification (unverified → pending → verified), optionally citing a PM-Kisan ID / Aadhaar reference. |
 | `/history` | farmer/buyer | Your lots, demands, and deals. |
-| `/deals/[id]` | farmer/buyer/admin | Advance the deal through its pipeline; raise or view disputes. |
-| `/admin` | admin | Dashboard: 30-day price trend, open-dispute queue, per-district price gaps, and price anomalies (>20% deviation from the 7-day average). |
+| `/deals/[id]` | farmer/buyer/admin | Advance the deal through its pipeline; view and update the **logistics plan** (mode, transporter, vehicle, pickup/drop points, estimated cost); raise or view disputes. |
+| `/admin` | admin | Dashboard: 30-day price trend, open-dispute queue, per-district price gaps, and price anomalies (>20% deviation from 7-day avg). **Analytics tab**: GMV, marketplace funnel, deal-pipeline breakdown, supply vs demand by crop, and user activity. **User management**: list, search, filter by role/verification status, approve/reject verification requests, activate/deactivate accounts. |
 
 ---
 
@@ -93,17 +108,17 @@ state picker) sets the active location, persisted in `localStorage`.
 ```mermaid
 flowchart LR
     subgraph Client["Frontend — Next.js 16 (all client components)"]
-      UI["Routes: /, /prices, /advisor, /directory,\n/explore, /alerts, /login, /farmer, /buyer,\n/matches, /history, /deals, /admin"]
+      UI["Routes: /, /prices, /advisor, /directory,\n/explore, /alerts, /login, /farmer, /buyer,\n/matches, /browse, /pools, /profile,\n/history, /deals, /admin"]
       Providers["LocaleProvider · AuthProvider · LocationProvider"]
     end
 
     subgraph API["Backend — FastAPI"]
-      Routers["Routers: prices · intel · public · location ·\nauth · lots · demands · matching · offers ·\ndeals · disputes · history · alerts · admin"]
-      Services["Services: ingestion · signal · matching ·\nweather · routing · best_market · geo · geocode ·\nlocations · reference · holidays · alerts · security"]
+      Routers["Routers: prices · intel · public · location ·\nauth · lots · demands · matching · offers ·\ndeals · disputes · history · alerts · admin ·\nassistant · ocr · pools"]
+      Services["Services: ingestion · signal · forecast · matching ·\nweather · routing · best_market · geo · geocode ·\nlocations · reference · holidays · alerts · security ·\npools · discovery · llm"]
       Sched["APScheduler — 6-hourly ingestion + alert eval"]
     end
 
-    DB[("PostgreSQL 16\n11 tables")]
+    DB[("PostgreSQL 16\n14 tables")]
 
     subgraph Ext["Free external sources (all with offline fallback)"]
       AGMARKNET["data.gov.in AGMARKNET"]
@@ -113,13 +128,14 @@ flowchart LR
       OSRM["OSRM routing"]
       BDC["BigDataCloud reverse-geocode"]
       NAGER["Nager.Date holidays"]
+      OR["OpenRouter LLM (optional key)"]
     end
 
     UI -->|"REST /api/*"| Routers
     Routers --> Services
     Services --> DB
     Sched --> Services
-    Services -.-> AGMARKNET & OM & OWM & POWER & OSRM & BDC & NAGER
+    Services -.-> AGMARKNET & OM & OWM & POWER & OSRM & BDC & NAGER & OR
 ```
 
 - **Frontend** is a client-rendered SPA — every route is `"use client"`, calls
@@ -128,8 +144,8 @@ flowchart LR
 - **Backend** runs Alembic migrations on startup, seeds `price_cache` if empty,
   and starts a background scheduler that re-ingests prices every 6 hours and
   evaluates price alerts.
-- **Every outbound call** (prices, weather, routing, geocoding, holidays) is
-  wrapped — a failure returns a neutral/empty result, so the UI never blanks.
+- **Every outbound call** (prices, weather, routing, geocoding, holidays, LLM)
+  is wrapped — a failure returns a neutral/empty result, so the UI never blanks.
 
 ---
 
@@ -137,10 +153,11 @@ flowchart LR
 
 | Layer | Choices |
 |---|---|
-| Backend | Python 3.13 · FastAPI 0.115 · SQLAlchemy 2.0 (typed `Mapped[]`) · Alembic 1.19 · APScheduler 3.11 · httpx 0.28 · python-jose (HS256 JWT) · Pydantic 2 / pydantic-settings |
+| Backend | Python 3.13 · FastAPI 0.115 · SQLAlchemy 2.0 (typed `Mapped[]`) · Alembic 1.19 · APScheduler 3.11 · httpx 0.28 · python-jose (HS256 JWT) · Pydantic 2 / pydantic-settings · python-multipart (file upload for OCR) |
 | Database | PostgreSQL 16 (Docker), host port **5433** |
-| Frontend | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · next-intl 4 · recharts · Tailwind CSS v4 |
+| Frontend | Next.js 16.3 (App Router, Turbopack) · React 19 · TypeScript · next-intl 4 · recharts 3 · Tailwind CSS v4 |
 | Tests | pytest 9 (SQLite in-memory) · Vitest 4 + Testing Library 16 |
+| LLM | OpenRouter API (optional) — any vision-capable model; used for plain-language advisor, Ask AgriLink, OCR slip-reading, live-string translation |
 | Fonts | Space Grotesk (headings) · DM Sans (body) · Noto Sans Devanagari (Hindi/Marathi) via `next/font/google` |
 
 ---
@@ -158,16 +175,19 @@ agrilink/
 │   │   │   ├── config.py       pydantic-settings (reads backend/.env)
 │   │   │   ├── database.py     engine, SessionLocal, Base, get_db
 │   │   │   └── security.py     JWT create/decode, get_current_user / CurrentUser
-│   │   ├── models/             11 SQLAlchemy models (see Database schema)
+│   │   ├── models/             14 SQLAlchemy models (see Database schema)
 │   │   ├── schemas/            Pydantic request/response models
 │   │   ├── api/                one router per domain (prices, intel, public, location, auth,
 │   │   │                       lots, demands, matching, offers, deals, disputes, history,
-│   │   │                       alerts, admin)
+│   │   │                       alerts, admin, assistant, ocr, pools)
 │   │   └── services/
 │   │       ├── ingestion.py    live → snapshot → fixture resolution + upsert
 │   │       ├── snapshot.py / fixtures.py / data/    offline price sources
 │   │       ├── signal.py       rule-based sell/wait/hold
-│   │       ├── matching.py     lot×demand scoring engine
+│   │       ├── forecast.py     interpretable trend+weekly-seasonality price forecast (no ML)
+│   │       ├── matching.py     lot×demand scoring engine + matching_health
+│   │       ├── discovery.py    nearby lot/demand browse (radius-filtered, verified badges)
+│   │       ├── pools.py        pool aggregation + demand-candidate ranking
 │   │       ├── weather.py      Open-Meteo forecast (+ optional OpenWeather) + NASA POWER anomaly
 │   │       ├── routing.py      OSRM road distance (+ haversine fallback)
 │   │       ├── best_market.py  net-price-after-transport ranking
@@ -176,17 +196,26 @@ agrilink/
 │   │       ├── locations.py    resolve_location, ensure_state_ingested (rate-limited)
 │   │       ├── reference.py    MSP · crop calendar · cold-storage / FPO directory (curated)
 │   │       ├── holidays.py     Nager.Date mandi holidays (+ fallback)
-│   │       └── alerts.py       evaluate price alerts → notifications
-│   ├── alembic/versions/       0001_initial · 94f518efb70d_auth_columns · 566ce44b97a1_v1_1
-│   ├── tests/                  pytest suite (SQLite in-memory)
+│   │       ├── alerts.py       evaluate price alerts → notifications
+│   │       └── llm.py          OpenRouter client: chat, vision, translate (all degrade gracefully)
+│   ├── alembic/versions/       0001_initial · 94f518_auth_cols · 566ce4_v1_1 ·
+│   │                           7c1e9a_v1_3_pools · 8d2f6b_v1_3_password ·
+│   │                           9a3f1c_v1_4_identity_location_verification ·
+│   │                           a1b7c9_v1_4_deal_logistics
+│   ├── tests/                  pytest suite (SQLite in-memory) — 27 test files
 │   └── .env.example
 ├── frontend/
 │   └── src/
 │       ├── app/                App Router routes + layout.tsx + globals.css
+│       │   Routes: / · /prices · /advisor · /directory · /explore · /alerts
+│       │           /login · /farmer · /buyer · /matches/[id]
+│       │           /browse · /pools · /pools/[id] · /profile
+│       │           /history · /deals/[id] · /admin
 │       ├── components/         PriceDetail, AdvisorDetail, SellWaitSignalCard,
 │       │                       SignalGaugeChart, PriceTrendChart, MarketComparisonChart,
-│       │                       NearbyResources, intel.tsx, NotificationBell, LocationChip,
-│       │                       NavLinks, LanguageSwitcher, ui.tsx (design-system kit), …
+│       │                       DealLogisticsCard, NearbyResources, intel.tsx,
+│       │                       NotificationBell, LocationChip, NavLinks,
+│       │                       LanguageSwitcher, ui.tsx (design-system kit), …
 │       ├── i18n/               LocaleProvider, config, messages/{en,hi,mr}.json, parity test
 │       ├── lib/                api.ts (typed fetch layer), auth.ts, useCropMarket.ts,
 │       │                       useLocation.tsx
@@ -248,6 +277,8 @@ To reset the database from scratch, see [backend/README.md](backend/README.md) �
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | |
 | `WEATHER_API_KEY` | *(blank)* | Optional OpenWeatherMap key — enriches the forecast with current conditions. Blank → keyless Open-Meteo only |
+| `OPENROUTER_API_KEY` | *(blank)* | Optional. Enables the plain-language advisor summary, Ask AgriLink chat, mandi-slip OCR, and live-string translation. Blank → all LLM features hidden; rule output / English shown |
+| `OPENROUTER_MODEL` | `google/gemini-flash-1.5` | Any vision-capable OpenRouter model. Used for both text and image (OCR) calls |
 | `TRANSPORT_COST_PER_QTL_KM` | `0.4` | ₹/quintal/km used by `markets/best` |
 | `REVERSE_GEOCODE_URL` | BigDataCloud | Free keyless reverse-geocoder |
 | `ARRIVALS_SOURCE_URL` | *(blank)* | Leave blank — no live daily-arrivals source exists (tracked as PRICE-07) |
@@ -278,15 +309,10 @@ All free; all with an offline fallback so the app runs air-gapped.
 | **OpenWeatherMap** `/data/2.5/weather` *(needs `WEATHER_API_KEY`)* | current conditions overlay (temp, feels-like, humidity, description) | omitted; forecast still shown |
 | **OSM Nominatim** `/reverse` | lat/lon → state + district (accurate, district-level) | BigDataCloud → `geo.nearest_place` (60-city table) → `nearest_state` |
 | **NASA POWER** daily point | last-30-day rainfall vs 10-year normal | anomaly card hidden |
-| **OSRM** `/route/v1/driving` | road distance + drive time for "best market" | straight-line haversine |
+| **OSRM** `/route/v1/driving` | road distance + drive time for "best market" and deal logistics cost estimate | straight-line haversine |
 | **Nager.Date** `/PublicHolidays` | upcoming mandi holidays | built-in 2026 holiday list |
 | **curated** (`app/services/reference.py`) | MSP (₹/quintal, official CACP 2024‑25 / 2025‑26), crop calendar (MH-tuned), cold-storage / FPO directory (MH in detail + national sample) | — (static) |
-| **OpenRouter** *(needs `OPENROUTER_API_KEY`)* | readability layer only — plain-language advisor summary, the "Ask AgriLink" assistant, live-string translation. Never a source of truth. | features hidden; rule output / English shown |
-
-> data.gov.in also lists cold-storage / warehouse and MSP datasets, but they're
-> state-level aggregates with no API and no geolocation (MSP is the same CACP
-> numbers we already carry), and rainfall is better served by NASA POWER +
-> Open-Meteo — so those stay curated / keyless.
+| **OpenRouter** *(needs `OPENROUTER_API_KEY`)* | readability layer only — plain-language advisor summary, the "Ask AgriLink" assistant, mandi-slip OCR, live-string translation. Never a source of truth. | features hidden; rule output / English shown |
 
 ---
 
@@ -303,7 +329,8 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | GET | `/prices/trend` | `crop`, `market`, `days` (7/30/90) | Time series of min/modal/max (+ volume when present). |
 | GET | `/prices/nearby` | `crop`, `district` | Latest modal price at the nearest markets, with distance. |
 | GET | `/prices/signal` | `crop`, `market` | The sell/wait/hold recommendation + every reason. |
-| POST | `/ingest/run` | header `X-Ingest-Secret` | Manual re-ingest. 403 unless `INGEST_TRIGGER_SECRET` is set and matches. |
+| GET | `/prices/forecast` | `crop`, `market`, `horizon?` (days, default 30) | Interpretable trend+seasonality price forecast with prediction band. |
+| POST | `/ingest/run` | header `X-Ingest-Secret` | Manual re-ingest. 403 unless `INGEST_TRIGGER_SECRET` is set. |
 
 ### Intelligence — v1.1 (public)
 
@@ -316,6 +343,19 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | GET | `/fpo/nearby` | `district?` \| `lat?`+`lon?`, `crop?`, `state?`, `limit?` |
 | GET | `/markets/best` | `crop`, `market?` \| `district?` \| `lat?`+`lon?`, `fast?`, `limit?` |
 | GET | `/holidays/upcoming` | `days?` (1–120) |
+
+### LLM assistant — v1.3 (public, degrades without key)
+
+| Method | Path | Query / Body | Notes |
+|---|---|---|---|
+| GET | `/advisor/summary` | `crop`, `market`, `lang?` (en/hi/mr) | 2-3 sentence plain-language summary of the sell/wait recommendation. Returns `{"available": false}` without an OpenRouter key. |
+| POST | `/assistant/ask` | `{question, crop?, market?, lang?}` | Grounded Q&A chat. Answers only from the selected crop/market's live data. Returns `{"available": false}` without a key. |
+
+### OCR assist — v1.3 (**Auth**, farmer only)
+
+| Method | Path | Body | Notes |
+|---|---|---|---|
+| POST | `/ocr/lot-slip` | multipart `file` (JPEG/PNG/WebP, ≤ 6 MB) | Reads a photographed mandi slip / handwritten note. Returns `{crop, quantity_kg, grade, expected_price, available_from, confidence}` as a draft for the farmer to review. Returns `{"available": false}` without an OpenRouter key. |
 
 ### Public dashboard
 
@@ -334,10 +374,32 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 
 | Method | Path | Body / notes |
 |---|---|---|
-| POST | `/auth/register` | `{phone, name, role, password}` (password ≥ 6) — creates the account, 409 if the phone is taken, returns `{access_token, refresh_token, token_type, user}` |
-| POST | `/auth/login` | `{phone, password}` — verifies the PBKDF2 hash; 401 on wrong phone/password, 403 if inactive |
+| POST | `/auth/register` | `{phone, name, role, password, district?, state?, latitude?, longitude?}` (password ≥ 6) — creates the account, 409 if phone taken |
+| POST | `/auth/login` | `{phone, password}` — verifies PBKDF2 hash; 401 on mismatch, 403 if inactive |
 | POST | `/auth/refresh` | `{refresh_token}` → new token pair |
-| GET | `/auth/me` | **Auth** — current user |
+| GET | `/auth/me` | **Auth** — current user profile |
+| PATCH | `/auth/me` | **Auth** — `{name?, district?, state?, latitude?, longitude?}` — update trading location and display name |
+| POST | `/auth/me/request-verification` | **Auth** — `{note?, reference?}` — set `verification_status = pending`; admin reviews and approves/rejects |
+
+### Discovery — v1.4 (**Auth**)
+
+| Method | Path | Query | Notes |
+|---|---|---|---|
+| GET | `/browse/lots` | `crop?`, `lat?`, `lon?`, `radius_km?`, `limit?` | Open lots near the caller's location, sorted by distance, with `farmer_verified` flag. |
+| GET | `/browse/demands` | `crop?`, `lat?`, `lon?`, `radius_km?`, `limit?` | Open demands near the caller's location, sorted by distance, with `buyer_verified` flag. |
+| POST | `/browse/lots/{lot_id}/interest` | — | Express interest in a lot: runs matching and returns `{matched, score, match_id, reason}`. |
+| POST | `/browse/demands/{demand_id}/interest` | — | Express interest in a demand: runs matching and returns the same shape. |
+
+### Pools — v1.3 (**Auth**, farmers)
+
+| Method | Path | Body | Notes |
+|---|---|---|---|
+| POST | `/pools` | `{crop, title, target_quantity_kg, floor_price, grade?, delivery_window?, location?}` | Create a pool; organizer's location geocoded automatically. |
+| GET | `/pools` | `crop?`, `status?`, `mine?` | List open/locked pools, or only your own (`mine=true`). |
+| GET | `/pools/{id}` | — | Pool detail: aggregate stats, member list, demand candidates (organizer only). |
+| POST | `/pools/{id}/join` | `{quantity_kg, expected_price, lot_id?}` | Commit to a pool (or update your existing commitment). |
+| POST | `/pools/{id}/withdraw` | — | Withdraw from a pool. |
+| POST | `/pools/{id}/status` | `{status}` | Organizer advances pool status (open → locked → matched → closed). |
 
 ### Trade (all **Auth**)
 
@@ -346,10 +408,11 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | POST / GET | `/lots/` · `/lots/mine` · `/lots/{id}` | farmer lots; `create_lot` geocodes `location` → lat/lon and runs matching |
 | POST / GET | `/demands/` · `/demands/mine` | buyer demands; posting runs matching |
 | GET | `/matches/mine` · `/matches/{id}` | scored matches for the caller with `score_detail` |
-| POST / GET | `/matches/{id}/offers` · | offer thread |
+| POST / GET | `/matches/{id}/offers` | offer thread |
 | POST | `/offers/{id}/accept` · `/offers/{id}/decline` | accept ⇒ creates a `Deal`, marks lot+demand `matched` |
 | GET / PATCH | `/deals/mine` · `/deals/{id}` · `/deals/{id}/advance` | pipeline; access = lot farmer, demand buyer, or admin |
-| POST / GET | `/deals/{id}/disputes` · | raise / list disputes (one open dispute per deal) |
+| GET / PUT | `/deals/{id}/logistics` | Get or upsert the logistics plan for a deal (mode, transporter, vehicle, pickup/drop, est. cost). |
+| POST / GET | `/deals/{id}/disputes` | raise / list disputes (one open dispute per deal) |
 | PATCH | `/disputes/{id}/close` | close a dispute |
 | GET | `/history` | caller's lots + demands + deals |
 
@@ -357,16 +420,21 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 
 | Method | Path |
 |---|---|
-| POST / GET | `/alerts` · |
+| POST / GET | `/alerts` |
 | PATCH / DELETE | `/alerts/{id}/toggle` · `/alerts/{id}` |
 | GET | `/notifications` · `/notifications/unread-count` |
 | PATCH / POST | `/notifications/{id}/read` · `/notifications/read-all` |
 
 ### Admin (**Auth**, role `admin`)
 
-| Method | Path |
-|---|---|
-| GET | `/admin/dashboard` — totals, 30-day price trend, dispute queue, district price gaps, price anomalies (>20% off 7-day avg) |
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/admin/dashboard` | Totals, 30-day price trend, dispute queue, district price gaps, price anomalies (>20% off 7-day avg). |
+| GET | `/admin/analytics` | GMV, avg deal size, marketplace funnel (listings→matches→offers→deals→closed), deal-pipeline breakdown, supply vs demand by crop, user activity by role, price index. |
+| GET | `/admin/matching-health` | Re-derives live matches and reports how many still hold up. |
+| GET | `/admin/users` | List users — filter by `role`, `verification`, or name/phone `q`. |
+| PATCH | `/admin/users/{id}/verify` | Set `verification_status` (unverified / pending / verified / rejected) + note. |
+| PATCH | `/admin/users/{id}/active` | Activate or deactivate an account. |
 
 ---
 
@@ -383,11 +451,15 @@ erDiagram
     USERS ||--o{ PRICE_ALERTS : "user_id"
     USERS ||--o{ NOTIFICATIONS : "user_id"
     USERS ||--o{ DISPUTES : "raised_by"
+    USERS ||--o{ POOLS : "organizer_id"
+    USERS ||--o{ POOL_MEMBERS : "farmer_id"
     LOTS ||--o{ MATCHES : "lot_id"
+    LOTS ||--o{ POOL_MEMBERS : "lot_id"
     DEMANDS ||--o{ MATCHES : "demand_id"
     MATCHES ||--o{ OFFERS : "match_id"
     MATCHES ||--|| DEALS : "match_id"
     DEALS ||--o{ DISPUTES : "deal_id"
+    DEALS ||--o| DEAL_LOGISTICS : "deal_id"
     PRICE_CACHE {
       int id PK
       string crop
@@ -399,25 +471,29 @@ erDiagram
       float min_price
       float max_price
       float modal_price
-      float arrival_volume "nullable — not in the feed"
+      float arrival_volume "nullable"
     }
 ```
 
 | Table | Key columns | Status/enum values |
 |---|---|---|
 | `price_cache` | `crop, variety, market, district, state, date, min/max/modal_price, arrival_volume?` — unique `(market, crop, variety, date)` | — |
-| `users` | `role, name, phone` (unique), `district, taluka, kyc_status`, `password_hash?` (PBKDF2), `is_active`, `created_at` (plus dormant `otp_code?` / `otp_expires_at?` — the OTP flow was removed) | role: `farmer` \| `buyer` \| `admin` |
+| `users` | `role, name, phone` (unique), `district, taluka, state, kyc_status`, `latitude?, longitude?`, `verification_status, verification_note?, verification_ref?, verified_at?, verified_by?`, `password_hash?` (PBKDF2), `is_active`, `created_at` | role: `farmer` \| `buyer` \| `admin`; verification: `unverified` \| `pending` \| `verified` \| `rejected` |
 | `lots` | `farmer_id→users`, `crop, quantity_kg, quality_grade, photo_url?, expected_price, available_from, location, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
-| `demands` | `buyer_id→users`, `crop, quantity_kg, quality_spec, price_band_min/max, delivery_window` | status: `open` \| `matched` \| `closed` |
+| `demands` | `buyer_id→users`, `crop, quantity_kg, quality_spec, price_band_min/max, delivery_window, delivery_district, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
 | `matches` | `lot_id→lots`, `demand_id→demands`, `score`, `score_detail` (JSON string) | status: `proposed` \| `offered` \| `accepted` \| `rejected` |
 | `offers` | `match_id→matches`, `from_user_id→users`, `price, quantity, message?`, `created_at` | status: `pending` \| `countered` \| `accepted` \| `declined` |
-| `deals` | `match_id→matches`, `agreed_price, agreed_quantity`, `logistics_mode`, `payment_status`, `pipeline_status`, `created_at` | pipeline: `matched → offer_accepted → logistics_arranged → delivered → paid → closed` |
+| `deals` | `match_id→matches`, `agreed_price, agreed_quantity`, `logistics_mode`, `payment_status`, `payment_method?, payment_reference?`, `pipeline_status`, `created_at` | pipeline: `matched → offer_accepted → logistics_arranged → delivered → paid → closed` |
+| `deal_logistics` | `deal_id→deals` (unique), `mode, transporter_name?, transporter_phone?, vehicle_type?, pickup_date?, pickup_point?, drop_point?, distance_km?, est_cost_inr?`, `status`, `notes?`, `updated_at` | mode: `self_pickup` \| `hired_transport` \| `buyer_arranged`; status: `planned` \| `in_transit` \| `delivered` |
 | `disputes` | `deal_id→deals`, `raised_by→users`, `reason`, `created_at` | status: `open` \| `closed` |
+| `pools` | `organizer_id→users`, `crop, title, target_quantity_kg, floor_price, grade, delivery_window, location, latitude?, longitude?`, `status`, `created_at` | status: `open` \| `locked` \| `matched` \| `closed` |
+| `pool_members` | `pool_id→pools`, `farmer_id→users`, `lot_id→lots?`, `quantity_kg, expected_price`, `status`, `created_at` | status: `committed` \| `withdrawn` |
 | `geo_cache` | `query` (unique), `latitude, longitude, display_name, admin1/2/3`, `created_at` | reverse-geocode key = `@rev:{lat},{lon}` |
 | `price_alerts` | `user_id→users`, `crop, market, direction, threshold, active, last_triggered_at?` | direction: `above` \| `below` |
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
 
-Migrations: `0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` — now dormant + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`).
+**Migrations** (in order):
+`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table).
 
 ---
 
@@ -432,15 +508,31 @@ in the decision is echoed back in `reasons[]`.
 | Factor | Weight | Logic |
 |---|---|---|
 | Price momentum | **×2** | `+1` if today's modal is ≥ 5% above the 30-day average **and** the 7-day average isn't lagging; `−1` if ≥ 5% below; `0` otherwise. With < 14 days of data it drops to a 7-day-trend note only. |
-| Arrival-volume trend | ×1 | Needs 14 days of non-null volume. `+1` if this week's average arrivals are ≥ 15% above last week's (glut coming → sell); `−1` if ≥ 15% below (tightening → wait). **Usually skipped** — the feed has no volume (see limitations), and the reason says so. |
+| Arrival-volume trend | ×1 | Needs 14 days of non-null volume. `+1` if this week's average arrivals are ≥ 15% above last week's (glut coming → sell); `−1` if ≥ 15% below (tightening → wait). **Usually skipped** — the feed has no volume (see limitations). |
 | Weather pressure | ×1 | `sell_bias` from `weather.get_forecast`: `+1` when ≥ 20 mm rain is expected in 3 days or ≥ 3 wet days in 5 (move produce now). `0` when the source is unavailable. |
-| MSP overlay | *advisory, not scored* | If the modal price is below MSP, the reason flags that a government procurement centre may pay more. |
+| MSP overlay | *advisory* | If the modal price is below MSP, the reason flags that a government procurement centre may pay more. |
 
 **Decision** — `total = 2·price + volume + weather`:
 `total ≥ 2 → sell_now` · `total ≤ −2 → wait` · otherwise `hold`.
 
 The frontend renders this as a half-doughnut gauge (`SignalGaugeChart`) plus the
-full reason list on `/advisor`.
+full reason list on `/advisor`. An optional LLM summary restates the ruling in
+plain, farmer-friendly language.
+
+---
+
+## Price forecast
+
+`app/services/forecast.py` — **interpretable trend + weekly-seasonality
+decomposition, no ML library**.
+
+Requires ≥ 14 days of history. The method:
+1. Fits a **least-squares straight-line trend** to the most recent 45 days.
+2. Learns the **day-of-week offset** from the de-trended residuals (centred so they sum to ~0), capturing weekly market rhythms.
+3. Projects both forward for up to 30 days with an **~80% prediction band** that widens with horizon (based on residual standard deviation).
+4. Never projects below 40% of the last known price (implausibility guard).
+
+Returns `{trend_per_day, weekly_pattern, change_pct_7d, change_pct_30d, note, points[]}` — every number is inspectable. `note` gives a one-sentence human summary ("Prices trending up ~+4.2% over the next 7 days."). The frontend renders the forecast as a **dashed line with a shaded prediction band** overlaid on the trend chart.
 
 ---
 
@@ -459,7 +551,8 @@ scoring **≥ 30**. Accepted/rejected matches are never overwritten.
 | Distance | 30 | Lot's geocoded coords → buyer district centroid (haversine) when available, else district-centroid distance. Brackets: ≤ 50 km → 30, ≤ 150 → 20, ≤ 300 → 10, > 300 → 0. Unknown → neutral 15 |
 
 `score_detail` is stored as JSON `{quantity, price, distance, total, max: 100}`
-and shown as a breakdown on the match page.
+and shown as a breakdown on the match page. `matching_health` re-derives all live
+matches on demand so match quality is measured, not assumed.
 
 ---
 
@@ -487,6 +580,113 @@ admin (or the raiser) closes them.
 
 ---
 
+## Deal logistics
+
+`app/models/logistics.py` — one `DealLogistics` row per deal (unique constraint on `deal_id`).
+
+Either party can fill in the logistics plan via `GET / PUT /api/deals/{id}/logistics`:
+
+| Field | What it captures |
+|---|---|
+| `mode` | `self_pickup` / `hired_transport` / `buyer_arranged` |
+| `transporter_name`, `transporter_phone` | Transporter contact details |
+| `vehicle_type` | e.g. "tractor-trolley", "tempo" |
+| `pickup_date`, `pickup_point`, `drop_point` | Operational schedule |
+| `distance_km`, `est_cost_inr` | Auto-estimated from the lot ↔ demand road distance (OSRM / haversine) and `TRANSPORT_COST_PER_QTL_KM`; editable |
+| `status` | `planned` → `in_transit` → `delivered` (independent of the deal pipeline stage) |
+| `notes` | Free-text operational notes |
+
+The logistics plan is separate from the deal pipeline's `logistics_arranged` stage —
+the pipeline tracks commercial agreement; this tracks operational delivery.
+
+---
+
+## FPO pools (collective bargaining)
+
+`app/models/pool.py` + `app/services/pools.py` — farmers pool produce under one crop
+and negotiate with large buyers as a single unit.
+
+**How it works:**
+1. A farmer creates a **Pool** with a crop, title, target quantity, and a `floor_price` (₹/quintal the pool will never go below).
+2. Other farmers **join** by committing a quantity and asking price (optionally linking an existing lot).
+3. The pool **aggregates**: total quantity = sum of committed members; asking price = quantity-weighted mean, floored at `floor_price`.
+4. The organizer can **lock** intake when ready and see **ranked buyer demand candidates** — scored by the same `score_pair` function as 1:1 matches, so the breakdown is equally transparent.
+5. Pool statuses: `open` → `locked` → `matched` → `closed`.
+
+The `/pools` page shows open pools filterable by crop, fill %, and status. `/pools/[id]` shows the aggregate, all committed members, and (for the organizer) the demand candidate list.
+
+---
+
+## Discovery board
+
+`app/services/discovery.py` + `/browse` route — a marketplace browse layer on top of the automated matcher.
+
+- **Buyers** see a radius-filtered list of open lots sorted by distance, with crop, quantity, grade, price, farmer name, district, and a **verified** badge.
+- **Farmers** see open demands the same way — buyer name, district, price band, delivery window, verified badge.
+- Either party can tap **"Express interest"** — this runs `score_pair` and either opens a match (if ≥ 30 points) or explains why ("quantities don't overlap enough", etc.).
+- Radius filter: *within N km* (default 300 km, configurable via `NEARBY_RADIUS_KM`) or *all-India*.
+- Verified badge is shown when `verification_status == "verified"`.
+- Location falls back gracefully: user profile coords → user's district centroid → no distance filter.
+
+---
+
+## User profiles & verification
+
+`PATCH /api/auth/me` + `POST /api/auth/me/request-verification` — every user can set their trading location and request admin verification.
+
+**Trading location** (`/profile` page):
+- Set from GPS (browser geolocation), the header location chip, or manual entry (district + state text fields).
+- Stored as `users.district`, `users.state`, `users.latitude`, `users.longitude`.
+- Used by distance-aware matching, the discovery board radius filter, and pool geocoding.
+
+**Verification workflow**:
+- User submits `{note?, reference?}` (e.g. PM-Kisan ID, Aadhaar number) → `verification_status = pending`.
+- Admin reviews via `GET /api/admin/users` (filterable by `verification=pending`).
+- Admin approves → `PATCH /api/admin/users/{id}/verify` with `{status: "verified", note?}` → `verified_at`, `verified_by`, and the legacy `kyc_status` badge are set.
+- Admin rejects → same endpoint with `{status: "rejected", note}`.
+- Verified users show a **✓ Verified** badge on lots, demands, and the discovery board.
+
+---
+
+## LLM readability layer
+
+`app/services/llm.py` + `app/api/assistant.py` — a thin OpenRouter client that is
+**purely a readability layer**. It never invents numbers or makes decisions; it
+only rephrases / answers from the structured data the rule-based engine already
+produced.
+
+**What it does:**
+
+| Feature | Route | Notes |
+|---|---|---|
+| Plain-language advisor | `GET /api/advisor/summary` | 2-3 sentences restating the sell/wait reasoning in English, Hindi, or Marathi. Cached 6 hours by prompt hash. |
+| Ask AgriLink | `POST /api/assistant/ask` | Grounded Q&A. The LLM receives a structured context block (price, signal, weather, MSP, calendar) and is instructed to say "I don't have that" when the answer isn't in it. Not cached. |
+| Live-string translation | `llm.translate()` | Translates short UI strings (weather conditions, API notes) to Hindi/Marathi. Called server-side. |
+
+**OCR** (`POST /api/ocr/lot-slip`) uses the same OpenRouter client with a **vision
+call** — the image is sent as a base64 data URL. The model returns a compact JSON
+draft; the backend validates and sanitises every field before returning it to the
+farmer, who reviews and edits before posting.
+
+All LLM calls degrade to `{"available": false}` / original text when
+`OPENROUTER_API_KEY` is absent. The frontend hides LLM panels rather than showing
+errors.
+
+---
+
+## OCR lot-slip assist
+
+`POST /api/ocr/lot-slip` (farmer auth required) — photograph a printed mandi slip
+or handwritten lot note and auto-fill the "List a Lot" form.
+
+- Accepts JPEG, PNG, or WebP up to **6 MB**.
+- Returns `{crop, quantity_kg, grade, expected_price, available_from, confidence}` — any field that couldn't be clearly read is omitted (never guessed).
+- The response is a **draft** — the farmer reviews and edits every value before the lot is created, so a wrong read is never silently trusted.
+- The `/farmer` page shows an "📷 Scan slip" button that opens a file picker, posts to this endpoint, and populates the form fields (showing a confidence note when below 0.7).
+- Degrades to `{"available": false}` without `OPENROUTER_API_KEY`.
+
+---
+
 ## Authentication
 
 Phone + password. Passwords are hashed with **PBKDF2-HMAC-SHA256** (600k
@@ -496,20 +696,23 @@ stdlib — no `bcrypt` / `passlib` dependency, so the build stays offline-instal
 compare). No OTP / SMS; the earlier OTP flow is in `git log`.
 
 ```
-POST /api/auth/register     {phone, name, role, password}   (password ≥ 6 chars)
-     → 409 if the phone is taken; else creates the account (password_hash) and
-       issues access_token (HS256, 30 min) + refresh_token (7 days)
+POST /api/auth/register  {phone, name, role, password, district?, state?, latitude?, longitude?}
+     → 409 if phone taken; creates account and issues token pair
 
-POST /api/auth/login        {phone, password}
-     → verify_password against the stored hash; 401 on mismatch, 403 if inactive
+POST /api/auth/login     {phone, password}
+     → 401 wrong credentials, 403 inactive
 
-POST /api/auth/refresh      {refresh_token}  → new pair
+POST /api/auth/refresh   {refresh_token}  → new pair
+
+PATCH /api/auth/me       {name?, district?, state?, latitude?, longitude?}  → updated user
+
+POST /api/auth/me/request-verification   {note?, reference?}  → user.verification_status = "pending"
 ```
 
 The frontend stores tokens in `localStorage` (`lib/auth.ts`), attaches the bearer
 header via `lib/api.ts`, and `AuthProvider` exposes `user` / `token` /
-`isAuthenticated` to the tree. `kyc_status` is a stub flag, not real
-verification.
+`isAuthenticated` / `updateUser` to the tree. `kyc_status` mirrors
+`verification_status` for the legacy verified badge.
 
 ---
 
@@ -551,9 +754,7 @@ debounce per alert).
   then optionally triggers `ensure_state_ingested` so that state's prices exist.
 - **What stays Maharashtra** — the crop **calendar** only (region-specific
   agronomy). MSP is national; the storage/FPO **directory** carries a detailed
-  Maharashtra set plus a national sample across the major producing states, each
-  row tagged with `state` and coordinates. A state with no curated rows returns
-  `[]` and the UI shows its normal empty state.
+  Maharashtra set plus a national sample across the major producing states.
 
 ---
 
@@ -582,13 +783,19 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-Backend coverage: the sell/wait signal cases and MSP/weather factors; geo
-distance + `nearest_state`; ingestion normalise + live→snapshot→fixture fallback +
-state override; the OpenWeather enrichment; location resolve + state-filtered
-options/overview; the intelligence endpoints; login + token refresh; lots / demands /
-matching / offers / deals / disputes / history; alerts; the admin dashboard.
+**Backend** (27 test files): signal cases and MSP/weather factors; price forecast
+(trend+seasonality, prediction band, short-history degradation); geo distance +
+`nearest_state`; ingestion normalise + live→snapshot→fixture fallback + state
+override; the OpenWeather enrichment; location resolve + state-filtered
+options/overview; the intelligence endpoints; login + token refresh; profile
+update + verification request flow; lots / demands / matching / offers / deals /
+disputes / history; logistics plan upsert; alerts; the admin dashboard and
+analytics; admin user management (verify / activate); pools (create, join,
+withdraw, aggregate, demand candidates); discovery board (browse lots/demands,
+express interest); OCR slip-read (happy path + missing-field tolerance + key-less
+degradation); the LLM assistant (grounded Q&A + key-less fallback).
 
-Frontend: locale parity, `PriceDetail` (skeleton→data, error→Retry),
+**Frontend**: locale parity, `PriceDetail` (skeleton→data, error→Retry),
 `SellWaitSignalCard` (each recommendation + reasons), `LanguageSwitcher`, and a
 smoke test per authed page. Chart-rendering tests mock `recharts`.
 
@@ -601,18 +808,23 @@ Both suites run **offline**.
 - **No arrival volume (PRICE-07).** The OGD price resource has no daily
   arrivals/volume field and no other data.gov.in JSON resource exposes one. So
   `arrival_volume` is `null` on live and snapshot rows, and the signal's volume
-  factor only contributes on fixture data — on real data it prints *"Arrival-volume
-  data isn't available for this market, so this factor was skipped."* The
-  `fetch_arrivals_rows()` seam is present but off unless `ARRIVALS_SOURCE_URL` is
-  set.
-- **KYC is a stub** — `kyc_status` is a flag, not real verification.
+  factor only contributes on fixture data.
+- **KYC / verification is admin-manual** — `verification_status` is admin-set after
+  offline document review; there is no automated e-KYC integration (PM-Kisan API,
+  Aadhaar UIDAI, etc.).
 - **Login is phone + password only** — no SMS OTP / second factor, no email
-  verification, and no password-reset flow (a forgotten password needs a DB
-  edit). PBKDF2 hashing is real; the rest is out of scope for the demo.
+  verification, and no password-reset flow (a forgotten password needs a DB edit).
+  PBKDF2 hashing is real; the rest is out of scope for the demo.
 - **Curated reference data** — MSP, the crop calendar, and the storage/FPO
   directory are curated samples with real geography, not live registries.
 - **Crop calendar is Maharashtra-tuned** — sowing/harvest/peak windows outside
   Maharashtra will be approximate.
+- **Pool ↔ deal integration is manual** — the pool shows ranked demand candidates
+  and an effective price; the organizer then negotiates offline / via a direct
+  demand. Pools don't auto-create deals or offers.
+- **Price forecast is statistical, not ML** — the trend+seasonality model is fully
+  transparent and offline-capable but won't capture sudden policy shocks or
+  weather events.
 - **Satellite crop-health (GEE) is deferred** — credentials may sit in `.env`
   but nothing reads them.
 - **Cordova wrap (Phase 4) not built** — the frontend is structured for it

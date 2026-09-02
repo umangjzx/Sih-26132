@@ -65,6 +65,15 @@ async def lifespan(app: FastAPI):
             # First boot on an empty DB — block so the app never serves nothing.
             result = ingestion.run_ingestion(db)
             logger.info("Initial ingestion: %s", result)
+        # Idempotent: seeds the curated transporter directory once.
+        try:
+            from app.services.transporters import seed_transporters
+
+            n = seed_transporters(db)
+            if n:
+                logger.info("Seeded %d transporters", n)
+        except Exception:  # noqa: BLE001 — never block boot on the directory seed
+            logger.exception("transporter seed failed")
     finally:
         db.close()
 

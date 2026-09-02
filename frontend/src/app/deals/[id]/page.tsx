@@ -20,10 +20,15 @@ import {
   advanceDeal,
   getDealById,
   getDealDisputes,
+  getDealLogistics,
   raiseDisputeOnDeal,
+  saveDealLogistics,
   type DealDetailResponse,
+  type DealLogistics,
   type DisputeResponse,
 } from "@/lib/api";
+import { DealLogisticsCard } from "@/components/DealLogisticsCard";
+import { DealTransactionPanel } from "@/components/DealTransactionPanel";
 
 const STAGES = [
   "matched",
@@ -328,6 +333,25 @@ export default function DealDetailPage() {
           )}
         </div>
       </section>
+
+      {/* Logistics plan */}
+      {token && (
+        <DealLogisticsCard
+          dealId={deal.id}
+          token={token}
+          closed={deal.pipeline_status === "closed"}
+        />
+      )}
+
+      {/* Payments + activity log */}
+      {token && (
+        <DealTransactionPanel
+          dealId={deal.id}
+          token={token}
+          canPay={user?.role === "buyer"}
+          agreedValue={(deal.agreed_price * deal.agreed_quantity) / 100}
+        />
+      )}
 
       {/* Disputes */}
       <section className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-6 shadow-sm">

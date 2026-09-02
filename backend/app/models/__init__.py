@@ -10,6 +10,10 @@ from app.models.geo_cache import GeoCache
 from app.models.price_alert import PriceAlert
 from app.models.notification import Notification
 from app.models.pool import Pool, PoolMember
+from app.models.logistics import DealLogistics
+from app.models.payment import DealPayment
+from app.models.transaction_event import TransactionEvent
+from app.models.transporter import Transporter
 
 __all__ = [
     "PriceCache",
@@ -25,4 +29,8 @@ __all__ = [
     "Notification",
     "Pool",
     "PoolMember",
+    "DealLogistics",
+    "DealPayment",
+    "TransactionEvent",
+    "Transporter",
 ]
