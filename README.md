@@ -420,10 +420,10 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 
 | Method | Path | Query | Notes |
 |---|---|---|---|
-| GET | `/browse/lots` | `crop?`, `lat?`, `lon?`, `radius_km?`, `limit?` | Open lots near the caller's location, sorted by distance, with `farmer_verified` flag. |
-| GET | `/browse/demands` | `crop?`, `lat?`, `lon?`, `radius_km?`, `limit?` | Open demands near the caller's location, sorted by distance, with `buyer_verified` flag. |
-| POST | `/browse/lots/{lot_id}/interest` | — | Express interest in a lot: runs matching and returns `{matched, score, match_id, reason}`. |
-| POST | `/browse/demands/{demand_id}/interest` | — | Express interest in a demand: runs matching and returns the same shape. |
+| GET | `/lots/browse` | `crop?`, `radius_km?`, `limit?` | **Buyer** — open lots near the caller's location, sorted by distance, with `farmer_verified` flag. |
+| GET | `/demands/browse` | `crop?`, `radius_km?`, `limit?` | **Farmer** — open demands near the caller's location, sorted by distance, with `buyer_verified` flag. |
+| POST | `/lots/{lot_id}/express-interest` | — | Buyer expresses interest in a lot: runs matching and returns `{matched, score, match_id, reason}`. |
+| POST | `/demands/{demand_id}/express-interest` | — | Farmer expresses interest in a demand: same shape. |
 
 ### Pools — v1.3 (**Auth**, farmers)
 
@@ -546,8 +546,8 @@ erDiagram
 | `offers` | `match_id→matches`, `from_user_id→users`, `price, quantity, message?`, `created_at` | status: `pending` \| `countered` \| `accepted` \| `declined` |
 | `deals` | `match_id→matches`, `agreed_price, agreed_quantity`, `logistics_mode`, `payment_status`, `payment_method?, payment_reference?`, `pipeline_status`, `created_at` | pipeline: `matched → offer_accepted → logistics_arranged → delivered → paid → closed` |
 | `deal_logistics` | `deal_id→deals` (unique), `mode, transporter_name?, transporter_phone?, vehicle_type?, pickup_date?, pickup_point?, drop_point?, distance_km?, est_cost_inr?`, `pod_*`, `status`, `notes?`, `updated_at` | mode: `self_pickup` \| `hired_transport` \| `buyer_arranged`; status: `planned` \| `in_transit` \| `delivered` |
-| `deal_payments` | `deal_id→deals`, `amount_inr, method, reference?, paid_at`, `recorded_by→users` | method: `upi` \| `bank` \| `cash` \| `cheque` \| `other` |
-| `transaction_events` | `entity_type, entity_id, actor_id→users?, action, detail` (JSON), `created_at` — **append-only** | entity_type: `deal` \| `payment` \| `logistics` \| `match` \| `offer` \| `pool` \| `forward_bid` |
+| `deal_payments` | `deal_id→deals`, `payer_id→users`, `amount_inr, method` (free text, default `UPI`), `reference?, note?, paid_at` | a deal is settled when `SUM(amount_inr) ≥ agreed_price × qty / 100` |
+| `transaction_events` | `entity_type, entity_id, actor_id→users?, action, detail` (JSON string), `created_at` — **append-only** | entity_type: `deal` \| `payment` \| `logistics` \| `match` \| `offer` \| `pool` \| `forward_bid` |
 | `transporters` | `name, phone?, base_district, latitude?, longitude?, vehicle_types, service_states, notes?` — curated, seeded on boot | — |
 | `disputes` | `deal_id→deals`, `raised_by→users`, `reason`, `created_at` | status: `open` \| `closed` |
 | `pools` | `organizer_id→users`, `crop, title, target_quantity_kg, floor_price, grade, delivery_window, location, latitude?, longitude?`, `status`, `matched_deal_id?`, `created_at` | status: `open` \| `locked` \| `matched` \| `closed` |

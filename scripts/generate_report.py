@@ -689,7 +689,7 @@ def build() -> list:
         ["offers",         "match_id→matches, from_user_id→users, price, quantity, message?, created_at.", "status: pending|countered|accepted|declined"],
         ["deals",          "match_id→matches, agreed_price, agreed_quantity, logistics_mode, payment_status, payment_method?, payment_reference?, pipeline_status, created_at.", "pipeline: matched→offer_accepted→logistics_arranged→delivered→paid→closed"],
         ["deal_logistics", "deal_id→deals (unique), mode, transporter_name?, transporter_phone?, vehicle_type?, pickup_date?, pickup_point?, drop_point?, distance_km?, est_cost_inr?, pod_*, status, notes?, updated_at.", "mode: self_pickup|hired_transport|buyer_arranged. status: planned|in_transit|delivered"],
-        ["deal_payments",  "deal_id→deals, amount_inr, method, reference?, paid_at, recorded_by→users.", "method: upi|bank|cash|cheque|other"],
+        ["deal_payments",  "deal_id→deals, payer_id→users, amount_inr, method (free text, default UPI), reference?, note?, paid_at.", "settled when SUM(amount_inr) >= agreed_price x qty / 100"],
         ["transaction_events", "entity_type, entity_id, actor_id→users?, action, detail (JSON), created_at. APPEND-ONLY.", "entity_type: deal|payment|logistics|match|offer|pool|forward_bid"],
         ["transporters",   "name, phone?, base_district, latitude?, longitude?, vehicle_types, service_states, notes?. Curated, seeded on boot.", "—"],
         ["disputes",       "deal_id→deals, raised_by→users, reason, created_at.", "status: open|closed"],
@@ -784,10 +784,10 @@ def build() -> list:
     story += h2("9.5 Discovery — v1.4 (Auth)")
     api_disc = [
         [Paragraph("<b>Method Path</b>", BADGE), Paragraph("<b>Query</b>", BADGE), Paragraph("<b>Notes</b>", BADGE)],
-        ["GET /browse/lots",                   "crop?, lat?, lon?, radius_km?, limit?", "Open lots near caller, sorted by distance."],
-        ["GET /browse/demands",                "crop?, lat?, lon?, radius_km?, limit?", "Open demands near caller."],
-        ["POST /browse/lots/{id}/interest",    "—",  "Express interest → {matched, score, match_id, reason}."],
-        ["POST /browse/demands/{id}/interest", "—",  "Express interest in a demand."],
+        ["GET /lots/browse",                   "crop?, radius_km?, limit?", "Buyer — open lots near caller, sorted by distance."],
+        ["GET /demands/browse",                "crop?, radius_km?, limit?", "Farmer — open demands near caller."],
+        ["POST /lots/{id}/express-interest",   "—",  "Buyer expresses interest → {matched, score, match_id, reason}."],
+        ["POST /demands/{id}/express-interest","—",  "Farmer expresses interest in a demand."],
     ]
     story.append(std_table(api_disc, col_widths=[5 * cm, 5 * cm, 7 * cm]))
     story.append(sp(4))
