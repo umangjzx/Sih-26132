@@ -243,7 +243,12 @@
     "refFarmerAsk": "शेतकरी मागणी",
     "spreadApart": "₹{amount}/क्वि. चा फरक",
     "useMidpoint": "मध्यबिंदू ₹{price} वापरा",
-    "cancel": "रद्द करा"
+    "cancel": "रद्द करा",
+    "offerInvalid": "योग्य किंमत आणि प्रमाण टाका.",
+    "offerQtyTooBig": "तुम्ही {max} किलोपेक्षा जास्त ऑफर करू शकत नाही.",
+    "offerSent": "ऑफर पाठवली.",
+    "offerFailed": "ऑफर पाठवता आली नाही.",
+    "offerQtyHint": "लॉट आकार: {max} किलो"
   },
   "deals": {
     "title": "माझे व्यवहार",

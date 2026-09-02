@@ -18,6 +18,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   acceptOffer,
   declineOffer,
   fetchNegotiationContext,
@@ -46,7 +47,13 @@ export default function MatchThreadPage() {
   const [offerMsg, setOfferMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastErr, setToastErr] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  const flash = useCallback((msg: string, isErr = false) => {
+    setToast(msg);
+    setToastErr(isErr);
+    setTimeout(() => setToast(null), isErr ? 6000 : 3500);
+  }, []);
 
   useEffect(() => {
     if (ready && !isAuthenticated) router.replace("/login");
@@ -74,16 +81,32 @@ export default function MatchThreadPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const lotQty = match?.lot.quantity_kg ?? 0;
+
   async function handleOffer(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
+    const price = parseFloat(offerPrice);
+    const qty = parseFloat(offerQty);
+    if (!(price > 0) || !(qty > 0)) {
+      flash(t("offerInvalid"), true);
+      return;
+    }
+    if (lotQty && qty > lotQty) {
+      flash(t("offerQtyTooBig", { max: lotQty }), true);
+      return;
+    }
     setSubmitting(true);
     try {
-      await postOffer(matchId, { price: parseFloat(offerPrice), quantity: parseFloat(offerQty), message: offerMsg || null }, token);
+      await postOffer(matchId, { price, quantity: qty, message: offerMsg || null }, token);
       setOfferPrice(""); setOfferQty(""); setOfferMsg("");
+      flash(t("offerSent"));
       load();
-    } catch { /* display error in future */ }
-    finally { setSubmitting(false); }
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : t("offerFailed"), true);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleAccept(offerId: number) {
@@ -92,18 +115,22 @@ export default function MatchThreadPage() {
       const d = await acceptOffer(offerId, token);
       setDeal(d);
       setToast(t("dealCreated", { price: d.agreed_price, qty: d.agreed_quantity }));
+      setToastErr(false);
       load();
-    } catch { /* non-fatal */ }
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : t("offerFailed"), true);
+    }
   }
 
   async function handleDecline(offerId: number) {
     if (!token) return;
     try {
       await declineOffer(offerId, token);
-      setToast(t("offerDeclined"));
-      setTimeout(() => setToast(null), 3000);
+      flash(t("offerDeclined"));
       load();
-    } catch { /* non-fatal */ }
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : t("offerFailed"), true);
+    }
   }
 
   if (!ready || !isAuthenticated || !user) return null;
@@ -181,8 +208,14 @@ export default function MatchThreadPage() {
 
       {/* Toast */}
       {toast && match.status !== "accepted" && (
-        <div className="flex items-center gap-3 rounded-2xl border border-[var(--amber-600)]/30 bg-[var(--amber-100)] px-5 py-4 text-sm font-bold text-[var(--amber-800)]">
-          <Icon name="bell" size={18} />
+        <div
+          className={`flex items-center gap-3 rounded-2xl border px-5 py-4 text-sm font-bold ${
+            toastErr
+              ? "border-[var(--red-500)]/30 bg-[var(--red-100)] text-[var(--red-700)]"
+              : "border-[var(--green-600)]/30 bg-[var(--green-100)] text-[var(--green-700)]"
+          }`}
+        >
+          <Icon name={toastErr ? "alert" : "check"} size={18} />
           {toast}
         </div>
       )}
@@ -317,19 +350,26 @@ export default function MatchThreadPage() {
             <label className="flex flex-col gap-1.5 text-sm font-bold text-[var(--ink)]">
               {t("offerQuantityLabel")}
               <div className="relative">
-                <input 
-                  type="number" min="1" value={offerQty} onChange={(e) => setOfferQty(e.target.value)} required 
-                  className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-3 pr-10 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors" 
+                <input
+                  type="number" min="1" max={lotQty || undefined} step="any"
+                  value={offerQty} onChange={(e) => setOfferQty(e.target.value)} required
+                  className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-3 pr-10 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold text-[var(--ink-soft)]">kg</span>
               </div>
+              {lotQty > 0 && (
+                <span className="text-xs font-normal text-[var(--ink-soft)]">
+                  {t("offerQtyHint", { max: lotQty })}
+                </span>
+              )}
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-bold text-[var(--ink)] sm:col-span-2">
               {t("offerMessageLabel")}
-              <textarea 
+              <textarea
                 value={offerMsg} onChange={(e) => setOfferMsg(e.target.value)} rows={2}
+                maxLength={1000}
                 placeholder={t("offerMessagePlaceholder")}
-                className="resize-none rounded-xl border border-[var(--line)] p-3 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors" 
+                className="resize-none rounded-xl border border-[var(--line)] p-3 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
               />
             </label>
             <div className="sm:col-span-2 pt-2">

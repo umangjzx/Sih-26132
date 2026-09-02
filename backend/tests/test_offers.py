@@ -340,3 +340,47 @@ def test_decline_with_other_pending_match_stays_offered(db, farmer_user, buyer_u
         assert m.status == "proposed"
     finally:
         app.dependency_overrides.clear()
+
+
+# ---------------------------------------------------------------------------
+# Offer guards (Module 4 hardening)
+# ---------------------------------------------------------------------------
+
+def test_offer_quantity_cannot_exceed_lot(db, farmer_user, buyer_user):
+    match = _seed_match(db, farmer_user, buyer_user)  # lot is 500 kg
+    client, _ = _make_clients(db, farmer_user, buyer_user)
+    try:
+        _as_buyer(buyer_user)
+        r = client.post(f"/api/matches/{match.id}/offers",
+                        json={"price": 2500, "quantity": 5000, "message": "all of it"})
+        assert r.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_cannot_stack_your_own_pending_offer(db, farmer_user, buyer_user):
+    match = _seed_match(db, farmer_user, buyer_user)
+    client, _ = _make_clients(db, farmer_user, buyer_user)
+    try:
+        _as_buyer(buyer_user)
+        assert client.post(f"/api/matches/{match.id}/offers", json=OFFER_BODY).status_code == 201
+        # a second offer from the same party, before the other side responds
+        r = client.post(f"/api/matches/{match.id}/offers", json={"price": 2600, "quantity": 500})
+        assert r.status_code == 409
+        # the other party CAN counter
+        _as_farmer(farmer_user)
+        assert client.post(f"/api/matches/{match.id}/offers", json={"price": 2700, "quantity": 500}).status_code == 201
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_offer_price_upper_bound(db, farmer_user, buyer_user):
+    match = _seed_match(db, farmer_user, buyer_user)
+    client, _ = _make_clients(db, farmer_user, buyer_user)
+    try:
+        _as_buyer(buyer_user)
+        r = client.post(f"/api/matches/{match.id}/offers",
+                        json={"price": 9_000_000, "quantity": 500})
+        assert r.status_code == 422
+    finally:
+        app.dependency_overrides.clear()

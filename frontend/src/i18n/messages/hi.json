@@ -243,7 +243,12 @@
     "refFarmerAsk": "किसान मांग",
     "spreadApart": "₹{amount}/क्वि. का अंतर",
     "useMidpoint": "मध्यबिंदु ₹{price} लें",
-    "cancel": "रद्द करें"
+    "cancel": "रद्द करें",
+    "offerInvalid": "सही मूल्य और मात्रा दर्ज करें।",
+    "offerQtyTooBig": "आप {max} किग्रा से अधिक की पेशकश नहीं कर सकते।",
+    "offerSent": "पेशकश भेजी गई।",
+    "offerFailed": "पेशकश नहीं भेजी जा सकी।",
+    "offerQtyHint": "लॉट आकार: {max} किग्रा"
   },
   "deals": {
     "title": "मेरे सौदे",

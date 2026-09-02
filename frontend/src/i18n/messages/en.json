@@ -243,7 +243,12 @@
     "refFarmerAsk": "Farmer ask",
     "spreadApart": "₹{amount}/qtl apart",
     "useMidpoint": "Use midpoint ₹{price}",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "offerInvalid": "Enter a valid price and quantity.",
+    "offerQtyTooBig": "You can't offer for more than {max} kg (the lot size).",
+    "offerSent": "Offer sent.",
+    "offerFailed": "Could not send the offer.",
+    "offerQtyHint": "Lot size: {max} kg"
   },
   "deals": {
     "title": "My Deals",

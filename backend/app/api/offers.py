@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.models.deal import Deal
@@ -21,6 +22,7 @@ from app.models.lot import Lot
 from app.models.match import Match
 from app.models.offer import Offer
 from app.models.price_cache import PriceCache
+from app.models.user import User
 from app.schemas.offer import DealResponse, OfferCreate, OfferResponse
 from app.services.audit import log_event
 
@@ -110,8 +112,9 @@ def negotiation_context(
         band_mid = round((demand.price_band_min + demand.price_band_max) / 2, 0)
         midpoint = round((lot.expected_price + band_mid) / 2, 0)
 
+    farmer = db.get(User, lot.farmer_id)
     mandi, mandi_basis = _latest_mandi_modal(
-        db, lot.crop, lot.location or "", getattr(lot, "state", "") or ""
+        db, lot.crop, lot.location or "", (farmer.state if farmer else "") or ""
     )
     msp_entry = ref.msp_for(lot.crop)
 
@@ -167,10 +170,25 @@ def post_offer(
             detail=f"Match status '{match.status}' is not open for offers",
         )
 
+    if not ratelimit.check(f"offer:{match_id}:{current_user.id}", limit=20, window_s=300):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many offers on this match. Please slow down.")
+
+    if body.quantity > lot.quantity_kg + 1e-6:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"You can't offer for more than the lot's {lot.quantity_kg:.0f} kg.",
+        )
+
     # Move any existing pending offer to 'countered'
     pending = db.execute(
         select(Offer).where(Offer.match_id == match_id, Offer.status == "pending")
     ).scalars().all()
+    if any(p.from_user_id == current_user.id for p in pending):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Your offer is already on the table — wait for the other party to respond.",
+        )
     for p in pending:
         p.status = "countered"
 
