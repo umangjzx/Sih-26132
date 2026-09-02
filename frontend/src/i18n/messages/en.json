@@ -281,7 +281,12 @@
     "evt_advance_to_paid": "Marked paid",
     "evt_advance_to_closed": "Deal closed",
     "evt_payment_recorded": "Payment recorded",
-    "confirmAdvance": "Confirm: move this deal to “{stage}”? This can't be undone."
+    "confirmAdvance": "Confirm: move this deal to “{stage}”? This can't be undone.",
+    "evt_offer_made": "Offer made",
+    "evt_offer_countered": "Counter-offer made",
+    "evt_offer_accepted": "Offer accepted",
+    "evt_deal_created": "Deal created",
+    "evt_dispute_raised": "Dispute raised"
   },
   "disputes": {
     "title": "Disputes",

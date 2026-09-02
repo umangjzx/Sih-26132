@@ -23,7 +23,11 @@ router = APIRouter(prefix="/api", tags=["intel"])
 
 
 def _resolve_point(
-    market: str | None, district: str | None, lat: float | None, lon: float | None
+    market: str | None,
+    district: str | None,
+    lat: float | None,
+    lon: float | None,
+    db: Session | None = None,
 ) -> tuple[float, float]:
     from app.services.geo import _district_coord
 
@@ -37,6 +41,19 @@ def _resolve_point(
         c = _district_coord(name or "")  # all-India district HQ coords
         if c:
             return c
+    # Most AGMARKNET markets aren't in the curated coord table and their name
+    # isn't a district — fall back to the market's own district column.
+    if db is not None and market:
+        row = db.execute(
+            select(PriceCache.district)
+            .where(PriceCache.market == market, PriceCache.district != "")
+            .order_by(PriceCache.date.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if row:
+            c = _district_coord(row)
+            if c:
+                return c
     raise HTTPException(status_code=404, detail="Could not resolve a location for the request")
 
 
@@ -179,7 +196,7 @@ def markets_best(
     fast: bool = Query(False, description="skip OSRM routing, use straight-line distance"),
     db: Session = Depends(get_db),
 ) -> dict:
-    origin = _resolve_point(market, district, lat, lon)
+    origin = _resolve_point(market, district, lat, lon, db)
     if not state:
         from app.services.geo import nearest_state
 

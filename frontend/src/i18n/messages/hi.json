@@ -281,7 +281,12 @@
     "evt_advance_to_paid": "भुगतान चिह्नित",
     "evt_advance_to_closed": "सौदा बंद",
     "evt_payment_recorded": "भुगतान दर्ज",
-    "confirmAdvance": "पुष्टि करें: इस सौदे को “{stage}” पर ले जाएं? यह पूर्ववत नहीं हो सकता।"
+    "confirmAdvance": "पुष्टि करें: इस सौदे को “{stage}” पर ले जाएं? यह पूर्ववत नहीं हो सकता।",
+    "evt_offer_made": "पेशकश की गई",
+    "evt_offer_countered": "जवाबी पेशकश की गई",
+    "evt_offer_accepted": "पेशकश स्वीकृत",
+    "evt_deal_created": "सौदा बना",
+    "evt_dispute_raised": "विवाद उठाया गया"
   },
   "disputes": {
     "title": "विवाद",

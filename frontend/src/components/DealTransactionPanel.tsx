@@ -178,7 +178,11 @@ export function DealTransactionPanel({
             {events.map((ev) => {
               const key = `evt_${ev.action}` as "evt_payment_recorded";
               let label = t(key);
-              if (label === key) label = ev.action.replace(/_/g, " ");
+              // next-intl returns the namespace-qualified path on a miss
+              // ("deals.evt_foo"), so match on the suffix, not strict equality.
+              if (label === key || label.endsWith(`.${key}`)) {
+                label = ev.action.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+              }
               return (
                 <li key={ev.id} className="flex items-start gap-2 text-xs">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--green-500)]" />

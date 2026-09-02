@@ -281,7 +281,12 @@
     "evt_advance_to_paid": "पेमेंट चिह्नांकित",
     "evt_advance_to_closed": "व्यवहार बंद",
     "evt_payment_recorded": "पेमेंट नोंद",
-    "confirmAdvance": "पुष्टी करा: हा व्यवहार “{stage}” कडे नेणार? हे पूर्ववत होणार नाही."
+    "confirmAdvance": "पुष्टी करा: हा व्यवहार “{stage}” कडे नेणार? हे पूर्ववत होणार नाही.",
+    "evt_offer_made": "ऑफर दिली",
+    "evt_offer_countered": "प्रति-ऑफर दिली",
+    "evt_offer_accepted": "ऑफर स्वीकारली",
+    "evt_deal_created": "व्यवहार तयार झाला",
+    "evt_dispute_raised": "विवाद उपस्थित केला"
   },
   "disputes": {
     "title": "तक्रारी",

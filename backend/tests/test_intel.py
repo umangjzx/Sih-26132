@@ -119,6 +119,22 @@ def test_best_markets_places_non_maharashtra_markets(db):
     assert {"Erode Uzhavar Sandhai", "Palladam"} <= {r["market"] for r in ranked}
 
 
+def test_markets_best_resolves_origin_from_market_district(seeded_db):
+    """A market that isn't in the curated coord table and whose name isn't a
+    district must still resolve — via its own `district` column — instead of
+    404-ing the whole best-market panel."""
+    seeded_db.add(PriceCache(
+        crop="Onion", variety="", market="Obscure Mandi No. 7", district="Pune",
+        state="Maharashtra", date=date(2026, 9, 1),
+        min_price=1800, max_price=2000, modal_price=1900, arrival_volume=None,
+    ))
+    seeded_db.commit()
+    c = _client(seeded_db)
+    r = c.get("/api/markets/best", params={"crop": "Onion", "market": "Obscure Mandi No. 7", "fast": True})
+    assert r.status_code == 200, r.text
+    assert r.json()["ranked"]
+
+
 # --------------------------------------------------------------------------- #
 # API smoke
 # --------------------------------------------------------------------------- #
