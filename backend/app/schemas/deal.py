@@ -27,17 +27,53 @@ class DealDetailResponse(DealResponse):
     counterparty: CounterpartySummary | None = None
 
 
+_OUTCOMES = ("favour_farmer", "favour_buyer", "split", "dismissed", "no_fault")
+
+
 class DisputeCreate(BaseModel):
     reason: str
+    evidence_url: str | None = Field(default=None, max_length=500)
 
     @field_validator("reason")
     @classmethod
     def reason_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
+        v = (v or "").strip()
+        if not v:
             raise ValueError("reason must not be empty")
         if len(v) > 1000:
             raise ValueError("reason must be at most 1000 characters")
         return v
+
+    @field_validator("evidence_url")
+    @classmethod
+    def _url(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        if not (v.startswith("https://") or v.startswith("http://") or v.startswith("/")):
+            raise ValueError("evidence_url must be an http(s) URL or a relative path")
+        return v
+
+
+class DisputeResolve(BaseModel):
+    """Admin ruling on a dispute."""
+
+    outcome: str = Field(description="one of: " + ", ".join(_OUTCOMES))
+    resolution: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("outcome")
+    @classmethod
+    def _outcome(cls, v: str) -> str:
+        if v not in _OUTCOMES:
+            raise ValueError(f"outcome must be one of {_OUTCOMES}")
+        return v
+
+    @field_validator("resolution")
+    @classmethod
+    def _res(cls, v: str | None) -> str | None:
+        return (v or "").strip() or None
 
 
 class DisputeResponse(BaseModel):
@@ -47,7 +83,12 @@ class DisputeResponse(BaseModel):
     deal_id: int
     raised_by: int
     reason: str
+    evidence_url: str | None = None
     status: str
+    outcome: str | None = None
+    resolution: str | None = None
+    resolved_by: int | None = None
+    resolved_at: datetime | None = None
     created_at: datetime
 
 

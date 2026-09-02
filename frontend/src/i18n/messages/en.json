@@ -330,7 +330,24 @@
     "status_open": "Open",
     "status_closed": "Closed",
     "closeDispute": "Close Dispute",
-    "raisedByLabel": "Raised by user"
+    "raisedByLabel": "Raised by user",
+    "status_resolved": "Resolved",
+    "status_withdrawn": "Withdrawn",
+    "evidenceLabel": "Evidence link (optional)",
+    "evidencePlaceholder": "https://… link to a photo or document",
+    "evidenceLink": "View evidence",
+    "withdraw": "Withdraw",
+    "withdrawing": "Withdrawing…",
+    "withdrawConfirm": "Withdraw this dispute? This cannot be undone.",
+    "withdrawnSuccess": "Dispute withdrawn",
+    "resolvedByAdmin": "Resolved by admin",
+    "resolutionLabel": "Resolution",
+    "outcomeLabel": "Outcome",
+    "outcome_favour_farmer": "In favour of farmer",
+    "outcome_favour_buyer": "In favour of buyer",
+    "outcome_split": "Split / shared",
+    "outcome_dismissed": "Dismissed",
+    "outcome_no_fault": "No fault found"
   },
   "history": {
     "title": "My Transaction History",
@@ -453,7 +470,13 @@
     "dhMspTitle": "Price realisation vs MSP",
     "dhMspHint": "Latest modal price vs the Minimum Support Price, by crop.",
     "dhMspNone": "No MSP-backed crops in the current data.",
-    "dhMspGap": "Gap vs MSP"
+    "dhMspGap": "Gap vs MSP",
+    "resolveAction": "Resolve",
+    "resolveOutcome": "Outcome",
+    "resolveNote": "Note (optional)",
+    "resolveConfirm": "Confirm",
+    "resolveCancel": "Cancel",
+    "resolvedToast": "Dispute resolved"
   },
   "weather": {
     "title": "7-Day Weather",

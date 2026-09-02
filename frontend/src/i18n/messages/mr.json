@@ -330,7 +330,24 @@
     "status_open": "उघडी",
     "status_closed": "बंद",
     "closeDispute": "तक्रार बंद करा",
-    "raisedByLabel": "वापरकर्त्याने नोंदवले"
+    "raisedByLabel": "वापरकर्त्याने नोंदवले",
+    "status_resolved": "निकाली काढला",
+    "status_withdrawn": "माघे घेतला",
+    "evidenceLabel": "पुरावा लिंक (ऐच्छिक)",
+    "evidencePlaceholder": "https://… फोटो किंवा कागदपत्राची लिंक",
+    "evidenceLink": "पुरावा पहा",
+    "withdraw": "माघे घ्या",
+    "withdrawing": "माघे घेत आहे…",
+    "withdrawConfirm": "हा वाद माघे घ्यायचा? हे पूर्ववत करता येणार नाही.",
+    "withdrawnSuccess": "वाद माघे घेतला",
+    "resolvedByAdmin": "अॅडमिनने निकाली काढला",
+    "resolutionLabel": "निर्णय",
+    "outcomeLabel": "परिणाम",
+    "outcome_favour_farmer": "शेतकर्याच्या बाजूने",
+    "outcome_favour_buyer": "खरेदीदाराच्या बाजूने",
+    "outcome_split": "विभागून / सामाईक",
+    "outcome_dismissed": "फेटाळला",
+    "outcome_no_fault": "कोणताही दोष आढळा नाही"
   },
   "history": {
     "title": "माझा व्यवहार इतिहास",
@@ -453,7 +470,13 @@
     "dhMspTitle": "MSP च्या तुलनेत किंमत",
     "dhMspHint": "पिकानुसार नवीनतम मॉडल किंमत वि. MSP.",
     "dhMspNone": "सध्याच्या डेटामध्ये MSP-आधारित पिके नाहीत.",
-    "dhMspGap": "MSP पेक्षा फरक"
+    "dhMspGap": "MSP पेक्षा फरक",
+    "resolveAction": "निकाली काढा",
+    "resolveOutcome": "परिणाम",
+    "resolveNote": "टीप (ऐच्छिक)",
+    "resolveConfirm": "निश्चित करा",
+    "resolveCancel": "रद्द करा",
+    "resolvedToast": "वाद निकाली काढला"
   },
   "weather": {
     "title": "7-दिवसांचे हवामान",

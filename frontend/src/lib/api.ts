@@ -225,14 +225,30 @@ export type DealDetailResponse = DealResponse & {
   counterparty: CounterpartySummary | null;
 };
 
-export type DisputeCreate = { reason: string };
+export type DisputeCreate = { reason: string; evidence_url?: string };
+
+export const DISPUTE_OUTCOMES = [
+  "favour_farmer",
+  "favour_buyer",
+  "split",
+  "dismissed",
+  "no_fault",
+] as const;
+export type DisputeOutcome = (typeof DISPUTE_OUTCOMES)[number];
+
+export type DisputeResolve = { outcome: DisputeOutcome; resolution?: string };
 
 export type DisputeResponse = {
   id: number;
   deal_id: number;
   raised_by: number;
   reason: string;
+  evidence_url: string | null;
   status: string;
+  outcome: string | null;
+  resolution: string | null;
+  resolved_by: number | null;
+  resolved_at: string | null;
   created_at: string;
 };
 
@@ -1132,8 +1148,16 @@ export function raiseDisputeOnDeal(
 export function closeDispute(
   disputeId: number,
   token: string,
+  body: DisputeResolve,
 ): Promise<DisputeResponse> {
-  return patchJson(`/api/disputes/${disputeId}/close`, {}, token);
+  return patchJson(`/api/disputes/${disputeId}/close`, body, token);
+}
+
+export function withdrawDispute(
+  disputeId: number,
+  token: string,
+): Promise<DisputeResponse> {
+  return postJson(`/api/disputes/${disputeId}/withdraw`, {}, token);
 }
 
 export function getMyHistory(token: string): Promise<HistoryResponse> {

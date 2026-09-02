@@ -24,6 +24,7 @@ import {
   getDealLogistics,
   raiseDisputeOnDeal,
   saveDealLogistics,
+  withdrawDispute,
   type DealDetailResponse,
   type DealLogistics,
   type DisputeResponse,
@@ -67,11 +68,22 @@ export default function DealDetailPage() {
   const disputeStatusLabel: Record<string, string> = {
     open: tp("status_open"),
     closed: tp("status_closed"),
+    resolved: tp("status_resolved"),
+    withdrawn: tp("status_withdrawn"),
+  };
+  const outcomeLabel: Record<string, string> = {
+    favour_farmer: tp("outcome_favour_farmer"),
+    favour_buyer: tp("outcome_favour_buyer"),
+    split: tp("outcome_split"),
+    dismissed: tp("outcome_dismissed"),
+    no_fault: tp("outcome_no_fault"),
   };
 
   const [deal, setDeal] = useState<DealDetailResponse | null>(null);
   const [disputes, setDisputes] = useState<DisputeResponse[]>([]);
   const [reason, setReason] = useState("");
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [withdrawingId, setWithdrawingId] = useState<number | null>(null);
   const [payMethod, setPayMethod] = useState("UPI");
   const [payRef, setPayRef] = useState("");
   const [advancing, setAdvancing] = useState(false);
@@ -135,8 +147,13 @@ export default function DealDetailPage() {
     if (!token || !reason.trim()) return;
     setSubmitting(true);
     try {
-      await raiseDisputeOnDeal(dealId, { reason: reason.trim() }, token);
+      await raiseDisputeOnDeal(
+        dealId,
+        { reason: reason.trim(), evidence_url: evidenceUrl.trim() || undefined },
+        token,
+      );
       setReason("");
+      setEvidenceUrl("");
       setToast(tp("success"));
       setTimeout(() => setToast(null), 3000);
       await load();
@@ -145,6 +162,23 @@ export default function DealDetailPage() {
       setTimeout(() => setToast(null), 5000);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleWithdraw(disputeId: number) {
+    if (!token) return;
+    if (!window.confirm(tp("withdrawConfirm"))) return;
+    setWithdrawingId(disputeId);
+    try {
+      await withdrawDispute(disputeId, token);
+      setToast(tp("withdrawnSuccess"));
+      setTimeout(() => setToast(null), 3000);
+      await load();
+    } catch (err) {
+      setToast(err instanceof ApiError ? err.message : tp("duplicateError"));
+      setTimeout(() => setToast(null), 5000);
+    } finally {
+      setWithdrawingId(null);
     }
   }
 
@@ -390,6 +424,39 @@ export default function DealDetailPage() {
                   </span>
                 </div>
                 <p className="text-[var(--red-800)]">{d.reason}</p>
+                {d.evidence_url && (
+                  <a
+                    href={d.evidence_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-[var(--red-700)] hover:underline"
+                  >
+                    <Icon name="camera" size={13} /> {tp("evidenceLink")}
+                  </a>
+                )}
+                {d.status === "resolved" && (
+                  <div className="mt-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-xs">
+                    <p className="font-bold text-[var(--ink)]">
+                      {tp("outcomeLabel")}: {outcomeLabel[d.outcome ?? ""] ?? d.outcome ?? "—"}
+                    </p>
+                    {d.resolution && (
+                      <p className="mt-1 text-[var(--ink-soft)]">
+                        {tp("resolutionLabel")}: {d.resolution}
+                      </p>
+                    )}
+                    <p className="mt-1 text-[var(--ink-soft)]">{tp("resolvedByAdmin")}</p>
+                  </div>
+                )}
+                {d.status === "open" && d.raised_by === user?.id && (
+                  <button
+                    type="button"
+                    onClick={() => handleWithdraw(d.id)}
+                    disabled={withdrawingId === d.id}
+                    className="mt-1 self-start rounded-lg border border-[var(--red-300)] px-3 py-1.5 text-xs font-bold text-[var(--red-700)] transition hover:bg-[var(--red-100)] disabled:opacity-50"
+                  >
+                    {withdrawingId === d.id ? tp("withdrawing") : tp("withdraw")}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -410,6 +477,18 @@ export default function DealDetailPage() {
                 placeholder={tp("reasonPlaceholder")}
                 required
                 rows={3}
+                maxLength={1000}
+                className="w-full rounded-xl border border-[var(--line)] p-3 text-sm font-normal focus:border-[var(--red-500)] focus:outline-none transition-colors"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm font-bold text-[var(--ink)]">
+              {tp("evidenceLabel")}
+              <input
+                type="url"
+                value={evidenceUrl}
+                onChange={(e) => setEvidenceUrl(e.target.value)}
+                placeholder={tp("evidencePlaceholder")}
+                maxLength={500}
                 className="w-full rounded-xl border border-[var(--line)] p-3 text-sm font-normal focus:border-[var(--red-500)] focus:outline-none transition-colors"
               />
             </label>

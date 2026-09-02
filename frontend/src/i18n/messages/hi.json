@@ -330,7 +330,24 @@
     "status_open": "खुला",
     "status_closed": "बंद",
     "closeDispute": "विवाद बंद करें",
-    "raisedByLabel": "उपयोगकर्ता द्वारा दर्ज"
+    "raisedByLabel": "उपयोगकर्ता द्वारा दर्ज",
+    "status_resolved": "निपटाया गया",
+    "status_withdrawn": "वापस लिया गया",
+    "evidenceLabel": "सबूत लिंक (वैकल्पिक)",
+    "evidencePlaceholder": "https://… फोटो या दस्तावेज़ का लिंक",
+    "evidenceLink": "सबूत देखें",
+    "withdraw": "वापस लें",
+    "withdrawing": "वापस लिया जा रहा है…",
+    "withdrawConfirm": "यह विवाद वापस लें? इसे पूर्ववत नहीं किया जा सकता।",
+    "withdrawnSuccess": "विवाद वापस लिया गया",
+    "resolvedByAdmin": "एडमिन द्वारा निपटाया गया",
+    "resolutionLabel": "निर्णय",
+    "outcomeLabel": "परिणाम",
+    "outcome_favour_farmer": "किसान के पक्ष में",
+    "outcome_favour_buyer": "खरीदार के पक्ष में",
+    "outcome_split": "आपसी बटवारा",
+    "outcome_dismissed": "खारिज",
+    "outcome_no_fault": "कोई दोष नहीं मिला"
   },
   "history": {
     "title": "मेरा लेनदेन इतिहास",
@@ -453,7 +470,13 @@
     "dhMspTitle": "MSP के मुकाबले मूल्य",
     "dhMspHint": "फ़सलवार नवीनतम मॉडल मूल्य बनाम MSP।",
     "dhMspNone": "वर्तमान डेटा में MSP-समर्थित फ़सलें नहीं।",
-    "dhMspGap": "MSP से अंतर"
+    "dhMspGap": "MSP से अंतर",
+    "resolveAction": "निपटाएं",
+    "resolveOutcome": "परिणाम",
+    "resolveNote": "टिप्पणी (वैकल्पिक)",
+    "resolveConfirm": "पुष्टि करें",
+    "resolveCancel": "रद्द करें",
+    "resolvedToast": "विवाद निपटाया गया"
   },
   "weather": {
     "title": "7-दिन का मौसम",

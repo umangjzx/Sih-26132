@@ -122,19 +122,23 @@ def test_close_dispute_admin(db, farmer_user, buyer_user):
         ).json()["id"]
 
         _as(admin)
-        resp = client.patch(f"/api/disputes/{dispute_id}/close")
+        resp = client.patch(f"/api/disputes/{dispute_id}/close",
+                            json={"outcome": "favour_buyer", "resolution": "Buyer never got the goods."})
         assert resp.status_code == 200, resp.text
-        assert resp.json()["status"] == "closed"
+        body = resp.json()
+        assert body["status"] == "resolved"
+        assert body["outcome"] == "favour_buyer"
+        assert body["resolved_by"] == admin.id and body["resolved_at"]
 
-        # already closed -> 400
-        resp2 = client.patch(f"/api/disputes/{dispute_id}/close")
+        # already resolved -> 400
+        resp2 = client.patch(f"/api/disputes/{dispute_id}/close", json={"outcome": "dismissed"})
         assert resp2.status_code == 400
 
         db.expire_all()
         row = db.execute(
             select(Dispute).where(Dispute.id == dispute_id)
         ).scalar_one()
-        assert row.status == "closed"
+        assert row.status == "resolved"
     finally:
         app.dependency_overrides.clear()
 
@@ -151,5 +155,56 @@ def test_close_dispute_non_admin_forbidden(db, farmer_user, buyer_user):
         # farmer (non-admin) cannot close
         resp = client.patch(f"/api/disputes/{dispute_id}/close")
         assert resp.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+# ---------------------------------------------------------------------------
+# Module 6 hardening — evidence, withdraw, resolution outcome
+# ---------------------------------------------------------------------------
+
+def test_raise_dispute_with_evidence_url(db, farmer_user, buyer_user):
+    deal = _seed_deal(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        r = client.post(f"/api/deals/{deal.id}/disputes",
+                        json={"reason": "Short weight", "evidence_url": "https://x.test/weighbridge.jpg"})
+        assert r.status_code == 201
+        assert r.json()["evidence_url"].startswith("https://")
+        # bad scheme rejected
+        db.query(Dispute).delete(); db.commit()
+        assert client.post(f"/api/deals/{deal.id}/disputes",
+                           json={"reason": "x", "evidence_url": "javascript:1"}).status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_raiser_can_withdraw_own_open_dispute(db, farmer_user, buyer_user):
+    deal = _seed_deal(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        did = client.post(f"/api/deals/{deal.id}/disputes", json={"reason": "mistake"}).json()["id"]
+        r = client.post(f"/api/disputes/{did}/withdraw")
+        assert r.status_code == 200 and r.json()["status"] == "withdrawn"
+        # the other party can't withdraw someone else's
+        _as(buyer_user)
+        did2 = client.post(f"/api/deals/{deal.id}/disputes", json={"reason": "again"}).json()["id"]
+        _as(farmer_user)
+        assert client.post(f"/api/disputes/{did2}/withdraw").status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_resolve_requires_valid_outcome(db, farmer_user, buyer_user):
+    deal = _seed_deal(db, farmer_user, buyer_user)
+    admin = _make_user(db, "admin", "+910000000009", name="A")
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        did = client.post(f"/api/deals/{deal.id}/disputes", json={"reason": "x"}).json()["id"]
+        _as(admin)
+        assert client.patch(f"/api/disputes/{did}/close", json={"outcome": "nonsense"}).status_code == 422
     finally:
         app.dependency_overrides.clear()
