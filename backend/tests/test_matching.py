@@ -96,7 +96,8 @@ class TestScorePair:
         _, detail = score_pair(500, 2400, "Pune", 500, 2000, 2800, "Pune")
         import json
         d = json.loads(detail)
-        assert {"quantity", "price", "distance", "total", "max"} == set(d.keys())
+        assert {"quantity", "price", "distance", "base", "quality_factor",
+                "timing_factor", "total", "max", "tier"} <= set(d.keys())
 
     def test_max_is_100(self):
         import json

@@ -148,3 +148,16 @@ def admin_dashboard(
         disputes_by_district=disputes_by_district,
         price_anomalies=price_anomalies,
     )
+
+
+@router.get("/api/admin/matching-health")
+def admin_matching_health(
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> dict:
+    """Re-derives every live match from the current lots/demands and reports how
+    many still hold up — so match quality is measured, not assumed."""
+    from app.services.matching import matching_health
+
+    return matching_health(db)

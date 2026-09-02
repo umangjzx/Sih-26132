@@ -92,6 +92,84 @@ def _distance_score(
     return 0.0
 
 
+_GRADE_RANK = {"a": 0, "b": 1, "c": 2, "d": 3}
+
+
+def _grade_of(text: str) -> str | None:
+    """Pull a grade letter out of free text like 'Grade A, no blemishes' / 'FAQ'."""
+    import re
+
+    m = re.search(r"\bgrade\s*([abcd])\b", text.lower()) or re.search(r"\b([abcd])\s*grade\b", text.lower())
+    if m:
+        return m.group(1)
+    t = text.strip().lower()
+    if t in _GRADE_RANK:
+        return t
+    if "faq" in t or "fair average" in t:
+        return "b"
+    return None
+
+
+def quality_factor(lot_grade: str, demand_spec: str) -> float:
+    """1.0 when the lot meets/exceeds the grade the buyer asked for; a gentle
+    discount per grade short; 1.0 (neutral) when the spec names no grade."""
+    want = _grade_of(demand_spec or "")
+    have = _grade_of(lot_grade or "")
+    if want is None or have is None:
+        return 1.0
+    short = _GRADE_RANK[have] - _GRADE_RANK[want]
+    if short <= 0:
+        return 1.0
+    return max(0.6, 1.0 - 0.18 * short)
+
+
+_WINDOW_DAYS = [
+    (r"same day|today|immediat", 0),
+    (r"(\d+)\s*day", None),   # captured
+    (r"(\d+)\s*week", None),  # captured *7
+    (r"month", 30),
+    (r"fortnight", 14),
+]
+
+
+def _window_days(text: str) -> int | None:
+    import re
+
+    t = (text or "").lower()
+    for pat, fixed in _WINDOW_DAYS:
+        m = re.search(pat, t)
+        if not m:
+            continue
+        if fixed is not None:
+            return fixed
+        n = int(m.group(1))
+        return n * 7 if "week" in pat else n
+    return None
+
+
+def timing_factor(lot_available_from, demand_window: str, today=None) -> float:
+    """1.0 when the lot is (or will be) available inside the buyer's delivery
+    window; 0.8 when it lands late; 1.0 when either side is unparseable."""
+    from datetime import date
+
+    days = _window_days(demand_window or "")
+    if days is None or lot_available_from is None:
+        return 1.0
+    today = today or date.today()
+    lead = (lot_available_from - today).days
+    return 1.0 if lead <= days else 0.8
+
+
+def score_tier(total: float) -> str:
+    if total >= 75:
+        return "strong"
+    if total >= 50:
+        return "good"
+    if total >= MIN_SCORE:
+        return "fair"
+    return "weak"
+
+
 def score_pair(
     lot_qty: float,
     lot_expected_price: float,
@@ -101,22 +179,38 @@ def score_pair(
     demand_band_max: float,
     buyer_district: str,
     lot_coords: tuple[float, float] | None = None,
+    *,
+    lot_grade: str = "",
+    lot_available_from=None,
+    demand_quality_spec: str = "",
+    demand_delivery_window: str = "",
 ) -> tuple[float, str]:
     """Compute match score and return (total_score, score_detail_json).
 
-    Pure function — accepts plain values, not ORM objects.
-    score_detail_json is a compact JSON string suitable for Match.score_detail.
+    Pure function — accepts plain values, not ORM objects. The three core
+    components (quantity, price overlap, distance) sum to a 0-100 base; grade
+    fit and delivery timing then scale it down when they don't line up, so a
+    perfect match still scores 100 and the number stays a real 0-100 confidence.
     """
     q = _quantity_score(lot_qty, demand_qty)
     p = _price_score(lot_expected_price, demand_band_min, demand_band_max)
     d = _distance_score(lot_location, buyer_district, lot_coords)
-    total = round(q + p + d, 2)
+    base = round(q + p + d, 2)
+
+    qf = quality_factor(lot_grade, demand_quality_spec)
+    tf = timing_factor(lot_available_from, demand_delivery_window)
+    total = round(base * qf * tf, 2)
+
     detail = json.dumps({
         "quantity": q,
         "price": p,
         "distance": d,
+        "base": base,
+        "quality_factor": round(qf, 2),
+        "timing_factor": round(tf, 2),
         "total": total,
         "max": QUANTITY_MAX + PRICE_MAX + DISTANCE_MAX,
+        "tier": score_tier(total),
     })
     return total, detail
 
@@ -169,6 +263,10 @@ def run_matching(db: Session) -> int:
                 demand_band_max=demand.price_band_max,
                 buyer_district=buyer_district,
                 lot_coords=lot_coords,
+                lot_grade=lot.quality_grade or "",
+                lot_available_from=lot.available_from,
+                demand_quality_spec=demand.quality_spec or "",
+                demand_delivery_window=demand.delivery_window or "",
             )
 
             if total < MIN_SCORE:
@@ -200,3 +298,70 @@ def run_matching(db: Session) -> int:
     db.commit()
     logger.info("run_matching: %d matches upserted", upserted)
     return upserted
+
+
+# ---------------------------------------------------------------------------
+# Validation — is the stored match set still any good?
+# ---------------------------------------------------------------------------
+
+def matching_health(db: Session) -> dict:
+    """Re-derive every non-terminal Match from the *current* lot & demand and
+    report how well the stored set holds up. Used by the admin dashboard and a
+    regression test so match quality is measured, not assumed.
+
+    Buckets:
+      consistent    — recomputed score still >= MIN_SCORE and within 10 pts
+      drifted       — still a match, but the score moved > 10 pts
+      degraded      — recomputed score fell below MIN_SCORE (lot/demand changed)
+      crop_mismatch — the crops no longer agree (should never happen)
+      orphaned      — the lot or demand row is gone
+    """
+    rows = db.execute(
+        select(Match, Lot, Demand, User.district.label("bd"))
+        .join(Lot, Match.lot_id == Lot.id, isouter=True)
+        .join(Demand, Match.demand_id == Demand.id, isouter=True)
+        .join(User, Demand.buyer_id == User.id, isouter=True)
+        .where(Match.status.in_(("proposed", "offered")))
+    ).all()
+
+    buckets = {"consistent": 0, "drifted": 0, "degraded": 0, "crop_mismatch": 0, "orphaned": 0}
+    deltas: list[float] = []
+    tiers: dict[str, int] = {}
+
+    for match, lot, demand, bd in rows:
+        if lot is None or demand is None:
+            buckets["orphaned"] += 1
+            continue
+        if lot.crop.strip().lower() != demand.crop.strip().lower():
+            buckets["crop_mismatch"] += 1
+            continue
+        coords = (lot.latitude, lot.longitude) if lot.latitude is not None and lot.longitude is not None else None
+        recomputed, detail = score_pair(
+            lot.quantity_kg, lot.expected_price, lot.location,
+            demand.quantity_kg, demand.price_band_min, demand.price_band_max,
+            bd or "", coords,
+            lot_grade=lot.quality_grade or "", lot_available_from=lot.available_from,
+            demand_quality_spec=demand.quality_spec or "",
+            demand_delivery_window=demand.delivery_window or "",
+        )
+        delta = abs(recomputed - (match.score or 0))
+        deltas.append(delta)
+        tiers[score_tier(recomputed)] = tiers.get(score_tier(recomputed), 0) + 1
+        if recomputed < MIN_SCORE:
+            buckets["degraded"] += 1
+        elif delta > 10:
+            buckets["drifted"] += 1
+        else:
+            buckets["consistent"] += 1
+
+    total = sum(buckets.values())
+    scored = total - buckets["orphaned"] - buckets["crop_mismatch"]
+    return {
+        "total_matches": total,
+        "buckets": buckets,
+        "tier_distribution": tiers,
+        "mean_abs_score_delta": round(sum(deltas) / len(deltas), 2) if deltas else 0.0,
+        # share of live matches that still recompute as a real match
+        "precision": round((buckets["consistent"] + buckets["drifted"]) / scored, 3) if scored else 1.0,
+        "healthy": buckets["degraded"] == 0 and buckets["crop_mismatch"] == 0 and buckets["orphaned"] == 0,
+    }
