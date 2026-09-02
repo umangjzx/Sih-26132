@@ -272,15 +272,21 @@ All free; all with an offline fallback so the app runs air-gapped.
 
 | Source | Used for | Fallback |
 |---|---|---|
-| **data.gov.in AGMARKNET** (resource `9ef84268-…`) | daily mandi min/max/modal prices, state-filtered | committed `maharashtra_snapshot.csv` → synthetic fixtures (seed 26132) |
+| **data.gov.in AGMARKNET — current** (resource `9ef84268-…`) | today's mandi min/max/modal prices, whole national feed (`INGEST_STATES=ALL`, ~10k rows / 25 states) | committed `maharashtra_snapshot.csv` → synthetic fixtures (seed 26132) |
+| **data.gov.in AGMARKNET — archive** (resource `35985678-…`, ~81M rows) | real per-series daily history for trend charts + the sell/wait signal, pulled lazily per viewed market+crop | synthetic random walk anchored to the real latest price, for days the archive doesn't cover |
 | **Open-Meteo** `/v1/forecast` | 7-day precipitation / temp / wind / rain-probability | neutral "unavailable" result (signal weather factor → weight 0) |
 | **Open-Meteo** geocoding | place name → lat/lon | local `MARKET_COORDS` + district/state centroid tables |
 | **OpenWeatherMap** `/data/2.5/weather` *(needs `WEATHER_API_KEY`)* | current conditions overlay (temp, feels-like, humidity, description) | omitted; forecast still shown |
+| **OSM Nominatim** `/reverse` | lat/lon → state + district (accurate, district-level) | BigDataCloud → `geo.nearest_place` (60-city table) → `nearest_state` |
 | **NASA POWER** daily point | last-30-day rainfall vs 10-year normal | anomaly card hidden |
 | **OSRM** `/route/v1/driving` | road distance + drive time for "best market" | straight-line haversine |
-| **BigDataCloud** reverse-geocode | lat/lon → state + district | nearest state centroid (`geo.nearest_state`) |
 | **Nager.Date** `/PublicHolidays` | upcoming mandi holidays | built-in 2026 holiday list |
-| **curated** (`app/services/reference.py`) | MSP (₹/quintal, 2024-25/2025-26), crop calendar (MH-tuned), cold-storage / FPO directory (MH in detail + national sample) | — (static) |
+| **curated** (`app/services/reference.py`) | MSP (₹/quintal, official CACP 2024‑25 / 2025‑26), crop calendar (MH-tuned), cold-storage / FPO directory (MH in detail + national sample) | — (static) |
+
+> data.gov.in also lists cold-storage / warehouse and MSP datasets, but they're
+> state-level aggregates with no API and no geolocation (MSP is the same CACP
+> numbers we already carry), and rainfall is better served by NASA POWER +
+> Open-Meteo — so those stay curated / keyless.
 
 ---
 
