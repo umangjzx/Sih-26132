@@ -11,7 +11,7 @@
  * in Next.js 16 App Router (params is a Promise only for async server components).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
@@ -20,11 +20,13 @@ import { Icon } from "@/components/ui";
 import {
   acceptOffer,
   declineOffer,
+  fetchNegotiationContext,
   getMatchById,
   getMatchOffers,
   postOffer,
   type DealResponse,
   type MatchResponse,
+  type NegotiationContext,
   type OfferResponse,
 } from "@/lib/api";
 
@@ -38,11 +40,13 @@ export default function MatchThreadPage() {
   const [match, setMatch] = useState<MatchResponse | null>(null);
   const [offers, setOffers] = useState<OfferResponse[]>([]);
   const [deal, setDeal] = useState<DealResponse | null>(null);
+  const [nego, setNego] = useState<NegotiationContext | null>(null);
   const [offerPrice, setOfferPrice] = useState("");
   const [offerQty, setOfferQty] = useState("");
   const [offerMsg, setOfferMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (ready && !isAuthenticated) router.replace("/login");
@@ -50,13 +54,23 @@ export default function MatchThreadPage() {
 
   const load = useCallback(async () => {
     if (!token || !matchId) return;
-    const [m, o] = await Promise.allSettled([
+    const [m, o, n] = await Promise.allSettled([
       getMatchById(matchId, token),
       getMatchOffers(matchId, token),
+      fetchNegotiationContext(matchId, token),
     ]);
     if (m.status === "fulfilled") setMatch(m.value);
     if (o.status === "fulfilled") setOffers(o.value);
+    setNego(n.status === "fulfilled" ? n.value : null);
   }, [token, matchId]);
+
+  function startCounter(price: number, qty: number) {
+    setOfferPrice(String(price));
+    setOfferQty(String(qty));
+    requestAnimationFrame(() =>
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -224,12 +238,16 @@ export default function MatchThreadPage() {
                     </p>
                   )}
                   
-                  {/* Accept/decline buttons */}
+                  {/* Accept / counter / decline buttons */}
                   {offer.status === "pending" && !isMe && match.status !== "accepted" && (
-                    <div className="mt-2 flex gap-3 pt-2">
+                    <div className="mt-2 flex flex-wrap gap-3 pt-2">
                       <button onClick={() => handleAccept(offer.id)}
                         className="flex-1 rounded-xl bg-[var(--green-700)] px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)]">
                         {t("accept")}
+                      </button>
+                      <button onClick={() => startCounter(offer.price, offer.quantity)}
+                        className="flex-1 rounded-xl border border-[var(--green-600)] bg-[var(--green-50)] px-4 py-2.5 text-sm font-bold text-[var(--green-800)] transition hover:bg-[var(--green-100)]">
+                        {t("counter")}
                       </button>
                       <button onClick={() => handleDecline(offer.id)}
                         className="flex-1 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]">
@@ -246,10 +264,45 @@ export default function MatchThreadPage() {
 
       {/* Make offer form */}
       {canOffer && (
-        <section className="mt-4 rounded-2xl border border-[var(--green-200)] bg-white p-6 shadow-sm">
+        <section ref={formRef} className="mt-4 rounded-2xl border border-[var(--green-200)] bg-white p-6 shadow-sm">
           <h2 className="mb-4 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
             <Icon name="handshake" size={18} className="text-[var(--green-600)]" /> {t("makeOffer")}
           </h2>
+
+          {/* Price references — link the negotiation to the price-discovery layer */}
+          {nego && (
+            <div className="mb-4 rounded-xl bg-[var(--paper)] p-3 text-xs">
+              <div className="mb-2 font-bold uppercase tracking-wide text-[var(--ink-soft)]">
+                {t("priceRefs")}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[var(--ink)]">
+                {nego.references.mandi_modal_per_qtl != null && (
+                  <span>{t("refMandi")}: <b>₹{nego.references.mandi_modal_per_qtl}</b></span>
+                )}
+                {nego.references.msp_per_qtl != null && (
+                  <span>{t("refMsp")}: <b>₹{nego.references.msp_per_qtl}</b></span>
+                )}
+                <span>
+                  {t("refBuyerBand")}: <b>₹{nego.references.demand_price_band[0]}–{nego.references.demand_price_band[1]}</b>
+                </span>
+                <span>{t("refFarmerAsk")}: <b>₹{nego.references.lot_expected_price}</b></span>
+                {nego.spread_per_qtl != null && (
+                  <span className="text-[var(--amber-700)]">
+                    · {t("spreadApart", { amount: nego.spread_per_qtl })}
+                  </span>
+                )}
+              </div>
+              {nego.suggested_midpoint_per_qtl != null && (
+                <button
+                  type="button"
+                  onClick={() => setOfferPrice(String(nego.suggested_midpoint_per_qtl))}
+                  className="mt-2 rounded-full bg-[var(--green-100)] px-2.5 py-1 font-bold text-[var(--green-700)] transition hover:bg-[var(--green-200)]"
+                >
+                  {t("useMidpoint", { price: nego.suggested_midpoint_per_qtl })}
+                </button>
+              )}
+            </div>
+          )}
           <form onSubmit={handleOffer} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-bold text-[var(--ink)]">
               {t("offerPriceLabel")}

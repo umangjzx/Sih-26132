@@ -781,6 +781,31 @@ export function declineOffer(
   return postJson(`/api/offers/${offerId}/decline`, {}, token);
 }
 
+export type NegotiationContext = {
+  match_id: number;
+  crop: string;
+  match_status: string;
+  you_are: "farmer" | "buyer";
+  farmer_last_offer: { price: number; quantity: number; status: string; offer_id: number } | null;
+  buyer_last_offer: { price: number; quantity: number; status: string; offer_id: number } | null;
+  pending_offer: { price: number; quantity: number; offer_id: number; from_you: boolean } | null;
+  spread_per_qtl: number | null;
+  suggested_midpoint_per_qtl: number | null;
+  references: {
+    lot_expected_price: number;
+    demand_price_band: [number, number];
+    mandi_modal_per_qtl: number | null;
+    mandi_basis: string;
+    msp_per_qtl: number | null;
+  };
+};
+export function fetchNegotiationContext(
+  matchId: number,
+  token: string,
+): Promise<NegotiationContext> {
+  return getJson(`/api/matches/${matchId}/negotiation`, token);
+}
+
 // ---------------------------------------------------------------------------
 // Phase 3 fetch functions
 // ---------------------------------------------------------------------------

@@ -210,7 +210,17 @@
     "tier_weak": "कमज़ोर मेल",
     "gradeFit": "ग्रेड मेल",
     "timing": "डिलीवरी समय",
-    "modifiersNote": "ग्रेड और समय मेल न खाने पर मूल स्कोर घटा देते हैं।"
+    "modifiersNote": "ग्रेड और समय मेल न खाने पर मूल स्कोर घटा देते हैं।",
+    "counter": "जवाबी पेशकश",
+    "counterHint": "{name} की ₹{price}/क्वि. का जवाब",
+    "priceRefs": "मूल्य संदर्भ",
+    "refMandi": "मंडी मॉडल",
+    "refMsp": "एमएसपी",
+    "refBuyerBand": "खरीदार सीमा",
+    "refFarmerAsk": "किसान मांग",
+    "spreadApart": "₹{amount}/क्वि. का अंतर",
+    "useMidpoint": "मध्यबिंदु ₹{price} लें",
+    "cancel": "रद्द करें"
   },
   "deals": {
     "title": "मेरे सौदे",

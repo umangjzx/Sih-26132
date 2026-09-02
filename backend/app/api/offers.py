@@ -20,6 +20,7 @@ from app.models.demand import Demand
 from app.models.lot import Lot
 from app.models.match import Match
 from app.models.offer import Offer
+from app.models.price_cache import PriceCache
 from app.schemas.offer import DealResponse, OfferCreate, OfferResponse
 from app.services.audit import log_event
 
@@ -45,6 +46,97 @@ def _load_match_with_access(match_id: int, user_id: int, db: Session) -> tuple[M
     if user_id != lot.farmer_id and user_id != demand.buyer_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return match, lot, demand
+
+
+def _latest_mandi_modal(db: Session, crop: str, district: str, state: str) -> tuple[float | None, str]:
+    """Most recent modal price for ``crop``: try the lot's district, then its
+    state, then all-India. Returns (price, basis)."""
+    base = select(PriceCache.modal_price).where(PriceCache.crop == crop).order_by(
+        PriceCache.date.desc()
+    ).limit(1)
+    for scope, cond in (
+        (f"{district} district", PriceCache.district == district),
+        (f"{state}", PriceCache.state == state),
+        ("all-India", None),
+    ):
+        if cond is None:
+            val = db.execute(base).scalar_one_or_none()
+        elif not scope.strip():
+            continue
+        else:
+            val = db.execute(base.where(cond)).scalar_one_or_none()
+        if val is not None:
+            return round(float(val), 0), scope
+    return None, "no data"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/matches/{match_id}/negotiation — decision context for a counter
+# ---------------------------------------------------------------------------
+
+@router.get("/api/matches/{match_id}/negotiation")
+def negotiation_context(
+    match_id: int,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Everything the caller needs to counter with an informed number: each
+    side's last offer, the current spread, a suggested midpoint, and the
+    mandi/MSP/asking-band references for the crop."""
+    from app.services import reference as ref
+
+    match, lot, demand = _load_match_with_access(match_id, current_user.id, db)
+    offers = db.execute(
+        select(Offer).where(Offer.match_id == match_id).order_by(Offer.created_at.asc())
+    ).scalars().all()
+
+    def _last_from(uid: int) -> dict | None:
+        for o in reversed(offers):
+            if o.from_user_id == uid:
+                return {"price": o.price, "quantity": o.quantity, "status": o.status,
+                        "offer_id": o.id}
+        return None
+
+    farmer_last = _last_from(lot.farmer_id)
+    buyer_last = _last_from(demand.buyer_id)
+    pending = next((o for o in offers if o.status == "pending"), None)
+
+    spread = None
+    midpoint = None
+    if farmer_last and buyer_last:
+        spread = round(abs(farmer_last["price"] - buyer_last["price"]), 0)
+        midpoint = round((farmer_last["price"] + buyer_last["price"]) / 2, 0)
+    else:
+        band_mid = round((demand.price_band_min + demand.price_band_max) / 2, 0)
+        midpoint = round((lot.expected_price + band_mid) / 2, 0)
+
+    mandi, mandi_basis = _latest_mandi_modal(
+        db, lot.crop, lot.location or "", getattr(lot, "state", "") or ""
+    )
+    msp_entry = ref.msp_for(lot.crop)
+
+    return {
+        "match_id": match_id,
+        "crop": lot.crop,
+        "match_status": match.status,
+        "you_are": "farmer" if current_user.id == lot.farmer_id else "buyer",
+        "farmer_last_offer": farmer_last,
+        "buyer_last_offer": buyer_last,
+        "pending_offer": (
+            {"price": pending.price, "quantity": pending.quantity,
+             "offer_id": pending.id, "from_you": pending.from_user_id == current_user.id}
+            if pending else None
+        ),
+        "spread_per_qtl": spread,
+        "suggested_midpoint_per_qtl": midpoint,
+        "references": {
+            "lot_expected_price": lot.expected_price,
+            "demand_price_band": [demand.price_band_min, demand.price_band_max],
+            "mandi_modal_per_qtl": mandi,
+            "mandi_basis": mandi_basis,
+            "msp_per_qtl": msp_entry["price"] if msp_entry else None,
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
