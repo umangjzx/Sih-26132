@@ -121,6 +121,44 @@ def test_receipt_renders_html_with_the_numbers(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_receipt_includes_transporter_and_payment_reference(db, farmer_user, buyer_user):
+    d = _deal(db, farmer_user, buyer_user, price=2500, qty=1000, status="delivered")
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        # attach a logistics plan with a transporter
+        client.put(f"/api/deals/{d.id}/logistics", json={
+            "mode": "hired_transport", "transporter_name": "Sahyadri Road Carriers",
+            "transporter_phone": "+919812000111", "vehicle_type": "truck_6t",
+            "status": "in_transit",
+        })
+        # mark the deal paid with a pipeline-level reference
+        client.patch(f"/api/deals/{d.id}/advance",
+                     json={"payment_method": "NEFT", "payment_reference": "NEFT/HDFC/AB9931"})
+        body = client.get(f"/api/deals/{d.id}/receipt").text
+        assert "Sahyadri Road Carriers" in body
+        assert "+919812000111" in body
+        assert "Truck 6" in body            # vehicle_type "truck_6t" de-underscored
+        assert "NEFT/HDFC/AB9931" in body    # confirmed-payment reference
+        assert "Confirmed payment" in body
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_receipt_escapes_html_in_user_fields(db, farmer_user, buyer_user):
+    d = _deal(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        client.put(f"/api/deals/{d.id}/logistics",
+                   json={"transporter_name": "<script>alert(1)</script>"})
+        body = client.get(f"/api/deals/{d.id}/receipt").text
+        assert "<script>alert(1)</script>" not in body
+        assert "&lt;script&gt;" in body
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_receipt_access_is_scoped(db, farmer_user, buyer_user):
     d = _deal(db, farmer_user, buyer_user)
     stranger = User(role="farmer", name="Z", phone="+91zzz", district="Pune", taluka="")

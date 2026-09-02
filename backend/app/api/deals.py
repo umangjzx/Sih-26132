@@ -10,7 +10,9 @@
 - GET   /api/transporters/nearby     — curated transporter directory.
 """
 
+import html
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
@@ -431,6 +433,9 @@ def get_receipt(
 
     farmer = db.get(User, lot.farmer_id)
     buyer = db.get(User, demand.buyer_id)
+    logistics = db.execute(
+        select(DealLogistics).where(DealLogistics.deal_id == deal_id)
+    ).scalar_one_or_none()
     payments = db.execute(
         select(DealPayment).where(DealPayment.deal_id == deal_id)
         .order_by(DealPayment.paid_at.asc())
@@ -438,20 +443,50 @@ def get_receipt(
     total_paid = sum(p.amount_inr for p in payments)
     agreed_value = round(deal.agreed_price * deal.agreed_quantity / 100.0, 2)
 
+    def esc(v: object) -> str:
+        s = "" if v is None else str(v)
+        return html.escape(s) if s else "—"
+
     def _name(u: User | None) -> str:
-        return u.name if u else "—"
+        return esc(u.name) if u else "—"
 
     def _phone(u: User | None) -> str:
-        return u.phone if u else "—"
+        return esc(u.phone) if u else "—"
+
+    def _title(v: str | None) -> str:
+        return esc((v or "").replace("_", " ").title()) if v else "—"
 
     payment_rows = "".join(
         f"<tr><td>{p.paid_at.strftime('%d %b %Y %H:%M') if p.paid_at else '—'}</td>"
-        f"<td>₹{p.amount_inr:,.2f}</td><td>{p.method}</td>"
-        f"<td>{p.reference or '—'}</td></tr>"
+        f"<td>₹{p.amount_inr:,.2f}</td><td>{esc(p.method)}</td>"
+        f"<td>{esc(p.reference)}</td></tr>"
         for p in payments
     )
 
-    html = f"""<!DOCTYPE html>
+    # Logistics block — prefer the DealLogistics detail row, fall back to the
+    # deal's coarse logistics_mode.
+    lg_mode = _title(logistics.mode if logistics else deal.logistics_mode)
+    lg_transporter = esc(logistics.transporter_name) if logistics else "—"
+    lg_tphone = esc(logistics.transporter_phone) if logistics else "—"
+    lg_vehicle = _title(logistics.vehicle_type) if logistics else "—"
+    lg_pickup_date = (
+        logistics.pickup_date.strftime("%d %b %Y")
+        if logistics and logistics.pickup_date else "—"
+    )
+    lg_pickup = esc(logistics.pickup_point if logistics and logistics.pickup_point else lot.location)
+    lg_drop = esc(logistics.drop_point if logistics and logistics.drop_point else demand.delivery_district)
+    lg_distance = f"{logistics.distance_km:,.0f} km" if logistics and logistics.distance_km is not None else "—"
+    lg_cost = f"₹{logistics.est_cost_inr:,.0f}" if logistics and logistics.est_cost_inr is not None else "—"
+    lg_status = _title(logistics.status if logistics else None)
+
+    # Pipeline-level payment confirmation (recorded when the deal was marked paid).
+    confirmed_row = (
+        f"<tr class='highlight'><td>Confirmed payment</td>"
+        f"<td>{_title(deal.payment_method)} · ref {esc(deal.payment_reference)}</td></tr>"
+        if deal.payment_reference else ""
+    )
+
+    doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -471,30 +506,35 @@ def get_receipt(
 </head>
 <body>
 <h1>AgriLink — Deal Receipt</h1>
-<div class="sub">Deal #{deal.id} · Generated {__import__('datetime').datetime.now().strftime('%d %b %Y %H:%M')} IST</div>
+<div class="sub">Deal #{deal.id} · Generated {datetime.now().strftime('%d %b %Y %H:%M')} IST</div>
 
 <table>
   <tr><th colspan="2">Crop & Trade Terms</th></tr>
-  <tr><td>Crop</td><td><b>{lot.crop}</b></td></tr>
-  <tr><td>Quality grade</td><td>{lot.quality_grade}</td></tr>
+  <tr><td>Crop</td><td><b>{esc(lot.crop)}</b></td></tr>
+  <tr><td>Quality grade</td><td>{esc(lot.quality_grade)}</td></tr>
   <tr><td>Agreed quantity</td><td>{deal.agreed_quantity:,.0f} kg</td></tr>
   <tr><td>Agreed price</td><td>₹{deal.agreed_price:,.0f} / quintal</td></tr>
   <tr class="highlight"><td>Total deal value</td><td>₹{agreed_value:,.2f}</td></tr>
-  <tr><td>Pipeline status</td><td>{deal.pipeline_status.replace('_',' ').title()}</td></tr>
-  <tr><td>Payment status</td><td>{deal.payment_status.title()}</td></tr>
+  <tr><td>Pipeline status</td><td>{_title(deal.pipeline_status)}</td></tr>
+  <tr><td>Payment status</td><td>{_title(deal.payment_status)}</td></tr>
+  {confirmed_row}
 </table>
 
 <table>
   <tr><th>Role</th><th>Name</th><th>Phone</th><th>District</th></tr>
-  <tr><td>Seller (Farmer)</td><td>{_name(farmer)}</td><td>{_phone(farmer)}</td><td>{farmer.district if farmer else '—'}</td></tr>
-  <tr><td>Buyer</td><td>{_name(buyer)}</td><td>{_phone(buyer)}</td><td>{buyer.district if buyer else '—'}</td></tr>
+  <tr><td>Seller (Farmer)</td><td>{_name(farmer)}</td><td>{_phone(farmer)}</td><td>{esc(farmer.district) if farmer else '—'}</td></tr>
+  <tr><td>Buyer</td><td>{_name(buyer)}</td><td>{_phone(buyer)}</td><td>{esc(buyer.district) if buyer else '—'}</td></tr>
 </table>
 
 <table>
   <tr><th colspan="2">Logistics</th></tr>
-  <tr><td>Mode</td><td>{deal.logistics_mode.replace('_',' ').title()}</td></tr>
-  <tr><td>Pickup location</td><td>{lot.location}</td></tr>
-  <tr><td>Delivery district</td><td>{demand.delivery_district or '—'}</td></tr>
+  <tr><td>Mode</td><td>{lg_mode}</td></tr>
+  <tr><td>Transporter</td><td>{lg_transporter}{f" · {lg_tphone}" if lg_tphone != "—" else ""}</td></tr>
+  <tr><td>Vehicle</td><td>{lg_vehicle}</td></tr>
+  <tr><td>Route</td><td>{lg_pickup} → {lg_drop}</td></tr>
+  <tr><td>Pickup date</td><td>{lg_pickup_date}</td></tr>
+  <tr><td>Distance / est. cost</td><td>{lg_distance} · {lg_cost}</td></tr>
+  <tr><td>Logistics status</td><td>{lg_status}</td></tr>
 </table>
 
 {"<table><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr>" + payment_rows + f"<tr class='highlight'><td colspan='2'><b>Total paid: ₹{total_paid:,.2f}</b></td><td colspan='2'>Outstanding: ₹{max(0, agreed_value - total_paid):,.2f}</td></tr></table>" if payments else "<p><i>No payment records yet.</i></p>"}
@@ -510,7 +550,7 @@ def get_receipt(
 </p>
 </body>
 </html>"""
-    return HTMLResponse(content=html)
+    return HTMLResponse(content=doc)
 
 
 # ---------------------------------------------------------------------------
