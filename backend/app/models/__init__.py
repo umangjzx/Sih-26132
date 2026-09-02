@@ -9,6 +9,7 @@ from app.models.dispute import Dispute
 from app.models.geo_cache import GeoCache
 from app.models.price_alert import PriceAlert
 from app.models.notification import Notification
+from app.models.pool import Pool, PoolMember
 
 __all__ = [
     "PriceCache",
@@ -22,4 +23,6 @@ __all__ = [
     "GeoCache",
     "PriceAlert",
     "Notification",
+    "Pool",
+    "PoolMember",
 ]

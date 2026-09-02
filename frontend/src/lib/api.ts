@@ -428,6 +428,119 @@ export async function scanLotSlip(file: File, token: string): Promise<OcrLotDraf
 }
 
 // ---------------------------------------------------------------------------
+// v1.3 — group / pooled requests (FPO collective bargaining)
+// ---------------------------------------------------------------------------
+
+export type PoolSummary = {
+  id: number;
+  organizer_id: number;
+  organizer_name: string | null;
+  crop: string;
+  title: string;
+  target_quantity_kg: number;
+  floor_price: number;
+  grade: string;
+  delivery_window: string;
+  location: string;
+  status: "open" | "locked" | "matched" | "closed";
+  created_at: string;
+  members: number;
+  committed_quantity_kg: number;
+  fill_pct: number;
+};
+
+export type PoolMemberOut = {
+  id: number;
+  farmer_id: number;
+  farmer_name: string | null;
+  lot_id: number | null;
+  quantity_kg: number;
+  expected_price: number;
+  status: "committed" | "withdrawn";
+};
+
+export type PoolAggregate = {
+  members: number;
+  quantity_kg: number;
+  weighted_price: number;
+  floor_price: number;
+  effective_price: number;
+  fill_pct: number;
+  target_quantity_kg: number;
+};
+
+export type PoolDemandCandidate = {
+  demand_id: number;
+  buyer_name: string;
+  buyer_district: string;
+  buyer_kyc: string;
+  quantity_kg: number;
+  price_band_min: number;
+  price_band_max: number;
+  delivery_window: string;
+  score: number;
+  tier: "strong" | "good" | "fair" | "weak";
+  score_detail: string;
+};
+
+export type PoolDetail = PoolSummary & {
+  aggregate: PoolAggregate;
+  member_list: PoolMemberOut[];
+  candidates: PoolDemandCandidate[];
+  is_organizer: boolean;
+  my_membership: PoolMemberOut | null;
+};
+
+export type PoolCreate = {
+  crop: string;
+  title: string;
+  target_quantity_kg: number;
+  floor_price: number;
+  grade?: string;
+  delivery_window?: string;
+  location?: string;
+};
+
+export function listPools(
+  token: string,
+  opts: { crop?: string; mine?: boolean } = {},
+): Promise<PoolSummary[]> {
+  const p = new URLSearchParams();
+  if (opts.crop) p.set("crop", opts.crop);
+  if (opts.mine) p.set("mine", "true");
+  const qs = p.toString();
+  return getJson(`/api/pools${qs ? `?${qs}` : ""}`, token);
+}
+
+export function getPool(id: number, token: string): Promise<PoolDetail> {
+  return getJson(`/api/pools/${id}`, token);
+}
+
+export function createPool(body: PoolCreate, token: string): Promise<PoolSummary> {
+  return postJson("/api/pools", body, token);
+}
+
+export function joinPool(
+  id: number,
+  body: { quantity_kg: number; expected_price: number; lot_id?: number | null },
+  token: string,
+): Promise<PoolMemberOut> {
+  return postJson(`/api/pools/${id}/join`, body, token);
+}
+
+export function withdrawPool(id: number, token: string): Promise<PoolMemberOut> {
+  return postJson(`/api/pools/${id}/withdraw`, {}, token);
+}
+
+export function setPoolStatus(
+  id: number,
+  status: PoolSummary["status"],
+  token: string,
+): Promise<PoolSummary> {
+  return postJson(`/api/pools/${id}/status`, { status }, token);
+}
+
+// ---------------------------------------------------------------------------
 // Phase 2 demand fetch functions
 // ---------------------------------------------------------------------------
 
