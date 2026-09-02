@@ -126,7 +126,8 @@
     "statMatches": "सजीव मैच",
     "statStrong": "{n} मजबूत",
     "statVerified": "{n} सत्यापित खरीदार",
-    "statNoneYet": "अभी कोई नहीं"
+    "statNoneYet": "अभी कोई नहीं",
+    "gradeFaq": "FAQ"
   },
   "demands": {
     "title": "मेरी मांगें",
@@ -268,7 +269,8 @@
     "evt_advance_to_delivered": "डिलीवरी पुष्ट",
     "evt_advance_to_paid": "भुगतान चिह्नित",
     "evt_advance_to_closed": "सौदा बंद",
-    "evt_payment_recorded": "भुगतान दर्ज"
+    "evt_payment_recorded": "भुगतान दर्ज",
+    "confirmAdvance": "पुष्टि करें: इस सौदे को “{stage}” पर ले जाएं? यह पूर्ववत नहीं हो सकता।"
   },
   "disputes": {
     "title": "विवाद",
@@ -813,5 +815,14 @@
     "veh_truck_6t": "Truck (6t)",
     "veh_truck_10t": "Truck (10t)",
     "veh_other": "Other"
+  },
+  "onboarding": {
+    "title": "शुरू करें",
+    "progress": "{total} में से {done} पूर्ण",
+    "dismiss": "हटाएं",
+    "step_location": "अपना स्थान सेट करें ताकि कीमतें और मैच आपके आसपास के हों",
+    "step_listLot": "अपना पहला उपज लॉट सूचीबद्ध करें",
+    "step_postDemand": "अपनी पहली खरीद मांग पोस्ट करें",
+    "step_matches": "अपने मैच देखें और ऑफ़र दें"
   }
 }

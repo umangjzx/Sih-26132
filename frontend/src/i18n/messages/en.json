@@ -126,7 +126,8 @@
     "statMatches": "Live matches",
     "statStrong": "{n} strong",
     "statVerified": "{n} verified buyers",
-    "statNoneYet": "none yet"
+    "statNoneYet": "none yet",
+    "gradeFaq": "FAQ"
   },
   "demands": {
     "title": "My Demands",
@@ -268,7 +269,8 @@
     "evt_advance_to_delivered": "Delivery confirmed",
     "evt_advance_to_paid": "Marked paid",
     "evt_advance_to_closed": "Deal closed",
-    "evt_payment_recorded": "Payment recorded"
+    "evt_payment_recorded": "Payment recorded",
+    "confirmAdvance": "Confirm: move this deal to “{stage}”? This can't be undone."
   },
   "disputes": {
     "title": "Disputes",
@@ -813,5 +815,14 @@
     "veh_truck_6t": "Truck (6t)",
     "veh_truck_10t": "Truck (10t)",
     "veh_other": "Other"
+  },
+  "onboarding": {
+    "title": "Get started",
+    "progress": "{done} of {total} done",
+    "dismiss": "Dismiss",
+    "step_location": "Set your location so prices and matches are local to you",
+    "step_listLot": "List your first produce lot",
+    "step_postDemand": "Post your first buying demand",
+    "step_matches": "Review your matches and make an offer"
   }
 }

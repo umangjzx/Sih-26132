@@ -29,6 +29,8 @@ class LotCreate(BaseModel):
     def qty_positive(cls, v: float) -> float:
         if v <= 0:
             raise ValueError("quantity_kg must be greater than 0")
+        if v > 10_000_000:
+            raise ValueError("quantity_kg looks too large — enter kilograms")
         return v
 
     @field_validator("expected_price")
@@ -36,6 +38,8 @@ class LotCreate(BaseModel):
     def price_positive(cls, v: float) -> float:
         if v <= 0:
             raise ValueError("expected_price must be greater than 0")
+        if v > 5_000_000:
+            raise ValueError("expected_price looks too high — enter ₹ per quintal")
         return v
 
 

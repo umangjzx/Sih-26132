@@ -126,7 +126,8 @@
     "statMatches": "सजीव जुळन्या",
     "statStrong": "{n} मजबूत",
     "statVerified": "{n} पडताळलेले खरेदीदार",
-    "statNoneYet": "अजून कोणीही नाही"
+    "statNoneYet": "अजून कोणीही नाही",
+    "gradeFaq": "FAQ"
   },
   "demands": {
     "title": "माझ्या मागण्या",
@@ -268,7 +269,8 @@
     "evt_advance_to_delivered": "डिलिव्हरी निश्चित",
     "evt_advance_to_paid": "पेमेंट चिह्नांकित",
     "evt_advance_to_closed": "व्यवहार बंद",
-    "evt_payment_recorded": "पेमेंट नोंद"
+    "evt_payment_recorded": "पेमेंट नोंद",
+    "confirmAdvance": "पुष्टी करा: हा व्यवहार “{stage}” कडे नेणार? हे पूर्ववत होणार नाही."
   },
   "disputes": {
     "title": "तक्रारी",
@@ -813,5 +815,14 @@
     "veh_truck_6t": "Truck (6t)",
     "veh_truck_10t": "Truck (10t)",
     "veh_other": "Other"
+  },
+  "onboarding": {
+    "title": "सुरुवात करा",
+    "progress": "{total} पैकी {done} पूर्ण",
+    "dismiss": "काढून टाका",
+    "step_location": "किंमती आणि जुळण्या स्थानिक होण्यासाठी तुमचे स्थान सेट करा",
+    "step_listLot": "तुमचा पहिला उत्पादन लॉट नोंदवा",
+    "step_postDemand": "तुमची पहिली खरेदी मागणी पोस्ट करा",
+    "step_matches": "तुमच्या जुळण्या पहा आणि ऑफर द्या"
   }
 }

@@ -1,17 +1,42 @@
 """Pydantic v2 schemas for the auth endpoints."""
 
+import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+_PHONE_RE = re.compile(r"^\+?\d{10,15}$")
+
+
+def _clean_phone(v: str) -> str:
+    """Strip spaces / dashes / parens, keep an optional leading +, require
+    10-15 digits (an Indian mobile is 10; +91 prefix makes it 12)."""
+    s = re.sub(r"[\s\-().]", "", (v or "").strip())
+    if not _PHONE_RE.match(s):
+        raise ValueError("Enter a valid phone number (10-15 digits, optional +country code)")
+    return s
 
 
 class RegisterBody(BaseModel):
     """Create an account: phone is the identity, password is the credential."""
 
     phone: str
-    name: str
+    name: str = Field(min_length=1, max_length=200)
     role: Literal["farmer", "buyer", "admin"] = "farmer"
     password: str = Field(min_length=6, max_length=128)
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        return _clean_phone(v)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required")
+        return v
     # Optional trading location, captured from the browser at sign-up.
     district: str | None = Field(default=None, max_length=120)
     state: str | None = Field(default=None, max_length=120)
@@ -24,6 +49,14 @@ class LoginBody(BaseModel):
 
     phone: str
     password: str
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        # be lenient on login — just normalise, don't 422 an almost-right number
+        import re as _re
+
+        return _re.sub(r"[\s\-().]", "", (v or "").strip())
 
 
 class RefreshBody(BaseModel):

@@ -103,6 +103,11 @@ export default function DealDetailPage() {
 
   async function handleAdvance() {
     if (!token || !deal || deal.pipeline_status === "closed") return;
+    // irreversible steps get a confirm — you can't un-confirm delivery/payment
+    if (nextStage === "delivered" || nextStage === "paid" || nextStage === "closed") {
+      const label = stageLabel[nextStage as (typeof STAGES)[number]];
+      if (!window.confirm(t("confirmAdvance", { stage: label }))) return;
+    }
     setAdvancing(true);
     setError(null);
     try {

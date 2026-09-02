@@ -16,6 +16,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { NearbyResources } from "@/components/NearbyResources";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCards, type Stat } from "@/components/StatCards";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { Icon } from "@/components/ui";
 import {
   createLot,
@@ -272,6 +273,13 @@ export default function FarmerPage() {
         subtitle={tdash("farmerSubtitle")}
       />
 
+      <OnboardingChecklist
+        role="farmer"
+        hasLocation={!!user?.district}
+        hasListing={lots.length > 0}
+        hasMatch={matches.length > 0}
+      />
+
       <StatCards stats={stats} />
 
       {/* Status Banners */}
@@ -375,6 +383,7 @@ export default function FarmerPage() {
             >
               <option value="A">{t("gradeA")}</option>
               <option value="B">{t("gradeB")}</option>
+              <option value="FAQ">{t("gradeFaq")}</option>
               <option value="C">{t("gradeC")}</option>
             </select>
           </label>

@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCards, type Stat } from "@/components/StatCards";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { Icon } from "@/components/ui";
 import {
   createDemand,
@@ -155,6 +156,13 @@ export default function BuyerPage() {
         icon="handshake"
         title={tdash("buyerTitle")}
         subtitle={tdash("buyerSubtitle")}
+      />
+
+      <OnboardingChecklist
+        role="buyer"
+        hasLocation={!!user?.district}
+        hasListing={demands.length > 0}
+        hasMatch={matches.length > 0}
       />
 
       <StatCards stats={stats} />

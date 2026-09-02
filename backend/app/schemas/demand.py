@@ -33,13 +33,17 @@ class DemandCreate(BaseModel):
     def qty_positive(cls, v: float) -> float:
         if v <= 0:
             raise ValueError("quantity_kg must be greater than 0")
+        if v > 10_000_000:
+            raise ValueError("quantity_kg looks too large — enter kilograms")
         return v
 
-    @field_validator("price_band_min")
+    @field_validator("price_band_min", "price_band_max")
     @classmethod
-    def min_positive(cls, v: float) -> float:
+    def _price_sane(cls, v: float) -> float:
         if v <= 0:
-            raise ValueError("price_band_min must be greater than 0")
+            raise ValueError("price band values must be greater than 0")
+        if v > 5_000_000:
+            raise ValueError("price looks too high — enter ₹ per quintal")
         return v
 
     @model_validator(mode="after")
