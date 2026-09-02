@@ -533,7 +533,9 @@
     "factor_forecast": "Price forecast",
     "value_rising": "Rising",
     "value_falling": "Falling",
-    "value_flat": "Flat"
+    "value_flat": "Flat",
+    "decisionScore": "Decision score",
+    "scoreHint": "Each factor adds points: +2/-2 or more → Sell, -2 or less → Wait, in between → Hold. Price counts double."
   },
   "dash": {
     "farmerTitle": "Farmer dashboard",

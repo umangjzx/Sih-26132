@@ -264,6 +264,8 @@ def sell_wait_signal(
         forecast_bias=signal.forecast_bias,
         forecast_note=signal.forecast_note,
         forecast_change_pct_7d=signal.forecast_change_pct_7d,
+        total_score=signal.total_score,
+        factors=signal.factors or [],
     )
 
 

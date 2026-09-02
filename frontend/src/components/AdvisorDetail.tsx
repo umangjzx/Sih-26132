@@ -37,6 +37,7 @@ function FactorCard({
   description,
   tone = "neutral",
   index,
+  contribution,
 }: {
   icon: string;
   label: string;
@@ -44,6 +45,8 @@ function FactorCard({
   description: string;
   tone?: FactorTone;
   index: number;
+  /** signed points this factor added to the weighted decision score */
+  contribution?: number;
 }) {
   const toneConfig = {
     positive: {
@@ -80,6 +83,20 @@ function FactorCard({
           <div className="flex items-center gap-2">
             <Icon name={icon} size={16} className="text-[var(--ink-soft)]" />
             <span className="text-sm font-bold text-[var(--ink)]">{label}</span>
+            {contribution !== undefined && (
+              <span
+                className={`rounded-md px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums ${
+                  contribution > 0
+                    ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                    : contribution < 0
+                      ? "bg-[var(--red-100)] text-[var(--red-700)]"
+                      : "bg-[var(--line)] text-[var(--ink-soft)]"
+                }`}
+                title="Points this factor added to the decision score"
+              >
+                {contribution > 0 ? `+${contribution}` : contribution}
+              </span>
+            )}
           </div>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${toneConfig.badge}`}>
             {value}
@@ -205,6 +222,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       glutRisk: Boolean(calendar?.glut_risk),
       phase: calendar?.current_phase ?? null,
     };
+    const byKey = new Map((signal.factors ?? []).map((f) => [f.key, f.contribution]));
     return signal.reasons.map((reason) => {
       const c = classifyReason(reason, ctx);
       const rawValue = ["momentum", "analysed", "note", "caution", "stable", "belowMsp", "aboveMsp", "na", "rising", "falling", "flat"].includes(c.value)
@@ -221,6 +239,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
         value: rawValue,
         description: reason,
         tone: c.tone,
+        contribution: byKey.get(c.key as "price" | "arrivals" | "weather" | "forecast"),
       };
     });
   }, [signal, weather?.sell_bias, msp?.below_msp, msp?.has_msp, calendar?.glut_risk, calendar?.current_phase, ta]);
@@ -307,15 +326,32 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       {/* Decision Breakdown Timeline */}
       {factors.length > 0 && (
         <div>
-          <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">
-            <Icon name="spark" size={16} className="mr-2 inline text-[var(--amber-500)]" />
-            {ta("breakdown")}
-          </h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-heading text-base font-bold text-[var(--ink)]">
+              <Icon name="spark" size={16} className="mr-2 inline text-[var(--amber-500)]" />
+              {ta("breakdown")}
+            </h2>
+            {signal && typeof signal.total_score === "number" && (
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold tabular-nums ${
+                  signal.total_score >= 2
+                    ? "bg-[var(--green-100)] text-[var(--green-700)]"
+                    : signal.total_score <= -2
+                      ? "bg-[var(--red-100)] text-[var(--red-700)]"
+                      : "bg-[var(--amber-100)] text-[var(--amber-700)]"
+                }`}
+                title={ta("scoreHint")}
+              >
+                {ta("decisionScore")}: {signal.total_score > 0 ? `+${signal.total_score}` : signal.total_score}
+              </span>
+            )}
+          </div>
           <div className="flex flex-col gap-3">
             {factors.map((f, i) => (
               <FactorCard key={f.label} {...f} index={i} />
             ))}
           </div>
+          <p className="mt-3 text-xs text-[var(--ink-soft)]">{ta("scoreHint")}</p>
         </div>
       )}
 

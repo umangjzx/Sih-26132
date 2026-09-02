@@ -40,6 +40,10 @@ class SellWaitSignal:
     forecast_bias: int = 0         # -1 / 0 / +1 (from forecast.forecast_prices)
     forecast_note: str | None = None
     forecast_change_pct_7d: float | None = None
+    total_score: int = 0           # weighted sum; >= 2 sell, <= -2 wait, else hold
+    # per-factor weights & signed contributions, so the UI can show how the
+    # call was reached rather than just listing sentences.
+    factors: list[dict] | None = None
 
 
 FORECAST_STRONG_PCT = 3.0
@@ -185,6 +189,13 @@ def compute_signal(
     else:
         recommendation = "hold"
 
+    factors = [
+        {"key": "price", "weight": 2, "score": price_score, "contribution": 2 * price_score},
+        {"key": "arrivals", "weight": 1, "score": volume_score, "contribution": volume_score},
+        {"key": "weather", "weight": 1, "score": weather_bias, "contribution": weather_bias},
+        {"key": "forecast", "weight": 1, "score": forecast_bias, "contribution": forecast_bias},
+    ]
+
     return SellWaitSignal(
         recommendation=recommendation,
         reasons=reasons,
@@ -199,4 +210,6 @@ def compute_signal(
         forecast_bias=forecast_bias,
         forecast_note=forecast_note,
         forecast_change_pct_7d=forecast_change_7d,
+        total_score=total_score,
+        factors=factors,
     )

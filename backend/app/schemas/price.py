@@ -33,6 +33,13 @@ class NearestMarketComparison(BaseModel):
     date: date
 
 
+class SignalFactorOut(BaseModel):
+    key: str            # price | arrivals | weather | forecast
+    weight: int         # relative importance in the weighted sum
+    score: int          # -1 / 0 / +1 for this factor
+    contribution: int   # signed points added to total_score (weight * score)
+
+
 class SellWaitSignalResponse(BaseModel):
     recommendation: str
     reasons: list[str]
@@ -47,6 +54,8 @@ class SellWaitSignalResponse(BaseModel):
     forecast_bias: int = 0
     forecast_note: str | None = None
     forecast_change_pct_7d: float | None = None
+    total_score: int = 0
+    factors: list[SignalFactorOut] = []
 
 
 class ForecastPointOut(BaseModel):

@@ -34,6 +34,13 @@ export type NearestMarketComparison = {
   date: string;
 };
 
+export type SignalFactor = {
+  key: "price" | "arrivals" | "weather" | "forecast";
+  weight: number;
+  score: number;
+  contribution: number;
+};
+
 export type SellWaitSignalResponse = {
   recommendation: "sell_now" | "wait" | "hold";
   reasons: string[];
@@ -45,6 +52,8 @@ export type SellWaitSignalResponse = {
   forecast_bias?: number;
   forecast_note?: string | null;
   forecast_change_pct_7d?: number | null;
+  total_score?: number;
+  factors?: SignalFactor[];
 };
 
 export type ForecastPoint = { date: string; yhat: number; lo: number; hi: number };
