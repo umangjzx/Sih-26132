@@ -44,6 +44,31 @@ class SellWaitSignalResponse(BaseModel):
     weather_bias: int = 0
     weather_note: str | None = None
     msp: dict | None = None
+    forecast_bias: int = 0
+    forecast_note: str | None = None
+    forecast_change_pct_7d: float | None = None
+
+
+class ForecastPointOut(BaseModel):
+    date: date
+    yhat: float
+    lo: float
+    hi: float
+
+
+class PriceForecastResponse(BaseModel):
+    available: bool
+    crop: str
+    market: str
+    method: str = ""
+    horizon_days: int = 0
+    last_price: float = 0.0
+    trend_per_day: float = 0.0
+    weekly_pattern: dict[int, float] = {}
+    change_pct_7d: float | None = None
+    change_pct_30d: float | None = None
+    note: str = ""
+    points: list[ForecastPointOut] = []
 
 
 class IngestionResultResponse(BaseModel):

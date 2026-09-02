@@ -126,6 +126,16 @@ function classifyReason(reason: string, ctx: {
   if (/holiday|mandi closed|apmc/.test(r)) {
     return { key: "holiday", icon: "calendar", value: "note", tone: "neutral" };
   }
+  if (/trending up|trending down|next 7 days|look flat/.test(r)) {
+    const up = /trending up/.test(r);
+    const down = /trending down/.test(r);
+    return {
+      key: "forecast",
+      icon: "spark",
+      value: up ? "rising" : down ? "falling" : "flat",
+      tone: down ? "positive" : up ? "negative" : "neutral",
+    };
+  }
   if (/sow|harvest|calendar|season/.test(r)) {
     return {
       key: "calendar",
@@ -197,16 +207,17 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
     };
     return signal.reasons.map((reason) => {
       const c = classifyReason(reason, ctx);
-      const rawValue = ["momentum", "analysed", "note", "caution", "stable", "belowMsp", "aboveMsp", "na"].includes(c.value)
+      const rawValue = ["momentum", "analysed", "note", "caution", "stable", "belowMsp", "aboveMsp", "na", "rising", "falling", "flat"].includes(c.value)
         ? ta(`value_${c.value}` as
             | "value_momentum" | "value_analysed" | "value_note" | "value_caution"
-            | "value_stable" | "value_belowMsp" | "value_aboveMsp" | "value_na")
+            | "value_stable" | "value_belowMsp" | "value_aboveMsp" | "value_na"
+            | "value_rising" | "value_falling" | "value_flat")
         : c.value; // calendar phase string comes straight from the API
       return {
         icon: c.icon,
         label: ta(`factor_${c.key}` as
           | "factor_price" | "factor_arrivals" | "factor_weather"
-          | "factor_msp" | "factor_calendar" | "factor_holiday"),
+          | "factor_msp" | "factor_calendar" | "factor_holiday" | "factor_forecast"),
         value: rawValue,
         description: reason,
         tone: c.tone,

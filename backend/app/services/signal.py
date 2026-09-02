@@ -37,6 +37,12 @@ class SellWaitSignal:
     weather_bias: int = 0          # -1 / 0 / +1 (from weather.get_forecast)
     weather_note: str | None = None
     msp: dict | None = None        # {"price", "gap", "below": bool, "season"}
+    forecast_bias: int = 0         # -1 / 0 / +1 (from forecast.forecast_prices)
+    forecast_note: str | None = None
+    forecast_change_pct_7d: float | None = None
+
+
+FORECAST_STRONG_PCT = 3.0
 
 
 def compute_signal(
@@ -44,13 +50,16 @@ def compute_signal(
     *,
     weather: dict | None = None,
     msp: dict | None = None,
+    forecast: object | None = None,
 ) -> SellWaitSignal | None:
     """`rows` must be PriceCache rows for a single crop+market, sorted
     ascending by date. Returns None when there isn't even a week of data.
 
     Optional context:
-      weather — result of ``weather.get_forecast`` (adds a weight-1 factor).
-      msp     — result of ``reference.msp_for`` (advisory overlay, not scored).
+      weather  — result of ``weather.get_forecast`` (weight-1 factor).
+      msp      — result of ``reference.msp_for`` (advisory overlay, not scored).
+      forecast — a ``forecast.Forecast`` (weight-1 factor): a rising forecast
+                 nudges toward WAIT, a falling one toward SELL NOW.
     """
     if len(rows) < 7:
         return None
@@ -135,6 +144,21 @@ def compute_signal(
         if weather_note:
             reasons.append(weather_note)
 
+    # --- forecast factor (weight 1) ---
+    forecast_bias = 0
+    forecast_note: str | None = None
+    forecast_change_7d: float | None = None
+    if forecast is not None and getattr(forecast, "available", False):
+        forecast_change_7d = getattr(forecast, "change_pct_7d", None)
+        forecast_note = getattr(forecast, "note", None) or None
+        if forecast_change_7d is not None:
+            if forecast_change_7d >= FORECAST_STRONG_PCT:
+                forecast_bias = -1  # rising -> holding may pay off
+            elif forecast_change_7d <= -FORECAST_STRONG_PCT:
+                forecast_bias = 1   # falling -> lock in today's price
+        if forecast_note:
+            reasons.append(forecast_note)
+
     # --- MSP advisory overlay (not scored) ---
     msp_block: dict | None = None
     if msp and msp.get("price"):
@@ -153,7 +177,7 @@ def compute_signal(
                 f"Support Price (₹{msp['price']:.0f}) — the open market is paying a premium."
             )
 
-    total_score = 2 * price_score + volume_score + weather_bias
+    total_score = 2 * price_score + volume_score + weather_bias + forecast_bias
     if total_score >= 2:
         recommendation = "sell_now"
     elif total_score <= -2:
@@ -172,4 +196,7 @@ def compute_signal(
         weather_bias=weather_bias,
         weather_note=weather_note,
         msp=msp_block,
+        forecast_bias=forecast_bias,
+        forecast_note=forecast_note,
+        forecast_change_pct_7d=forecast_change_7d,
     )

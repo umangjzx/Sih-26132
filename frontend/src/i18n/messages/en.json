@@ -433,7 +433,11 @@
     "value_belowMsp": "Below MSP",
     "value_aboveMsp": "Above MSP",
     "value_na": "N/A",
-    "aiSummary": "In plain words"
+    "aiSummary": "In plain words",
+    "factor_forecast": "Price forecast",
+    "value_rising": "Rising",
+    "value_falling": "Falling",
+    "value_flat": "Flat"
   },
   "dash": {
     "farmerTitle": "Farmer dashboard",
@@ -463,5 +467,8 @@
     "send": "Send",
     "unavailable": "The assistant isn't configured on this build.",
     "error": "Sorry, something went wrong. Please try again."
+  },
+  "forecast": {
+    "label": "Forecast"
   }
 }

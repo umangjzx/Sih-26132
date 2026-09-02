@@ -10,12 +10,15 @@ from app.core.database import get_db
 from app.models.price_cache import PriceCache
 from app.schemas.price import (
     CropMarketOption,
+    ForecastPointOut,
     IngestionResultResponse,
     NearestMarketComparison,
+    PriceForecastResponse,
     PricePoint,
     PriceTrendResponse,
     SellWaitSignalResponse,
 )
+from app.services import forecast as forecast_svc
 from app.services import ingestion, reference, weather
 from app.services.geo import _district_coord, district_distance_km
 from app.services.market_towns import market_coords
@@ -158,6 +161,28 @@ def nearby_markets(
     return kept[:limit]
 
 
+def _forecast_for(db: Session, crop: str, market: str, horizon: int = 30) -> forecast_svc.Forecast:
+    rows = _fetch_series(db, crop, market, days=120)
+    return forecast_svc.forecast_prices([(r.date, r.modal_price) for r in rows], horizon)
+
+
+@router.get("/prices/forecast", response_model=PriceForecastResponse)
+def price_forecast(
+    crop: str,
+    market: str,
+    horizon: int = Query(30, ge=3, le=45),
+    db: Session = Depends(get_db),
+) -> PriceForecastResponse:
+    f = _forecast_for(db, crop, market, horizon)
+    return PriceForecastResponse(
+        available=f.available, crop=crop, market=market, method=f.method,
+        horizon_days=f.horizon_days, last_price=f.last_price, trend_per_day=f.trend_per_day,
+        weekly_pattern=f.weekly_pattern, change_pct_7d=f.change_pct_7d,
+        change_pct_30d=f.change_pct_30d, note=f.note,
+        points=[ForecastPointOut(date=p.date, yhat=p.yhat, lo=p.lo, hi=p.hi) for p in f.points],
+    )
+
+
 @router.get("/prices/signal", response_model=SellWaitSignalResponse)
 def sell_wait_signal(
     crop: str,
@@ -171,14 +196,17 @@ def sell_wait_signal(
     # v1.1 context: 7-day weather for the market + the crop's MSP.
     weather_ctx = None
     try:
-        pt = market_coords(market) or None
+        pt = market_coords(market) or (
+            _district_coord(rows[-1].district or "") if rows else None
+        )
         if pt is not None:
             weather_ctx = weather.get_forecast(*pt)
     except Exception:  # noqa: BLE001 - weather never blocks the signal
         weather_ctx = None
     msp_ctx = reference.msp_for(crop)
+    forecast_ctx = _forecast_for(db, crop, market)
 
-    signal = compute_signal(rows, weather=weather_ctx, msp=msp_ctx)
+    signal = compute_signal(rows, weather=weather_ctx, msp=msp_ctx, forecast=forecast_ctx)
     if signal is None:
         raise HTTPException(status_code=404, detail="Not enough price history to compute a signal")
     return SellWaitSignalResponse(
@@ -192,6 +220,9 @@ def sell_wait_signal(
         weather_bias=signal.weather_bias,
         weather_note=signal.weather_note,
         msp=signal.msp,
+        forecast_bias=signal.forecast_bias,
+        forecast_note=signal.forecast_note,
+        forecast_change_pct_7d=signal.forecast_change_pct_7d,
     )
 
 

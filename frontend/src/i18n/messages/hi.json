@@ -433,7 +433,11 @@
     "value_belowMsp": "MSP से नीचे",
     "value_aboveMsp": "MSP से ऊपर",
     "value_na": "लागू नहीं",
-    "aiSummary": "सरल शब्दों में"
+    "aiSummary": "सरल शब्दों में",
+    "factor_forecast": "भाव पूर्वानुमान",
+    "value_rising": "बढ़ रहा",
+    "value_falling": "गिर रहा",
+    "value_flat": "स्थिर"
   },
   "dash": {
     "farmerTitle": "किसान डैशबोर्ड",
@@ -463,5 +467,8 @@
     "send": "भेजें",
     "unavailable": "इस बिल्ड में सहायक सक्षम नहीं है।",
     "error": "क्षमा करें, कुछ गलत हुआ। फिर से कोशिश करें।"
+  },
+  "forecast": {
+    "label": "पूर्वानुमान"
   }
 }

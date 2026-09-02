@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   fetchBestMarkets,
+  fetchForecast,
   fetchNearby,
   fetchTrend,
   type BestMarketResponse,
   type NearestMarketComparison,
+  type PriceForecast,
   type PriceTrendResponse,
 } from "@/lib/api";
 import type { CropMarketState } from "@/lib/useCropMarket";
@@ -25,6 +27,7 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
   const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
 
   const [trend, setTrend] = useState<PriceTrendResponse | null>(null);
+  const [forecast, setForecast] = useState<PriceForecast | null>(null);
   const [nearby, setNearby] = useState<NearestMarketComparison[]>([]);
   const [best, setBest] = useState<BestMarketResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,6 +44,9 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
       ]);
       setTrend(trendRes);
       setNearby(nearbyRes);
+      fetchForecast(cm.crop, cm.market, 30)
+        .then((f) => setForecast(f.available ? f : null))
+        .catch(() => setForecast(null));
       const b = await fetchBestMarkets(cm.crop, cm.market, true).catch(() => null);
       setBest(b);
     } catch {
@@ -101,7 +107,13 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
                   </span>
                 }
               />
-              <PriceTrendChart points={trend.points} />
+              <PriceTrendChart points={trend.points} forecast={forecast?.points} />
+              {forecast?.note && (
+                <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-medium text-[var(--amber-700)]">
+                  <span className="h-2 w-4 rounded-full border-b-2 border-dashed border-[var(--amber-600)]" />
+                  {forecast.note}
+                </p>
+              )}
               <dl className="mt-4 grid grid-cols-3 gap-3 text-center">
                 <div>
                   <dt className="text-xs text-[var(--ink-soft)]">{t("minPrice")}</dt>

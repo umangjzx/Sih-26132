@@ -8,13 +8,14 @@ vi.mock("@/lib/api", () => ({
   fetchTrend: vi.fn(),
   fetchNearby: vi.fn(),
   fetchBestMarkets: vi.fn(),
+  fetchForecast: vi.fn().mockResolvedValue({ available: false, points: [] }),
 }));
 vi.mock("recharts", () => {
   const Wrap = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
   const Nil = () => null;
   return {
     ResponsiveContainer: Wrap,
-    LineChart: Wrap, AreaChart: Wrap, BarChart: Wrap, PieChart: Wrap,
+    LineChart: Wrap, AreaChart: Wrap, BarChart: Wrap, PieChart: Wrap, ComposedChart: Wrap,
     Line: Nil, Area: Nil, Bar: Nil, Pie: Nil, Cell: Nil,
     CartesianGrid: Nil, XAxis: Nil, YAxis: Nil, Tooltip: Nil, Legend: Nil, ReferenceLine: Nil,
   };

@@ -42,6 +42,25 @@ export type SellWaitSignalResponse = {
   ma_30: number | null;
   volume_trend_pct: number | null;
   days_of_data: number;
+  forecast_bias?: number;
+  forecast_note?: string | null;
+  forecast_change_pct_7d?: number | null;
+};
+
+export type ForecastPoint = { date: string; yhat: number; lo: number; hi: number };
+export type PriceForecast = {
+  available: boolean;
+  crop: string;
+  market: string;
+  method: string;
+  horizon_days: number;
+  last_price: number;
+  trend_per_day: number;
+  weekly_pattern: Record<string, number>;
+  change_pct_7d: number | null;
+  change_pct_30d: number | null;
+  note: string;
+  points: ForecastPoint[];
 };
 
 // ---------------------------------------------------------------------------
@@ -320,6 +339,15 @@ export function fetchSignal(
 ): Promise<SellWaitSignalResponse> {
   const params = new URLSearchParams({ crop, market });
   return getJson(`/api/prices/signal?${params.toString()}`);
+}
+
+export function fetchForecast(
+  crop: string,
+  market: string,
+  horizon = 30,
+): Promise<PriceForecast> {
+  const params = new URLSearchParams({ crop, market, horizon: String(horizon) });
+  return getJson(`/api/prices/forecast?${params.toString()}`);
 }
 
 export function fetchNearby(

@@ -433,7 +433,11 @@
     "value_belowMsp": "MSP पेक्षा खाली",
     "value_aboveMsp": "MSP पेक्षा जास्त",
     "value_na": "लागू नाही",
-    "aiSummary": "सोप्या शब्दांत"
+    "aiSummary": "सोप्या शब्दांत",
+    "factor_forecast": "भाव अंदाज",
+    "value_rising": "वाढत",
+    "value_falling": "घटत",
+    "value_flat": "स्थिर"
   },
   "dash": {
     "farmerTitle": "शेतकरी डॅशबोर्ड",
@@ -463,5 +467,8 @@
     "send": "पाठवा",
     "unavailable": "या बिल्डमध्ये सहाय्यक सक्षम नाही.",
     "error": "क्षमा करा, काहीतरी चूकले. पुन्हा प्रयत्न करा."
+  },
+  "forecast": {
+    "label": "अंदाज"
   }
 }
