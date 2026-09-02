@@ -105,6 +105,85 @@ _SNAP_EXCLUDE = {
 }
 
 
+# Major cities across every state — used as a finer fallback than state centroids
+# when reverse geocoding is unavailable (a state centroid can be 150+ km from a
+# border city, e.g. the Tamil Nadu centroid is far east of Coimbatore).
+# (lat, lon) -> (state, district).
+CITY_COORDS: dict[tuple[float, float], tuple[str, str]] = {
+    (28.6139, 77.2090): ("Delhi", "New Delhi"),
+    (19.0760, 72.8777): ("Maharashtra", "Mumbai"),
+    (18.5204, 73.8567): ("Maharashtra", "Pune"),
+    (21.1458, 79.0882): ("Maharashtra", "Nagpur"),
+    (19.9975, 73.7898): ("Maharashtra", "Nashik"),
+    (12.9716, 77.5946): ("Karnataka", "Bengaluru"),
+    (15.3647, 75.1240): ("Karnataka", "Dharwad"),
+    (12.2958, 76.6394): ("Karnataka", "Mysuru"),
+    (17.3850, 78.4867): ("Telangana", "Hyderabad"),
+    (17.9689, 79.5941): ("Telangana", "Warangal"),
+    (13.0827, 80.2707): ("Tamil Nadu", "Chennai"),
+    (11.0168, 76.9558): ("Tamil Nadu", "Coimbatore"),
+    (9.9252, 78.1198): ("Tamil Nadu", "Madurai"),
+    (11.6643, 78.1460): ("Tamil Nadu", "Salem"),
+    (10.7905, 78.7047): ("Tamil Nadu", "Tiruchirappalli"),
+    (8.5241, 76.9366): ("Kerala", "Thiruvananthapuram"),
+    (9.9312, 76.2673): ("Kerala", "Ernakulam"),
+    (11.2588, 75.7804): ("Kerala", "Kozhikode"),
+    (17.6868, 83.2185): ("Andhra Pradesh", "Visakhapatnam"),
+    (16.5062, 80.6480): ("Andhra Pradesh", "Vijayawada"),
+    (16.3067, 80.4365): ("Andhra Pradesh", "Guntur"),
+    (22.5726, 88.3639): ("West Bengal", "Kolkata"),
+    (22.9089, 88.3960): ("West Bengal", "Hooghly"),
+    (26.8467, 80.9462): ("Uttar Pradesh", "Lucknow"),
+    (26.4499, 80.3319): ("Uttar Pradesh", "Kanpur"),
+    (27.1767, 78.0081): ("Uttar Pradesh", "Agra"),
+    (25.3176, 82.9739): ("Uttar Pradesh", "Varanasi"),
+    (28.5355, 77.3910): ("Uttar Pradesh", "Noida"),
+    (30.9010, 75.8573): ("Punjab", "Ludhiana"),
+    (31.3260, 75.5762): ("Punjab", "Jalandhar"),
+    (31.6340, 74.8723): ("Punjab", "Amritsar"),
+    (29.6857, 76.9905): ("Haryana", "Karnal"),
+    (28.4595, 77.0266): ("Haryana", "Gurugram"),
+    (29.3909, 76.9635): ("Haryana", "Panipat"),
+    (26.9124, 75.7873): ("Rajasthan", "Jaipur"),
+    (26.2389, 73.0243): ("Rajasthan", "Jodhpur"),
+    (25.2138, 75.8648): ("Rajasthan", "Kota"),
+    (22.7196, 75.8577): ("Madhya Pradesh", "Indore"),
+    (23.2599, 77.4126): ("Madhya Pradesh", "Bhopal"),
+    (23.1815, 79.9864): ("Madhya Pradesh", "Jabalpur"),
+    (26.4691, 74.6399): ("Rajasthan", "Ajmer"),
+    (23.0225, 72.5714): ("Gujarat", "Ahmedabad"),
+    (22.3072, 73.1812): ("Gujarat", "Vadodara"),
+    (21.1702, 72.8311): ("Gujarat", "Surat"),
+    (22.3039, 70.8022): ("Gujarat", "Rajkot"),
+    (21.2514, 81.6296): ("Chhattisgarh", "Raipur"),
+    (20.2961, 85.8245): ("Odisha", "Bhubaneswar"),
+    (20.4625, 85.8828): ("Odisha", "Cuttack"),
+    (25.5941, 85.1376): ("Bihar", "Patna"),
+    (25.8560, 85.7799): ("Bihar", "Samastipur"),
+    (23.3441, 85.3096): ("Jharkhand", "Ranchi"),
+    (22.8046, 86.2029): ("Jharkhand", "Jamshedpur"),
+    (26.1445, 91.7362): ("Assam", "Guwahati"),
+    (30.3165, 78.0322): ("Uttarakhand", "Dehradun"),
+    (31.1048, 77.1734): ("Himachal Pradesh", "Shimla"),
+    (32.7266, 74.8570): ("Jammu and Kashmir", "Jammu"),
+    (34.0837, 74.7973): ("Jammu and Kashmir", "Srinagar"),
+    (15.4909, 73.8278): ("Goa", "North Goa"),
+    (11.9416, 79.8083): ("Puducherry", "Puducherry"),
+}
+
+
+def nearest_place(lat: float, lon: float) -> tuple[str, str]:
+    """(state, district) of the nearest major city, else (nearest_state, "")."""
+    best = min(
+        CITY_COORDS.items(),
+        key=lambda kv: haversine_km((lat, lon), kv[0]),
+    )
+    (clat, clon), (state, district) = best
+    if haversine_km((lat, lon), (clat, clon)) <= 200:
+        return state, district
+    return nearest_state(lat, lon), ""
+
+
 def nearest_state(lat: float, lon: float) -> str:
     """Coarse point -> state via nearest state centroid (micro-UTs excluded)."""
     candidates = [s for s in STATE_CENTROIDS if s not in _SNAP_EXCLUDE]

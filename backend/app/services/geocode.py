@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.geo_cache import GeoCache
-from app.services.geo import DISTRICT_CENTROIDS, nearest_state
+from app.services.geo import DISTRICT_CENTROIDS, nearest_place
 from app.services.market_towns import MARKET_COORDS
 
 logger = logging.getLogger(__name__)
@@ -145,42 +145,70 @@ def reverse_geocode(lat: float, lon: float, db: Session) -> dict:
             "source": "cache",
         }
 
-    state = ""
-    district = ""
-    display = ""
+    state = district = display = ""
+    src = ""
+
+    # 1) OSM Nominatim — accurate, district-level.
     try:
-        with httpx.Client(timeout=8.0) as client:
+        with httpx.Client(timeout=8.0, headers={"User-Agent": "AgriLink-SIH/1.0 (demo)"}) as client:
             resp = client.get(
-                settings.reverse_geocode_url,
-                params={"latitude": lat, "longitude": lon, "localityLanguage": "en"},
+                settings.nominatim_url,
+                params={"lat": lat, "lon": lon, "format": "json",
+                        "accept-language": "en", "zoom": 10},
             )
             resp.raise_for_status()
             j = resp.json()
-            # Only trust the result if it's actually in India.
-            if (j.get("countryCode") or "").upper() not in ("IN", ""):
-                j = {}
-            state = j.get("principalSubdivision") or ""
-            # BigDataCloud nests admin levels; the deepest one that isn't the
-            # state or the country is usually the district.
-            names = [
-                a["name"]
-                for a in j.get("localityInfo", {}).get("administrative", [])
-                if a.get("name")
-            ]
-            district = next(
-                (n for n in reversed(names) if n and n not in (state, "India")),
-                j.get("city") or j.get("locality") or "",
-            )
-            display = ", ".join(x for x in (j.get("city") or j.get("locality"), district, state) if x)
+            addr = j.get("address", {}) if isinstance(j, dict) else {}
+            if (addr.get("country_code") or "").lower() in ("in", ""):
+                state = addr.get("state") or ""
+                district = (
+                    addr.get("state_district") or addr.get("county")
+                    or addr.get("district") or ""
+                )
+                town = (
+                    addr.get("city") or addr.get("town") or addr.get("village")
+                    or addr.get("suburb") or ""
+                )
+                if state:
+                    display = ", ".join(x for x in (town, district, state) if x)
+                    src = "nominatim"
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Reverse geocode failed (%s); snapping to nearest state", exc)
+        logger.warning("Nominatim reverse geocode failed (%s)", exc)
 
+    # 2) BigDataCloud fallback.
     if not state:
-        state = nearest_state(lat, lon)
-        display = display or state
+        try:
+            with httpx.Client(timeout=8.0) as client:
+                resp = client.get(
+                    settings.reverse_geocode_url,
+                    params={"latitude": lat, "longitude": lon, "localityLanguage": "en"},
+                )
+                resp.raise_for_status()
+                j = resp.json()
+                if (j.get("countryCode") or "").upper() in ("IN", ""):
+                    state = j.get("principalSubdivision") or ""
+                    names = [
+                        a["name"]
+                        for a in j.get("localityInfo", {}).get("administrative", [])
+                        if a.get("name")
+                    ]
+                    district = next(
+                        (n for n in reversed(names) if n and n not in (state, "India")),
+                        j.get("city") or j.get("locality") or "",
+                    )
+                    if state:
+                        display = ", ".join(
+                            x for x in (j.get("city") or j.get("locality"), district, state) if x
+                        )
+                        src = "bigdatacloud"
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("BigDataCloud reverse geocode failed (%s)", exc)
+
+    # 3) Last resort: nearest known city, then nearest state centroid.
+    if not state:
+        state, district = nearest_place(lat, lon)
+        display = display or ", ".join(x for x in (district, state) if x) or state
         src = "static"
-    else:
-        src = "bigdatacloud"
 
     db.add(
         GeoCache(

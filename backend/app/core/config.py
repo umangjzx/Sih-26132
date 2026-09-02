@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # (e.g. "Maharashtra,Karnataka"), or "ALL" for the whole national feed.
     ingest_states: str = "Maharashtra"
     # Free, keyless reverse-geocoder (lat/lon -> state + district).
+    # Primary reverse-geocoder: OSM Nominatim (accurate, keyless; needs a UA and
+    # is rate-limited to ~1 req/s — fine here, results are cached in geo_cache).
+    nominatim_url: str = "https://nominatim.openstreetmap.org/reverse"
+    # Secondary: BigDataCloud's client endpoint (often empty for server-side calls).
     reverse_geocode_url: str = "https://api.bigdatacloud.net/data/reverse-geocode-client"
 
     @property
