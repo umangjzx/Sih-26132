@@ -5,30 +5,40 @@ import { useEffect, useState } from "react";
 
 import { NearbyResources } from "@/components/NearbyResources";
 import { Icon } from "@/components/ui";
+import { listDistricts } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
-
-const MH_DISTRICTS = [
-  "Pune", "Nashik", "Ahmednagar", "Solapur", "Sangli", "Kolhapur", "Satara",
-  "Jalgaon", "Dhule", "Nandurbar", "Chhatrapati Sambhajinagar", "Jalna", "Beed",
-  "Latur", "Nanded", "Parbhani", "Hingoli", "Osmanabad", "Akola", "Amravati",
-  "Buldhana", "Washim", "Yavatmal", "Wardha", "Nagpur", "Chandrapur", "Gondia",
-  "Bhandara", "Ratnagiri", "Sindhudurg", "Raigad", "Thane", "Palghar",
-];
 
 export default function DirectoryPage() {
   const ts = useTranslations("storage");
-  const tl = useTranslations("location");
   const { location } = useLocation();
 
-  const state = location?.state ?? "Maharashtra";
-  const isMh = state === "Maharashtra";
-  const [district, setDistrict] = useState("Pune");
+  const state = location?.state || "Maharashtra";
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [district, setDistrict] = useState<string>("");
 
+  // load the district list for whichever state the user is in
   useEffect(() => {
-    if (location?.district && MH_DISTRICTS.includes(location.district)) {
+    let live = true;
+    listDistricts(state)
+      .then((ds) => {
+        if (!live) return;
+        setDistricts(ds);
+        setDistrict((cur) => (cur && ds.includes(cur) ? cur : ds[0] ?? ""));
+      })
+      .catch(() => {
+        if (live) setDistricts([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [state]);
+
+  // prefer the user's own district when it's in the list
+  useEffect(() => {
+    if (location?.district && districts.includes(location.district)) {
       setDistrict(location.district);
     }
-  }, [location?.district]);
+  }, [location?.district, districts]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,15 +50,15 @@ export default function DirectoryPage() {
         </p>
       </div>
 
-      {isMh ? (
+      {districts.length > 0 ? (
         <label className="flex flex-col gap-1.5 text-sm font-semibold">
-          {ts("distance")}
+          {ts("districtLabel")}
           <select
             value={district}
             onChange={(e) => setDistrict(e.target.value)}
             className="min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-base font-semibold shadow-sm"
           >
-            {MH_DISTRICTS.map((d) => (
+            {districts.map((d) => (
               <option key={d} value={d}>
                 {d}
               </option>
@@ -56,17 +66,20 @@ export default function DirectoryPage() {
           </select>
         </label>
       ) : (
-        <p className="text-sm text-[var(--ink-soft)]">
-          {tl("directoryScope", { state })}
-        </p>
+        <p className="text-sm text-[var(--ink-soft)]">{ts("noDistricts", { state })}</p>
       )}
 
       <NearbyResources
-        district={isMh ? district : location?.district}
+        district={district || location?.district}
         state={state}
         lat={location?.lat}
         lon={location?.lon}
       />
+
+      <p className="rounded-xl border border-[var(--line)] bg-[var(--paper)] px-4 py-3 text-xs text-[var(--ink-soft)]">
+        <Icon name="alert" size={12} className="mr-1 inline" />
+        {ts("indicativeNote")}
+      </p>
     </div>
   );
 }

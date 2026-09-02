@@ -1207,6 +1207,10 @@ export function resolveLocation(args: {
     })}`,
   );
 }
+export function listDistricts(state: string): Promise<string[]> {
+  return getJson(`/api/location/districts?state=${encodeURIComponent(state)}`);
+}
+
 export function listStates(): Promise<string[]> {
   return getJson("/api/location/states");
 }

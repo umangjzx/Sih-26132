@@ -476,7 +476,10 @@
     "distance": "Distance",
     "type_cold_storage": "Cold storage",
     "type_warehouse": "Warehouse",
-    "none": "No facilities found nearby"
+    "none": "No facilities found nearby",
+    "districtLabel": "District",
+    "noDistricts": "No directory data for {state} yet.",
+    "indicativeNote": "Storage and FPO listings are an indicative curated sample, not a live registry — always confirm capacity and contact details directly."
   },
   "fpo": {
     "title": "Farmer Producer Organisations",

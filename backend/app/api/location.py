@@ -35,3 +35,27 @@ def resolve(
 @router.get("/states")
 def states() -> list[str]:
     return sorted(STATE_CENTROIDS)
+
+
+@router.get("/districts")
+def districts(state: str, db: Session = Depends(get_db)) -> list[str]:
+    """Districts known for a state — from the price feed plus the storage/FPO
+    directory, so the directory page has a real picker outside Maharashtra."""
+    from sqlalchemy import distinct, select
+
+    from app.models.price_cache import PriceCache
+    from app.services import reference as ref
+
+    st = loc._norm_state(state)
+    seen: set[str] = set()
+    for (d,) in db.execute(
+        select(distinct(PriceCache.district)).where(
+            PriceCache.state == st, PriceCache.district != ""
+        )
+    ).all():
+        if d:
+            seen.add(d.strip())
+    for row in (*ref.COLD_STORAGE, *ref.FPOS):
+        if (row.get("state") or "").strip().lower() == st.lower() and row.get("district"):
+            seen.add(row["district"].strip())
+    return sorted(seen)
