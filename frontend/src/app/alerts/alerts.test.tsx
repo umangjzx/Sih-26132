@@ -13,6 +13,7 @@ vi.mock("@/components/AuthProvider", () => ({
     user: { id: 1, name: "Ravi", role: "farmer", district: "Pune" },
     token: "tok",
     isAuthenticated: authed,
+    ready: true,
     login: vi.fn(),
     logout: vi.fn(),
   }),
