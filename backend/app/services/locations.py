@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.price_cache import PriceCache
 from app.services import ingestion
+from app.services.fixtures import generate_state_fixture_rows
 from app.services.geo import STATE_CENTROIDS
 from app.services.geocode import geocode, reverse_geocode
 
@@ -94,9 +95,11 @@ def ensure_state_ingested(db: Session, state: str) -> dict:
     if now - _LAST_TRY.get(state, 0.0) < _MIN_INTERVAL:
         return {"ingested": False, "reason": "rate-limited", "rows_upserted": 0}
     _LAST_TRY[state] = now
+    rows: list[dict] = []
+    reason = "no-live-data"
     try:
         # Best-effort, bounded: the upstream API is slow, and this runs on a
-        # user action. Fail fast and let the UI degrade to the all-India view.
+        # user action. Fail fast, then fall back to a synthetic demo series.
         raw = ingestion.fetch_agmarknet_rows(
             settings.data_gov_in_api_key, [state], timeout=8.0, max_pages=4
         )
@@ -104,12 +107,17 @@ def ensure_state_ingested(db: Session, state: str) -> dict:
             r for r in ingestion.normalize_rows(raw)
             if (r.get("state") or "").strip().lower() == state.lower()
         ]
-        n = ingestion.upsert_price_rows(db, rows) if rows else 0
-        return {
-            "ingested": n > 0,
-            "reason": "live" if n else "no-live-data",
-            "rows_upserted": n,
-        }
+        if rows:
+            reason = "live"
     except Exception as exc:  # noqa: BLE001
-        logger.warning("On-demand ingestion for %s failed (%s)", state, exc)
-        return {"ingested": False, "reason": f"error: {exc}", "rows_upserted": 0}
+        logger.warning("On-demand live ingestion for %s failed (%s)", state, exc)
+
+    if not rows:
+        # Offline / no-key fallback: plausible synthetic data so the location
+        # switch always lands on something.
+        rows = generate_state_fixture_rows(state)
+        if rows:
+            reason = "demo-fixture"
+
+    n = ingestion.upsert_price_rows(db, rows) if rows else 0
+    return {"ingested": n > 0, "reason": reason, "rows_upserted": n}

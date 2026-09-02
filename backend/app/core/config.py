@@ -35,9 +35,10 @@ class Settings(BaseSettings):
     weather_api_key: str = ""
     openweather_url: str = "https://api.openweathermap.org/data/2.5/weather"
 
-    # v1.2: which AGMARKNET states the scheduled ingestion pulls. Comma-separated
-    # (e.g. "Maharashtra,Karnataka"), or "ALL" for the whole national feed.
-    ingest_states: str = "Maharashtra"
+    # v1.2: which AGMARKNET states the scheduled ingestion pulls. "ALL" pulls the
+    # whole national feed in one shot (~10 pages, real prices for every state);
+    # or comma-separate specific states (e.g. "Maharashtra,Karnataka").
+    ingest_states: str = "ALL"
     # Free, keyless reverse-geocoder (lat/lon -> state + district).
     # Primary reverse-geocoder: OSM Nominatim (accurate, keyless; needs a UA and
     # is rate-limited to ~1 req/s — fine here, results are cached in geo_cache).

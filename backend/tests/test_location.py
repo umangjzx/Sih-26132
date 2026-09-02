@@ -79,13 +79,26 @@ def test_ensure_state_ingested_no_key(db, monkeypatch):
     assert r == {"ingested": False, "reason": "no api key", "rows_upserted": 0}
 
 
-def test_ensure_state_ingested_rate_limits(db, monkeypatch):
+def test_ensure_state_ingested_falls_back_to_demo_fixture(db, monkeypatch):
+    """Live feed empty -> synthetic per-state series so the location switch
+    always lands on data; a second call sees it already cached."""
     locations._LAST_TRY.clear()
     monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
     monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", lambda *a, **k: [])
     r1 = locations.ensure_state_ingested(db, "Punjab")
-    assert r1["ingested"] is False and r1["reason"] == "no-live-data"
+    assert r1["ingested"] is True and r1["reason"] == "demo-fixture" and r1["rows_upserted"] > 0
     r2 = locations.ensure_state_ingested(db, "Punjab")
+    assert r2["reason"] == "already cached"
+
+
+def test_ensure_state_ingested_rate_limits(db, monkeypatch):
+    """A state with no fixture and an empty live feed is rate-limited on retry."""
+    locations._LAST_TRY.clear()
+    monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
+    monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", lambda *a, **k: [])
+    r1 = locations.ensure_state_ingested(db, "Sikkim")  # not in STATE_FIXTURES
+    assert r1["ingested"] is False and r1["reason"] == "no-live-data"
+    r2 = locations.ensure_state_ingested(db, "Sikkim")
     assert r2["reason"] == "rate-limited"
 
 

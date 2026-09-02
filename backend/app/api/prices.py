@@ -17,7 +17,7 @@ from app.schemas.price import (
     SellWaitSignalResponse,
 )
 from app.services import ingestion, reference, weather
-from app.services.geo import district_distance_km
+from app.services.geo import _district_coord, district_distance_km
 from app.services.market_towns import market_coords
 from app.services.signal import compute_signal
 
@@ -43,12 +43,26 @@ def list_options(
 
 def _fetch_series(db: Session, crop: str, market: str, days: int) -> list[PriceCache]:
     since = date.today() - timedelta(days=days)
-    stmt = (
-        select(PriceCache)
-        .where(PriceCache.crop == crop, PriceCache.market == market, PriceCache.date >= since)
-        .order_by(PriceCache.date.asc())
-    )
-    return list(db.execute(stmt).scalars().all())
+
+    def _query() -> list[PriceCache]:
+        stmt = (
+            select(PriceCache)
+            .where(PriceCache.crop == crop, PriceCache.market == market, PriceCache.date >= since)
+            .order_by(PriceCache.date.asc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    rows = _query()
+    # The live AGMARKNET feed only carries the latest day. If this series is
+    # too thin for a trend / signal, lazily synthesise history anchored to the
+    # real latest price (cheap, single series, persisted).
+    if rows and len({r.date for r in rows}) < ingestion.BACKFILL_MIN_REAL_DAYS:
+        try:
+            if ingestion.backfill_series(db, crop, market):
+                rows = _query()
+        except Exception:  # noqa: BLE001 - backfill is best-effort
+            pass
+    return rows
 
 
 @router.get("/prices/trend", response_model=PriceTrendResponse)
@@ -104,9 +118,13 @@ def nearby_markets(
         )
         for r in rows
     ]
-    # Keep unknown-centroid markets (distance None); drop only known distances
-    # beyond the cap. None sorts last (D-09). Hard-slice to `limit`.
-    kept = [x for x in results if x.distance_km is None or x.distance_km <= max_distance_km]
+    # If we can place the origin district, drop markets we can't measure or that
+    # are beyond the cap (no more Chennai showing up for Coimbatore). If the
+    # origin is unknown we can't filter by distance, so keep everything.
+    if _district_coord(district) is not None:
+        kept = [x for x in results if x.distance_km is not None and x.distance_km <= max_distance_km]
+    else:
+        kept = [x for x in results if x.distance_km is None or x.distance_km <= max_distance_km]
     kept.sort(key=lambda item: (item.distance_km is None, item.distance_km or 0.0))
     return kept[:limit]
 

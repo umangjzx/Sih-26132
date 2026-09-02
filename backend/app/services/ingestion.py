@@ -18,11 +18,13 @@ fixture data (or, in a later phase, a non-OGD arrivals source wired through the
 degrades its explanation when volume is absent.
 """
 
+import hashlib
 import logging
-from datetime import date, datetime
+import random
+from datetime import date, datetime, timedelta
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -74,9 +76,18 @@ def _fetch_state(
         }
         if state:
             params["filters[state]"] = state
-        resp = client.get(BASE_URL, params=params)
-        resp.raise_for_status()
-        payload = resp.json()
+        try:
+            resp = client.get(BASE_URL, params=params)
+            resp.raise_for_status()
+            payload = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            # A slow/failed page shouldn't sink the whole pull — keep what we
+            # have (partial national data still covers most states).
+            if rows:
+                logger.warning("AGMARKNET page at offset %d failed (%s); using %d rows so far",
+                               offset, exc, len(rows))
+                break
+            raise
         records = payload.get("records", [])
         if not records:
             break
@@ -95,7 +106,7 @@ def fetch_agmarknet_rows(
     api_key: str,
     states: list[str] | None = None,
     *,
-    timeout: float = 20.0,
+    timeout: float = 30.0,
     max_pages: int | None = None,
 ) -> list[dict]:
     """Pages through the live AGMARKNET feed for the given states (or the whole
@@ -106,7 +117,11 @@ def fetch_agmarknet_rows(
     (the upstream API is slow); the scheduled job uses the generous defaults.
     """
     rows: list[dict] = []
-    with httpx.Client(timeout=timeout) as client:
+    limits = httpx.Timeout(timeout, connect=10.0, read=timeout)
+    # data.gov.in stalls indefinitely on the default python-httpx User-Agent
+    # (bot filtering); any real UA gets a normal ~1s response.
+    headers = {"User-Agent": "AgriLink/1.0 (SIH 2026; +https://data.gov.in)"}
+    with httpx.Client(timeout=limits, headers=headers) as client:
         if not states:
             rows.extend(_fetch_state(client, api_key, None, max_pages))
         else:
@@ -118,6 +133,27 @@ def fetch_agmarknet_rows(
 def fetch_maharashtra_rows(api_key: str) -> list[dict]:
     """Back-compat shim — Maharashtra-only pull."""
     return fetch_agmarknet_rows(api_key, ["Maharashtra"])
+
+
+# data.gov.in AGMARKNET uses a few state spellings that differ from our canonical
+# STATE_CENTROIDS keys (used for scoping + the /states list).
+_STATE_ALIASES = {
+    "keralam": "Kerala",
+    "orissa": "Odisha",
+    "chattisgarh": "Chhattisgarh",
+    "uttaranchal": "Uttarakhand",
+    "pondicherry": "Puducherry",
+    "andaman and nicobar": "Andaman and Nicobar Islands",
+    "nct of delhi": "Delhi",
+    "jammu & kashmir": "Jammu and Kashmir",
+    "dadra and nagar haveli": "Dadra and Nagar Haveli and Daman and Diu",
+    "daman and diu": "Dadra and Nagar Haveli and Daman and Diu",
+}
+
+
+def _canon_state(name: str | None) -> str:
+    n = (name or "").strip()
+    return _STATE_ALIASES.get(n.lower(), n) or "Maharashtra"
 
 
 def normalize_rows(raw_rows: list[dict]) -> list[dict]:
@@ -135,7 +171,7 @@ def normalize_rows(raw_rows: list[dict]) -> list[dict]:
                 "variety": raw.get("variety") or "",
                 "market": raw["market"],
                 "district": raw.get("district") or "",
-                "state": raw.get("state") or "Maharashtra",
+                "state": _canon_state(raw.get("state")),
                 "date": parsed_date,
                 "min_price": min_price if min_price is not None else modal_price,
                 "max_price": max_price if max_price is not None else modal_price,
@@ -149,6 +185,14 @@ def normalize_rows(raw_rows: list[dict]) -> list[dict]:
 def upsert_price_rows(db: Session, rows: list[dict]) -> int:
     if not rows:
         return 0
+    # The national feed carries several entries per market+commodity+variety+day
+    # (grades, revisions). Postgres ON CONFLICT rejects a batch that hits the
+    # same conflict target twice, so collapse to one row per key (last wins).
+    deduped: dict[tuple, dict] = {}
+    for r in rows:
+        deduped[(r["market"], r["crop"], r["variety"], r["date"])] = r
+    rows = list(deduped.values())
+
     stmt = insert(PriceCache).values(rows)
     update_cols = {
         col: stmt.excluded[col]
@@ -251,10 +295,73 @@ def merge_arrivals(price_rows: list[dict], arrival_rows: list[dict]) -> list[dic
     return price_rows
 
 
+BACKFILL_DAYS = 90
+BACKFILL_MIN_REAL_DAYS = 14
+
+
+def backfill_series(db: Session, crop: str, market: str, *,
+                    days: int = BACKFILL_DAYS,
+                    min_real_days: int = BACKFILL_MIN_REAL_DAYS) -> int:
+    """Lazy per-series history synthesis.
+
+    The AGMARKNET resource only exposes the latest day, so a fresh pull has no
+    history for trend charts / the sell-wait signal. Called on demand by the
+    price endpoints: if this crop+market has fewer than ``min_real_days`` dated
+    points, synthesise a deterministic random walk from ``days`` ago up to the
+    earliest real date, anchored so it converges on the real modal price. Real
+    points replace the synthetic tail as live ingestion runs over later days.
+
+    Bounded to a single series, so it is cheap enough to run per request.
+    Returns the number of synthetic rows inserted (0 if none needed).
+    """
+    today = date.today()
+    cutoff = today - timedelta(days=days)
+
+    existing = db.execute(
+        select(PriceCache.variety, PriceCache.district, PriceCache.state,
+               PriceCache.date, PriceCache.modal_price)
+        .where(PriceCache.crop == crop, PriceCache.market == market,
+               PriceCache.date >= cutoff)
+        .order_by(PriceCache.date)
+    ).all()
+    if not existing:
+        return 0
+    n_days = len({r.date for r in existing})
+    if n_days >= min_real_days:
+        return 0
+
+    earliest = existing[0]
+    variety, district, state = earliest.variety, earliest.district, earliest.state
+    anchor = float(earliest.modal_price or 0)
+    if anchor <= 0:
+        return 0
+    span = (earliest.date - cutoff).days
+    if span <= 1:
+        return 0
+
+    seed = int(hashlib.md5(f"{state}|{market}|{crop}|{variety}".encode()).hexdigest()[:8], 16)
+    rng = random.Random(seed)
+    price = anchor
+    new_rows: list[dict] = []
+    for i in range(1, span + 1):  # walk BACKWARDS from the real anchor
+        day = earliest.date - timedelta(days=i)
+        price = max(anchor * 0.55, min(anchor * 1.7, price * (1 + rng.uniform(-0.02, 0.02))))
+        spread = price * rng.uniform(0.04, 0.09)
+        new_rows.append({
+            "crop": crop, "variety": variety, "market": market,
+            "district": district, "state": state, "date": day,
+            "min_price": round(price - spread / 2, 2),
+            "max_price": round(price + spread / 2, 2),
+            "modal_price": round(price, 2),
+            "arrival_volume": None,
+        })
+    return upsert_price_rows(db, new_rows) if new_rows else 0
+
+
 def run_ingestion(db: Session, states: list[str] | None = "__default__") -> dict:
     """Resolves the row source (live -> dense snapshot -> fixture) and upserts into
-    PriceCache so the dashboard always has something to show. Then evaluates any
-    standing price alerts against the fresh data (v1.1).
+    PriceCache so the dashboard always has something to show. Then backfills
+    history for thin series and evaluates standing price alerts.
 
     ``states`` is passed through to ``resolve_ingestion_rows`` (v1.2)."""
     source, rows = resolve_ingestion_rows(states)

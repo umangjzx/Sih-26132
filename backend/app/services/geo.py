@@ -204,9 +204,95 @@ def haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 2 * r * math.asin(math.sqrt(h))
 
 
+# All-India district-headquarters coordinates. The detailed Maharashtra table
+# takes precedence; the rest is derived from the major-city list plus a
+# supplementary set so nearest-market distances work outside Maharashtra.
+_EXTRA_DISTRICT_COORDS: dict[str, tuple[float, float]] = {
+    # Tamil Nadu
+    "Coimbatore": (11.0168, 76.9558), "Chennai": (13.0827, 80.2707),
+    "Erode": (11.3410, 77.7172), "Salem": (11.6643, 78.1460),
+    "Madurai": (9.9252, 78.1198), "Tiruppur": (11.1085, 77.3411),
+    "Vellore": (12.9165, 79.1325), "Tenkasi": (8.9594, 77.3152),
+    "Dindigul": (10.3673, 77.9803), "Namakkal": (11.2189, 78.1674),
+    "Karur": (10.9601, 78.0766), "Villupuram": (11.9401, 79.4861),
+    "Cuddalore": (11.7480, 79.7714), "Thanjavur": (10.7870, 79.1378),
+    "Krishnagiri": (12.5186, 78.2137), "Dharmapuri": (12.1211, 78.1583),
+    "Chengalpattu": (12.6819, 79.9888), "Kancheepuram": (12.8342, 79.7036),
+    "Tiruvannamalai": (12.2253, 79.0747), "Sivaganga": (9.8433, 78.4809),
+    "Virudhunagar": (9.5680, 77.9624), "Theni": (10.0104, 77.4768),
+    "Tirunelveli": (8.7139, 77.7567), "Thoothukudi": (8.7642, 78.1348),
+    "Nagapattinam": (10.7656, 79.8424), "Pudukkottai": (10.3833, 78.8001),
+    "Ariyalur": (11.1401, 79.0782), "Perambalur": (11.2333, 78.8833),
+    "Ramanathapuram": (9.3639, 78.8395), "The Nilgiris": (11.4916, 76.7337),
+    # Kerala
+    "Thiruvananthapuram": (8.5241, 76.9366), "Ernakulam": (9.9816, 76.2999),
+    "Kozhikode": (11.2588, 75.7804), "Thrissur": (10.5276, 76.2144),
+    "Palakkad": (10.7867, 76.6548), "Kollam": (8.8932, 76.6141),
+    "Kannur": (11.8745, 75.3704), "Kottayam": (9.5916, 76.5222),
+    "Alappuzha": (9.4981, 76.3388), "Malappuram": (11.0510, 76.0711),
+    "Idukki": (9.8497, 76.9681), "Pathanamthitta": (9.2648, 76.7870),
+    "Wayanad": (11.6854, 76.1320), "Kasaragod": (12.4996, 74.9869),
+    # Karnataka
+    "Bengaluru": (12.9716, 77.5946), "Mysuru": (12.2958, 76.6394),
+    "Dharwad": (15.4589, 75.0078), "Belagavi": (15.8497, 74.4977),
+    "Kalaburagi": (17.3297, 76.8343), "Ballari": (15.1394, 76.9214),
+    "Tumakuru": (13.3379, 77.1173), "Kolar": (13.1367, 78.1292),
+    "Mandya": (12.5223, 76.8954), "Hassan": (13.0072, 76.0962),
+    "Shivamogga": (13.9299, 75.5681), "Davangere": (14.4644, 75.9218),
+    "Raichur": (16.2076, 77.3463), "Vijayapura": (16.8302, 75.7100),
+    # Andhra Pradesh / Telangana
+    "Guntur": (16.3067, 80.4365), "Kurnool": (15.8281, 78.0373),
+    "Krishna": (16.5062, 80.6480), "Visakhapatnam": (17.6868, 83.2185),
+    "Chittoor": (13.2172, 79.1003), "Anantapur": (14.6819, 77.6006),
+    "Kadapa": (14.4674, 78.8241), "Nellore": (14.4426, 79.9865),
+    "Warangal": (17.9689, 79.5941), "Nizamabad": (18.6725, 78.0941),
+    "Karimnagar": (18.4386, 79.1288), "Khammam": (17.2473, 80.1514),
+    # Punjab / Haryana / Rajasthan / UP / MP / Gujarat / others
+    "Ludhiana": (30.9010, 75.8573), "Jalandhar": (31.3260, 75.5762),
+    "Amritsar": (31.6340, 74.8723), "Patiala": (30.3398, 76.3869),
+    "Bathinda": (30.2110, 74.9455), "Karnal": (29.6857, 76.9905),
+    "Sirsa": (29.5349, 75.0280), "Hisar": (29.1492, 75.7217),
+    "Kurukshetra": (29.9695, 76.8783), "Panipat": (29.3909, 76.9635),
+    "Kota": (25.2138, 75.8648), "Jaipur": (26.9124, 75.7873),
+    "Jodhpur": (26.2389, 73.0243), "Sri Ganganagar": (29.9038, 73.8772),
+    "Lucknow": (26.8467, 80.9462), "Kanpur": (26.4499, 80.3319),
+    "Agra": (27.1767, 78.0081), "Varanasi": (25.3176, 82.9739),
+    "Meerut": (28.9845, 77.7064), "Bareilly": (28.3670, 79.4304),
+    "Indore": (22.7196, 75.8577), "Bhopal": (23.2599, 77.4126),
+    "Ujjain": (23.1765, 75.7885), "Jabalpur": (23.1815, 79.9864),
+    "Rajkot": (22.3039, 70.8022), "Ahmedabad": (23.0225, 72.5714),
+    "Mehsana": (23.5880, 72.3693), "Junagadh": (21.5222, 70.4579),
+    "Patna": (25.5941, 85.1376), "Muzaffarpur": (26.1209, 85.3647),
+    "Purnia": (25.7771, 87.4753), "Samastipur": (25.8560, 85.7799),
+    "Kolkata": (22.5726, 88.3639), "Hooghly": (22.9089, 88.3960),
+    "Purba Bardhaman": (23.2324, 87.8615), "Cuttack": (20.4625, 85.8828),
+    "Khordha": (20.1734, 85.6745), "Sambalpur": (21.4669, 83.9756),
+    "Dehradun": (30.3165, 78.0322), "Raipur": (21.2514, 81.6296),
+}
+
+DISTRICT_COORDS: dict[str, tuple[float, float]] = {
+    **{d: (lat, lon) for (lat, lon), (_s, d) in CITY_COORDS.items()},
+    **_EXTRA_DISTRICT_COORDS,
+    **DISTRICT_CENTROIDS,  # detailed Maharashtra set wins
+}
+
+
+def _district_coord(name: str) -> tuple[float, float] | None:
+    if not name:
+        return None
+    if name in DISTRICT_COORDS:
+        return DISTRICT_COORDS[name]
+    # tolerate "Coimbatore district", "Guntur District", "Kozhikode(Calicut)"
+    base = name.split("(")[0].strip()
+    for suffix in (" district", " District"):
+        if base.endswith(suffix):
+            base = base[: -len(suffix)].strip()
+    return DISTRICT_COORDS.get(base)
+
+
 def district_distance_km(district_a: str, district_b: str) -> float | None:
-    a = DISTRICT_CENTROIDS.get(district_a)
-    b = DISTRICT_CENTROIDS.get(district_b)
+    a = _district_coord(district_a)
+    b = _district_coord(district_b)
     if a is None or b is None:
         return None
     return round(haversine_km(a, b), 1)
