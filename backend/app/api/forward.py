@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.core.security import CurrentUser, require_role
 from app.models.deal import Deal
@@ -42,6 +43,9 @@ logger = logging.getLogger(__name__)
 
 _ACTIVE_COMMITMENT = ("pending", "accepted")
 
+_BID_CREATE_LIMIT, _BID_CREATE_WINDOW_S = 30, 3600
+_COMMIT_LIMIT, _COMMIT_WINDOW_S = 40, 3600
+
 
 # --------------------------------------------------------------------------- #
 # helpers
@@ -57,6 +61,30 @@ def _fill(db: Session, bid_id: int) -> tuple[float, float]:
     by = {s: float(q) for s, q in rows}
     committed = by.get("pending", 0.0) + by.get("accepted", 0.0)
     return round(committed, 1), round(by.get("accepted", 0.0), 1)
+
+
+def _fills(db: Session, bid_ids: list[int]) -> dict[int, tuple[float, float]]:
+    """Batch form of ``_fill`` for a list of bids — one grouped query."""
+    if not bid_ids:
+        return {}
+    rows = db.execute(
+        select(
+            ForwardCommitment.bid_id,
+            ForwardCommitment.status,
+            func.coalesce(func.sum(ForwardCommitment.quantity_kg), 0.0),
+        )
+        .where(ForwardCommitment.bid_id.in_(bid_ids))
+        .group_by(ForwardCommitment.bid_id, ForwardCommitment.status)
+    ).all()
+    acc: dict[int, dict[str, float]] = {}
+    for bid_id, st, qty in rows:
+        acc.setdefault(bid_id, {})[st] = float(qty)
+    out: dict[int, tuple[float, float]] = {}
+    for bid_id in bid_ids:
+        by = acc.get(bid_id, {})
+        committed = by.get("pending", 0.0) + by.get("accepted", 0.0)
+        out[bid_id] = (round(committed, 1), round(by.get("accepted", 0.0), 1))
+    return out
 
 
 def _calendar_warning(crop: str, ready: date, bid: ForwardBid) -> str | None:
@@ -93,14 +121,16 @@ def _enrich_commitment(db: Session, c: ForwardCommitment, bid: ForwardBid) -> Fo
 def _enrich_bid(
     db: Session, bid: ForwardBid, viewer: User,
     origin: tuple[float, float] | None = None,
+    fill: tuple[float, float] | None = None,
+    buyer: User | None = None,
 ) -> ForwardBidOut:
     out = ForwardBidOut.model_validate(bid)
-    buyer = db.get(User, bid.buyer_id)
+    buyer = buyer or db.get(User, bid.buyer_id)
     if buyer:
         out.buyer_name = buyer.name
         out.buyer_verified = getattr(buyer, "verification_status", "") == "verified"
 
-    committed, accepted = _fill(db, bid.id)
+    committed, accepted = fill if fill is not None else _fill(db, bid.id)
     out.committed_kg = committed
     out.accepted_kg = accepted
     out.remaining_kg = round(max(bid.quantity_kg - accepted, 0.0), 1)
@@ -150,6 +180,13 @@ def create_bid(
     _role: Annotated[User, require_role("buyer")] = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ) -> ForwardBidOut:
+    if not ratelimit.check(
+        f"fwd_bid:{current_user.id}", limit=_BID_CREATE_LIMIT, window_s=_BID_CREATE_WINDOW_S
+    ):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "You are posting bids too quickly — please wait a moment.",
+        )
     bid = ForwardBid(
         buyer_id=current_user.id,
         crop=body.crop.strip(),
@@ -202,7 +239,15 @@ def list_bids(
 
     origin = _viewer_origin(current_user, lat, lon)
     bids = list(db.execute(stmt).scalars().all())
-    out = [_enrich_bid(db, b, current_user, origin) for b in bids]
+    fills = _fills(db, [b.id for b in bids])
+    buyer_ids = {b.buyer_id for b in bids} or {0}
+    buyers = {
+        u.id: u for u in db.execute(select(User).where(User.id.in_(buyer_ids))).scalars()
+    }
+    out = [
+        _enrich_bid(db, b, current_user, origin, fills.get(b.id), buyers.get(b.buyer_id))
+        for b in bids
+    ]
     if radius_km is not None:
         out = [b for b in out if b.distance_km is None or b.distance_km <= radius_km]
     return out
@@ -246,9 +291,25 @@ def update_bid_status(
     if bid.status == "filled":
         raise HTTPException(status.HTTP_409_CONFLICT, "A filled bid can't be reopened or cancelled")
     bid.status = new_status
+
+    released = 0
+    if new_status in ("closed", "cancelled"):
+        # farmers shouldn't be left with a live 'pending' commitment on a bid the
+        # buyer has walked away from.
+        pending = db.execute(
+            select(ForwardCommitment).where(
+                ForwardCommitment.bid_id == bid.id,
+                ForwardCommitment.status == "pending",
+            )
+        ).scalars().all()
+        for pc in pending:
+            pc.status = "declined"
+        released = len(pending)
+
     log_event(
         db, actor_id=current_user.id, entity_type="forward_bid", entity_id=bid.id,
-        action=f"forward_bid_{new_status}", detail={},
+        action=f"forward_bid_{new_status}",
+        detail={"released_commitments": released} if released else {},
     )
     db.commit()
     db.refresh(bid)
@@ -271,6 +332,13 @@ def commit_to_bid(
     _role: Annotated[User, require_role("farmer")] = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ) -> ForwardCommitmentOut:
+    if not ratelimit.check(
+        f"fwd_commit:{current_user.id}", limit=_COMMIT_LIMIT, window_s=_COMMIT_WINDOW_S
+    ):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many commitment attempts — please wait a moment.",
+        )
     bid = db.get(ForwardBid, bid_id)
     if bid is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Forward bid not found")
@@ -345,6 +413,19 @@ def accept_commitment(
     c, bid = _load_commitment_as_buyer(commitment_id, current_user, db)
     if c.status != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, f"Commitment is '{c.status}', not pending")
+    if bid.status not in ("open", "filled"):
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Bid is '{bid.status}' — can't accept commitments")
+
+    # re-check headroom at accept time: several pending commitments can each pass
+    # the commit-time check independently, but together they must not over-fill.
+    _committed_now, accepted_now = _fill(db, bid.id)
+    if accepted_now + c.quantity_kg > bid.quantity_kg + 1e-6:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Accepting this would take the bid to "
+            f"{accepted_now + c.quantity_kg:.0f} kg, over the {bid.quantity_kg:.0f} kg sought. "
+            f"Only {max(bid.quantity_kg - accepted_now, 0):.0f} kg is still open.",
+        )
 
     farmer = db.get(User, c.farmer_id)
     lot = Lot(
@@ -389,8 +470,18 @@ def accept_commitment(
     c.deal_id = deal.id
     db.flush()
     _committed, accepted = _fill(db, bid.id)
-    if accepted >= bid.quantity_kg - 1e-6:
+    filled_now = accepted >= bid.quantity_kg - 1e-6
+    if filled_now:
         bid.status = "filled"
+        # any still-pending commitments can no longer be honoured.
+        leftover = db.execute(
+            select(ForwardCommitment).where(
+                ForwardCommitment.bid_id == bid.id,
+                ForwardCommitment.status == "pending",
+            )
+        ).scalars().all()
+        for pc in leftover:
+            pc.status = "declined"
 
     log_event(
         db, actor_id=current_user.id, entity_type="forward_bid", entity_id=bid.id,

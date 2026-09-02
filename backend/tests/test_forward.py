@@ -174,6 +174,91 @@ def test_calendar_warning_on_off_season_ready_date(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_accept_second_commitment_that_would_overfill_is_blocked(db, farmer_user, buyer_user, admin_user):
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user, quantity_kg=1000)
+        # two farmers each commit 600 (each passes the commit-time check on its own)
+        _as(farmer_user)
+        a = c.post(f"/api/forward/bids/{bid['id']}/commitments", json={
+            "quantity_kg": 600, "price_per_qtl": 7200, "expected_ready": _FROM,
+        }).json()
+        _as(admin_user)  # a second "farmer" — admin_user stands in as another committer
+        # give admin a farmer role commitment via the API is not possible; use a
+        # direct model insert instead
+        from app.models.forward import ForwardCommitment as _FC
+        db.add(_FC(bid_id=bid["id"], farmer_id=admin_user.id, quantity_kg=600,
+                   price_per_qtl=7200, expected_ready=date.today() + timedelta(days=45),
+                   status="pending"))
+        db.commit()
+
+        _as(buyer_user)
+        assert c.post(f"/api/forward/commitments/{a['id']}/accept").status_code == 200
+        # the other 600 would take accepted to 1200 > 1000
+        b_id = db.execute(
+            select(_FC.id).where(_FC.farmer_id == admin_user.id, _FC.bid_id == bid["id"])
+        ).scalar_one()
+        assert c.post(f"/api/forward/commitments/{b_id}/accept").status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_closing_a_bid_declines_pending_commitments(db, farmer_user, buyer_user):
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user)
+        _as(farmer_user)
+        cm = c.post(f"/api/forward/bids/{bid['id']}/commitments", json={
+            "quantity_kg": 1000, "price_per_qtl": 7200, "expected_ready": _FROM,
+        }).json()
+        _as(buyer_user)
+        assert c.patch(f"/api/forward/bids/{bid['id']}", params={"status": "closed"}).status_code == 200
+        db.expire_all()
+        assert db.get(ForwardCommitment, cm["id"]).status == "declined"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_filling_a_bid_declines_other_pending_commitments(db, farmer_user, buyer_user, admin_user):
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user, quantity_kg=1000)
+        _as(farmer_user)
+        winner = c.post(f"/api/forward/bids/{bid['id']}/commitments", json={
+            "quantity_kg": 1000, "price_per_qtl": 7200, "expected_ready": _FROM,
+        }).json()
+        from app.models.forward import ForwardCommitment as _FC
+        db.add(_FC(bid_id=bid["id"], farmer_id=admin_user.id, quantity_kg=400,
+                   price_per_qtl=7200, expected_ready=date.today() + timedelta(days=45),
+                   status="pending"))
+        db.commit()
+        loser_id = db.execute(
+            select(_FC.id).where(_FC.farmer_id == admin_user.id, _FC.bid_id == bid["id"])
+        ).scalar_one()
+
+        _as(buyer_user)
+        assert c.post(f"/api/forward/commitments/{winner['id']}/accept").status_code == 200
+        db.expire_all()
+        assert db.get(ForwardBid, bid["id"]).status == "filled"
+        assert db.get(_FC, loser_id).status == "declined"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_commit_expected_ready_in_past_rejected(db, farmer_user, buyer_user):
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user)
+        _as(farmer_user)
+        r = c.post(f"/api/forward/bids/{bid['id']}/commitments", json={
+            "quantity_kg": 500, "price_per_qtl": 7200,
+            "expected_ready": (date.today() - timedelta(days=3)).isoformat(),
+        })
+        assert r.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_commit_over_bid_quantity_blocked(db, farmer_user, buyer_user):
     c = _client(db)
     try:

@@ -835,7 +835,9 @@
     "cancel": "Cancel",
     "commitError": "Could not record the commitment.",
     "noOwnBids": "You have not posted any forward bids yet.",
-    "noOpenBids": "No open forward bids near you right now."
+    "noOpenBids": "No open forward bids near you right now.",
+    "actionError": "Something went wrong. Please try again.",
+    "confirmAccept": "Accept this commitment? It creates a binding deal and can't be undone."
   },
   "profile": {
     "title": "Profile & verification",

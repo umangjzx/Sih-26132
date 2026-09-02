@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, Icon, Skeleton } from "@/components/ui";
 import { useLocation } from "@/lib/useLocation";
 import {
+  ApiError,
   actOnCommitment,
   commitToForwardBid,
   createForwardBid,
@@ -154,14 +155,29 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
 function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string; onChange: () => void }) {
   const t = useTranslations("forward");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   async function act(id: number, action: "accept" | "decline") {
+    if (action === "accept" && !window.confirm(t("confirmAccept"))) return;
     setBusyId(id);
+    setErr(null);
     try {
       await actOnCommitment(id, action, token);
       onChange();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("actionError"));
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function closeBid() {
+    setErr(null);
+    try {
+      await setForwardBidStatus(bid.id, "closed", token);
+      onChange();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("actionError"));
     }
   }
 
@@ -182,13 +198,15 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
         </div>
         {bid.status === "open" && (
           <button
-            onClick={() => setForwardBidStatus(bid.id, "closed", token).then(onChange)}
+            onClick={closeBid}
             className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--paper)]"
           >
             {t("closeBid")}
           </button>
         )}
       </div>
+
+      {err && <p className="mt-2 text-xs font-semibold text-[var(--red-600)]">{err}</p>}
 
       <div className="mt-3">
         <div className="mb-1 flex justify-between text-xs font-semibold text-[var(--ink-soft)]">
@@ -332,12 +350,21 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
           )}
           {mine.status === "pending" && (
             <button
-              onClick={() => actOnCommitment(mine.id, "withdraw", token).then(onChange)}
+              onClick={async () => {
+                setErr(null);
+                try {
+                  await actOnCommitment(mine.id, "withdraw", token);
+                  onChange();
+                } catch (e) {
+                  setErr(e instanceof ApiError ? e.message : t("actionError"));
+                }
+              }}
               className="mt-2 rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)] hover:bg-white"
             >
               {t("withdraw")}
             </button>
           )}
+          {err && <p className="mt-2 text-xs font-semibold text-[var(--red-600)]">{err}</p>}
           {mine.status === "accepted" && mine.deal_id && (
             <a href={`/deals/${mine.deal_id}`} className="mt-2 inline-block text-xs font-bold text-[var(--green-700)] hover:underline">
               {t("viewDeal")} →

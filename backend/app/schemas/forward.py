@@ -1,27 +1,41 @@
 """Pydantic v2 schemas for forward contracts (v1.6)."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.services.grading import GRADE_CODES, normalize_grade
 
 _MAX_QTY = 10_000_000
 _MAX_PRICE = 5_000_000
+_MAX_READY_DAYS = 550  # ~18 months — same ceiling lots use for available_from
 
 
 class ForwardBidCreate(BaseModel):
-    crop: str
+    crop: str = Field(min_length=1, max_length=120)
     quantity_kg: float
     price_min: float
     price_max: float
     delivery_from: date
     delivery_to: date
-    delivery_district: str | None = None
+    delivery_district: str | None = Field(default=None, max_length=120)
     latitude: float | None = None
     longitude: float | None = None
     quality_grade_min: str | None = None
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("crop")
+    @classmethod
+    def _crop(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("crop must not be empty")
+        return v
+
+    @field_validator("delivery_district", "notes")
+    @classmethod
+    def _strip_opt(cls, v: str | None) -> str | None:
+        return (v or "").strip() or None
 
     @field_validator("quantity_kg")
     @classmethod
@@ -62,7 +76,12 @@ class ForwardCommitmentCreate(BaseModel):
     quantity_kg: float
     price_per_qtl: float
     expected_ready: date
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("note")
+    @classmethod
+    def _note(cls, v: str | None) -> str | None:
+        return (v or "").strip() or None
 
     @field_validator("quantity_kg")
     @classmethod
@@ -76,6 +95,16 @@ class ForwardCommitmentCreate(BaseModel):
     def _price(cls, v: float) -> float:
         if v <= 0 or v > _MAX_PRICE:
             raise ValueError("price out of range")
+        return v
+
+    @field_validator("expected_ready")
+    @classmethod
+    def _ready(cls, v: date) -> date:
+        today = date.today()
+        if v < today:
+            raise ValueError("expected_ready cannot be in the past")
+        if v > today + timedelta(days=_MAX_READY_DAYS):
+            raise ValueError("expected_ready is unrealistically far in the future")
         return v
 
 
