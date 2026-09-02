@@ -166,3 +166,46 @@ def test_analytics_farmer_forbidden(db, farmer_user):
         assert client.get("/api/admin/analytics").status_code == 403
     finally:
         app.dependency_overrides.clear()
+
+
+def test_district_price_gap_is_per_crop_not_crop_mix(db, admin_user):
+    """A turmeric-heavy district must not read as 400% 'underpriced' just because
+    turmeric costs more than onion. The gap is computed per crop vs the state
+    average for that same crop."""
+    from app.models.price_cache import PriceCache
+
+    today = date.today()
+    rows = [
+        # Pune: onion at the state average, turmeric at the state average -> ~0 gap
+        ("Onion", "Pune", "Nagar Mandi", 2000),
+        ("Turmeric", "Pune", "Market Yard", 12000),
+        # Sangli: turmeric-only, priced right at the turmeric state avg -> ~0 gap,
+        # NOT a huge negative just because there's no onion here.
+        ("Turmeric", "Sangli", "Sangli APMC", 12000),
+        # Nashik: onion 10% below the onion state avg -> gap ~ -10%
+        ("Onion", "Nashik", "Lasalgaon", 1800),
+        ("Turmeric", "Nashik", "Nashik APMC", 12000),
+    ]
+    for crop, district, market, price in rows:
+        db.add(PriceCache(
+            crop=crop, variety="", market=market, district=district, state="Maharashtra",
+            date=today, min_price=price - 100, max_price=price + 100, modal_price=price,
+            arrival_volume=None,
+        ))
+    db.commit()
+
+    client = _client(db)
+    try:
+        _as(admin_user)
+        gaps = {g["district"]: g["gap_vs_state_pct"]
+                for g in client.get("/api/admin/dashboard").json()["district_price_gaps"]}
+        # Sangli is turmeric-only and priced exactly at the turmeric state avg,
+        # so its gap is ~0 — the old crop-mixing logic would have shown it far
+        # negative just for lacking the cheaper onion.
+        assert abs(gaps["Sangli"]) < 1
+        # Nashik is genuinely below on onion; it should be the most negative.
+        assert gaps["Nashik"] < -2
+        assert gaps["Nashik"] == min(gaps.values())
+        assert gaps["Pune"] > gaps["Nashik"]
+    finally:
+        app.dependency_overrides.clear()

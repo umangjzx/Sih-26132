@@ -359,7 +359,7 @@
     "chMovers": "सर्वात मोठे किंमत बदल",
     "chMoversHint": "Latest price vs its own 30-day average, by crop.",
     "chDistrictGap": "जिल्हा किंमत फरक",
-    "chDistrictGapHint": "How each district's average modal price compares with the state average.",
+    "chDistrictGapHint": "प्रति पीक: प्रत्येक जिल्ह्याची मॉडल किंमत त्याच पिकाच्या राज्य सरासरीसारखी किती खाली/वर आहे, मग जिल्ह्याच्या पिकांवर सरासरी.",
     "chAnomalies": "किंमत विसंगती",
     "chAnomaliesHint": "Latest modal price more than 20% off its 7-day average.",
     "noAnomalies": "आत्ता कोणताही असामान्य किंमत बदल नाही.",

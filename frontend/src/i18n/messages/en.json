@@ -359,7 +359,7 @@
     "chMovers": "Biggest price movers",
     "chMoversHint": "Latest price vs its own 30-day average, by crop.",
     "chDistrictGap": "District price-realisation gap",
-    "chDistrictGapHint": "How each district's average modal price compares with the state average.",
+    "chDistrictGapHint": "Per crop: how far each district's modal price sits below/above the state average for the same crop, then averaged across the district's crops.",
     "chAnomalies": "Price anomalies",
     "chAnomaliesHint": "Latest modal price more than 20% off its 7-day average.",
     "noAnomalies": "No unusual price moves right now.",

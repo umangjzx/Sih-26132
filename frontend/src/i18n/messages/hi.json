@@ -359,7 +359,7 @@
     "chMovers": "सबसे बड़े मूल्य बदलाव",
     "chMoversHint": "Latest price vs its own 30-day average, by crop.",
     "chDistrictGap": "ज़िला मूल्य अंतर",
-    "chDistrictGapHint": "How each district's average modal price compares with the state average.",
+    "chDistrictGapHint": "प्रति फ़सल: प्रत्येक ज़िले की मॉडल कीमत उसी फ़सल के राज्य औसत से कितनी ऊपर/नीचे है, फिर ज़िले की फ़सलों पर औसत।",
     "chAnomalies": "मूल्य विसंगतियाँ",
     "chAnomaliesHint": "Latest modal price more than 20% off its 7-day average.",
     "noAnomalies": "अभी कोई असामान्य मूल्य बदलाव नहीं।",

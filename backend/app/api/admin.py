@@ -82,24 +82,45 @@ def admin_dashboard(
     ).scalars().all()
     dispute_queue = [DisputeSummary.model_validate(d) for d in dispute_rows]
 
-    # --- v1.1: district price-realisation gap (latest reported date) ---
+    # --- district price-realisation gap (latest reported date) ---
+    # Per-crop: how far a district's modal price sits below/above the state
+    # average FOR THE SAME CROP, then averaged across the district's crops
+    # (weighted by how many markets reported). Mixing crops the way the old
+    # version did made a turmeric-heavy district look 400% "underpriced".
     latest_date = db.execute(select(func.max(PriceCache.date))).scalar_one_or_none()
     district_price_gaps: list[DistrictPriceGap] = []
     if latest_date is not None:
-        rows = db.execute(
-            select(PriceCache.district, func.avg(PriceCache.modal_price))
+        cd_rows = db.execute(
+            select(
+                PriceCache.crop, PriceCache.district,
+                func.avg(PriceCache.modal_price), func.count(PriceCache.id),
+            )
             .where(PriceCache.date == latest_date, PriceCache.district != "")
-            .group_by(PriceCache.district)
+            .group_by(PriceCache.crop, PriceCache.district)
         ).all()
-        if rows:
-            state_avg = sum(float(a) for _, a in rows) / len(rows)
-            for district, avg in rows:
-                avg = float(avg)
-                gap = round((avg - state_avg) / state_avg * 100, 1) if state_avg else 0.0
-                district_price_gaps.append(
-                    DistrictPriceGap(district=district, avg_modal_price=round(avg, 0), gap_vs_state_pct=gap)
+        crop_state_avg: dict[str, list[float]] = {}
+        for crop, _d, avg, _n in cd_rows:
+            crop_state_avg.setdefault(crop, []).append(float(avg))
+        crop_mean = {c: sum(v) / len(v) for c, v in crop_state_avg.items() if v}
+
+        by_district: dict[str, list[tuple[float, float, int]]] = {}
+        for crop, district, avg, n in cd_rows:
+            base = crop_mean.get(crop)
+            if not base:
+                continue
+            by_district.setdefault(district, []).append((float(avg), base, int(n)))
+
+        for district, items in by_district.items():
+            w = sum(n for _a, _b, n in items) or 1
+            gap = sum(((a - b) / b) * n for a, b, n in items) / w * 100
+            avg_price = sum(a * n for a, _b, n in items) / w
+            district_price_gaps.append(
+                DistrictPriceGap(
+                    district=district, avg_modal_price=round(avg_price, 0),
+                    gap_vs_state_pct=round(gap, 1),
                 )
-            district_price_gaps.sort(key=lambda x: x.gap_vs_state_pct)
+            )
+        district_price_gaps.sort(key=lambda x: x.gap_vs_state_pct)
 
     # --- v1.1: disputes by the raiser's district ---
     dby_rows = db.execute(
