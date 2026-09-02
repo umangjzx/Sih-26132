@@ -466,3 +466,70 @@ def admin_set_user_active(
     db.commit()
     db.refresh(user)
     return AdminUserOut.model_validate(user)
+
+
+# ---------------------------------------------------------------------------
+# Activity ledger — GET /api/admin/events  (+ .csv export)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/admin/events")
+def admin_recent_events(
+    current_user: CurrentUser,
+    limit: int = Query(200, ge=1, le=1000),
+    entity_type: str | None = Query(None),
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> list[dict]:
+    """Newest-first slice of the append-only transaction ledger, with the
+    actor's name resolved for display."""
+    from app.services.audit import recent_events
+
+    rows = recent_events(db, limit=limit, entity_type=entity_type)
+    actor_ids = {r["actor_id"] for r in rows if r["actor_id"] is not None}
+    names = {
+        u.id: u.name
+        for u in db.execute(select(User).where(User.id.in_(actor_ids or {0}))).scalars().all()
+    }
+    for r in rows:
+        r["actor_name"] = names.get(r["actor_id"]) if r["actor_id"] else "system"
+    return rows
+
+
+@router.get("/api/admin/events.csv")
+def admin_events_csv(
+    current_user: CurrentUser,
+    limit: int = Query(5000, ge=1, le=50000),
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+):
+    """Download the ledger as CSV (oldest-first) — a transparent transaction record."""
+    import csv
+    import io
+    import json as _json
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services.audit import recent_events
+
+    rows = list(reversed(recent_events(db, limit=limit)))
+    actor_ids = {r["actor_id"] for r in rows if r["actor_id"] is not None}
+    names = {
+        u.id: u.name
+        for u in db.execute(select(User).where(User.id.in_(actor_ids or {0}))).scalars().all()
+    }
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["created_at", "entity_type", "entity_id", "action", "actor_id", "actor_name", "detail"])
+    for r in rows:
+        w.writerow([
+            r["created_at"], r["entity_type"], r["entity_id"], r["action"],
+            r["actor_id"] or "", names.get(r["actor_id"], "system"),
+            _json.dumps(r["detail"], default=str) if r["detail"] else "",
+        ])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=agrilink_transaction_log.csv"},
+    )

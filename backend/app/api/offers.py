@@ -21,6 +21,7 @@ from app.models.lot import Lot
 from app.models.match import Match
 from app.models.offer import Offer
 from app.schemas.offer import DealResponse, OfferCreate, OfferResponse
+from app.services.audit import log_event
 
 router = APIRouter(tags=["offers"])
 logger = logging.getLogger(__name__)
@@ -92,6 +93,12 @@ def post_offer(
     )
     db.add(offer)
     match.status = "offered"
+    db.flush()
+    log_event(
+        db, actor_id=current_user.id, entity_type="match", entity_id=match_id,
+        action="offer_countered" if pending else "offer_made",
+        detail={"price": body.price, "quantity": body.quantity, "offer_id": offer.id},
+    )
     db.commit()
     db.refresh(offer)
 
@@ -186,6 +193,18 @@ def accept_offer(
         pipeline_status="matched",
     )
     db.add(deal)
+    db.flush()
+    log_event(
+        db, actor_id=current_user.id, entity_type="match", entity_id=match.id,
+        action="offer_accepted",
+        detail={"offer_id": offer.id, "price": offer.price, "quantity": offer.quantity},
+    )
+    log_event(
+        db, actor_id=current_user.id, entity_type="deal", entity_id=deal.id,
+        action="deal_created",
+        detail={"from": "offer", "agreed_price": deal.agreed_price,
+                "agreed_quantity": deal.agreed_quantity},
+    )
     db.commit()
     db.refresh(deal)
 
@@ -245,5 +264,10 @@ def decline_offer(
     if remaining_pending is None:
         match.status = "proposed"
 
+    db.flush()
+    log_event(
+        db, actor_id=current_user.id, entity_type="match", entity_id=offer.match_id,
+        action="offer_declined", detail={"offer_id": offer.id},
+    )
     db.commit()
     return {"detail": "Offer declined"}

@@ -956,6 +956,35 @@ export function getMatchingHealth(token: string): Promise<MatchingHealth> {
   return getJson("/api/admin/matching-health", token);
 }
 
+export type AdminEvent = {
+  id: number;
+  actor_id: number | null;
+  actor_name: string;
+  entity_type: string;
+  entity_id: number;
+  action: string;
+  detail: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
+export function getAdminEvents(token: string, limit = 60): Promise<AdminEvent[]> {
+  return getJson(`/api/admin/events?limit=${limit}`, token);
+}
+
+/** Fetch the ledger CSV with auth and trigger a download. */
+export async function downloadAdminEventsCsv(token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/events.csv`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "agrilink_transaction_log.csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
 export type AdminAnalytics = {
   gmv_inr: number;
   avg_deal_value_inr: number;

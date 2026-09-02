@@ -362,7 +362,11 @@
     "chDistrictGapHint": "How each district's average modal price compares with the state average.",
     "chAnomalies": "Price anomalies",
     "chAnomaliesHint": "Latest modal price more than 20% off its 7-day average.",
-    "noAnomalies": "No unusual price moves right now."
+    "noAnomalies": "No unusual price moves right now.",
+    "activityTitle": "Activity ledger",
+    "activityHint": "Append-only record of every offer, deal, payment and dispute action.",
+    "downloadCsv": "Download CSV",
+    "noActivity": "No activity recorded yet."
   },
   "weather": {
     "title": "7-Day Weather",

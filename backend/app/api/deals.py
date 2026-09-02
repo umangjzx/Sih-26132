@@ -33,7 +33,7 @@ from app.models.payment import DealPayment
 from app.models.user import User
 from app.schemas.deal import DealDetailResponse
 from app.schemas.logistics import LogisticsOut, LogisticsUpdate
-from app.services.audit import get_events_for, log_event
+from app.services.audit import get_deal_timeline, get_events_for, log_event
 
 
 class AdvanceBody(BaseModel):
@@ -319,9 +319,9 @@ def get_deal_events(
     db: Session = Depends(get_db),
 ) -> list[dict]:
     """Return the full append-only audit log for a deal, oldest-first —
-    including its payment and logistics events."""
-    _load_deal_with_access(deal_id, current_user, db)  # auth check
-    return get_events_for(db, ["deal", "payment", "logistics"], deal_id)
+    its payment/logistics events plus the offer/match negotiation events."""
+    deal, match, _lot, _demand = _load_deal_with_access(deal_id, current_user, db)
+    return get_deal_timeline(db, deal_id, match.id if match else None)
 
 
 # ---------------------------------------------------------------------------

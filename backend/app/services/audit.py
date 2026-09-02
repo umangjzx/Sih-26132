@@ -40,6 +40,21 @@ def log_event(
     logger.debug("audit: %s %s#%d by user=%s", action, entity_type, entity_id, actor_id)
 
 
+def _serialize(rows) -> list[dict]:
+    return [
+        {
+            "id": r.id,
+            "actor_id": r.actor_id,
+            "entity_type": r.entity_type,
+            "entity_id": r.entity_id,
+            "action": r.action,
+            "detail": json.loads(r.detail) if r.detail else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
 def get_events_for(db, entity_type: str | list[str], entity_id: int) -> list[dict]:
     """Return all events for an entity (or several entity types that share the
     same id, e.g. a deal + its payments + its logistics), sorted oldest-first."""
@@ -55,16 +70,33 @@ def get_events_for(db, entity_type: str | list[str], entity_id: int) -> list[dic
         )
         .order_by(TransactionEvent.created_at.asc())
     ).scalars().all()
+    return _serialize(rows)
 
-    return [
-        {
-            "id": r.id,
-            "actor_id": r.actor_id,
-            "entity_type": r.entity_type,
-            "entity_id": r.entity_id,
-            "action": r.action,
-            "detail": json.loads(r.detail) if r.detail else None,
-            "created_at": r.created_at.isoformat() if r.created_at else None,
-        }
-        for r in rows
-    ]
+
+def get_deal_timeline(db, deal_id: int, match_id: int | None) -> list[dict]:
+    """The full activity log for a deal: its own deal/payment/logistics events,
+    plus the offer/match events from the negotiation that produced it."""
+    from sqlalchemy import or_, select
+    from app.models.transaction_event import TransactionEvent
+
+    E = TransactionEvent
+    conds = [(E.entity_type.in_(("deal", "payment", "logistics"))) & (E.entity_id == deal_id)]
+    if match_id is not None:
+        conds.append((E.entity_type.in_(("match", "offer"))) & (E.entity_id == match_id))
+    rows = db.execute(
+        select(E).where(or_(*conds)).order_by(E.created_at.asc(), E.id.asc())
+    ).scalars().all()
+    return _serialize(rows)
+
+
+def recent_events(db, *, limit: int = 200, entity_type: str | None = None) -> list[dict]:
+    """Newest-first slice of the whole ledger — for the admin activity panel."""
+    from sqlalchemy import select
+    from app.models.transaction_event import TransactionEvent
+
+    stmt = select(TransactionEvent).order_by(
+        TransactionEvent.created_at.desc(), TransactionEvent.id.desc()
+    )
+    if entity_type:
+        stmt = stmt.where(TransactionEvent.entity_type == entity_type)
+    return _serialize(db.execute(stmt.limit(limit)).scalars().all())

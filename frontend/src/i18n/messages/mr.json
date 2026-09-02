@@ -362,7 +362,11 @@
     "chDistrictGapHint": "How each district's average modal price compares with the state average.",
     "chAnomalies": "किंमत विसंगती",
     "chAnomaliesHint": "Latest modal price more than 20% off its 7-day average.",
-    "noAnomalies": "आत्ता कोणताही असामान्य किंमत बदल नाही."
+    "noAnomalies": "आत्ता कोणताही असामान्य किंमत बदल नाही.",
+    "activityTitle": "क्रियाकलाप नोंदवही",
+    "activityHint": "प्रत्येक ऑफर, व्यवहार, पेमेंट आणि वादाची कायमस्वरूपी नोंद.",
+    "downloadCsv": "CSV डाउनलोड",
+    "noActivity": "अजून कोणतीही क्रिया नोंदवली नाही."
   },
   "weather": {
     "title": "7-दिवसांचे हवामान",

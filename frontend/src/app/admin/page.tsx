@@ -33,11 +33,14 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { Icon } from "@/components/ui";
 import {
+  downloadAdminEventsCsv,
   getAdminAnalytics,
   getAdminDashboard,
+  getAdminEvents,
   getMatchingHealth,
   type AdminAnalytics,
   type AdminDashboardResponse,
+  type AdminEvent,
   type MatchingHealth,
 } from "@/lib/api";
 
@@ -120,6 +123,7 @@ export default function AdminPage() {
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
   const [an, setAn] = useState<AdminAnalytics | null>(null);
   const [health, setHealth] = useState<MatchingHealth | null>(null);
+  const [events, setEvents] = useState<AdminEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -144,6 +148,11 @@ export default function AdminPage() {
       setHealth(await getMatchingHealth(token));
     } catch {
       /* match-health panel is optional */
+    }
+    try {
+      setEvents(await getAdminEvents(token));
+    } catch {
+      /* activity ledger is optional */
     }
   }, [token, t]);
 
@@ -522,6 +531,38 @@ export default function AdminPage() {
           )}
         </Card>
       </div>
+
+      {/* Activity ledger — the append-only transaction log */}
+      <Card title={t("activityTitle")} hint={t("activityHint")}>
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => token && downloadAdminEventsCsv(token).catch(() => {})}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-bold opacity-80 hover:opacity-100"
+          >
+            <Icon name="chart" size={13} /> {t("downloadCsv")}
+          </button>
+        </div>
+        {events.length === 0 ? (
+          <p className="text-sm opacity-60">{t("noActivity")}</p>
+        ) : (
+          <ul className="flex max-h-96 flex-col divide-y divide-[var(--color-border)] overflow-y-auto text-sm">
+            {events.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5">
+                <span className="min-w-0">
+                  <span className="font-semibold">{e.action.replace(/_/g, " ")}</span>
+                  <span className="opacity-55">
+                    {" "}· {e.entity_type} #{e.entity_id} · {e.actor_name}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs opacity-50">
+                  {e.created_at ? new Date(e.created_at).toLocaleString() : "—"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

@@ -85,6 +85,42 @@ def test_farmer_cannot_record_payment(db, farmer_user, buyer_user):
 # audit events
 # --------------------------------------------------------------------------- #
 
+def test_deal_timeline_includes_offer_and_negotiation_events(db, farmer_user, buyer_user):
+    """A deal's activity log should carry the offer/match events that produced it,
+    not just the deal's own advance/payment rows."""
+    from app.models.match import Match
+    from app.models.lot import Lot
+    from app.models.demand import Demand
+
+    lot = Lot(farmer_id=farmer_user.id, crop="Onion", quantity_kg=1000, quality_grade="A",
+              expected_price=2400, available_from=date(2026, 10, 1), location="Pune", status="open")
+    dem = Demand(buyer_id=buyer_user.id, crop="Onion", quantity_kg=1000, quality_spec="A",
+                 price_band_min=2000, price_band_max=2800, delivery_window="7 days",
+                 delivery_district="Pune", status="open")
+    db.add_all([lot, dem]); db.commit()
+    m = Match(lot_id=lot.id, demand_id=dem.id, score=90, status="proposed")
+    db.add(m); db.commit()
+
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        r = client.post(f"/api/matches/{m.id}/offers", json={"price": 2450, "quantity": 1000})
+        assert r.status_code == 201
+        offer_id = r.json()["id"]
+        _as(farmer_user)
+        d = client.post(f"/api/offers/{offer_id}/accept")
+        assert d.status_code == 200
+        deal_id = d.json()["id"]
+
+        events = client.get(f"/api/deals/{deal_id}/events").json()
+        actions = [e["action"] for e in events]
+        assert "offer_made" in actions
+        assert "offer_accepted" in actions
+        assert "deal_created" in actions
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_advance_and_payment_write_audit_events(db, farmer_user, buyer_user):
     d = _deal(db, farmer_user, buyer_user, status="delivered")
     client = _client(db)

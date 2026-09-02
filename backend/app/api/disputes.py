@@ -22,6 +22,7 @@ from app.models.lot import Lot
 from app.models.match import Match
 from app.models.user import User
 from app.schemas.deal import DisputeCreate, DisputeResponse
+from app.services.audit import log_event
 
 router = APIRouter(tags=["disputes"])
 logger = logging.getLogger(__name__)
@@ -81,6 +82,12 @@ def raise_dispute(
         status="open",
     )
     db.add(dispute)
+    db.flush()
+    log_event(
+        db, actor_id=current_user.id, entity_type="deal", entity_id=deal_id,
+        action="dispute_raised",
+        detail={"dispute_id": dispute.id, "reason": dispute.reason[:200]},
+    )
     db.commit()
     db.refresh(dispute)
 
@@ -134,6 +141,11 @@ def close_dispute(
         )
 
     dispute.status = "closed"
+    db.flush()
+    log_event(
+        db, actor_id=current_user.id, entity_type="deal", entity_id=dispute.deal_id,
+        action="dispute_closed", detail={"dispute_id": dispute.id},
+    )
     db.commit()
     db.refresh(dispute)
 
