@@ -1,21 +1,26 @@
-"""Pulls Maharashtra mandi prices from the data.gov.in AGMARKNET resource
-(9ef84268-d588-465a-a308-a864a43d0070), paginating until exhausted, and
-upserts into PriceCache. Never called live on a user request — only from the
-scheduled job in main.py's startup/interval trigger.
+"""Pulls all-India mandi prices from the data.gov.in AGMARKNET resource
+`9ef84268-d588-465a-a308-a864a43d0070` ("Current Daily Price of Various
+Commodities from Various Markets (Mandi)"), paginating until exhausted, and
+upserts into PriceCache. Never called live on a user request — only from
+main.py's boot + 6-hourly scheduler.
 
-Source order (D-04, revised 2026-09-01): live API -> synthetic fixtures, with the
-committed CSV snapshot used ahead of fixtures only when it is dense enough to
-drive every dashboard view on its own (>= SNAPSHOT_MIN_SERIES_POINTS dated points
-for some market+crop series). The bundled snapshot is a small authentic sample,
-so in practice the offline path is fixtures — they carry 90 days across every
-market+crop and are the only source with `arrival_volume`.
+Source order (D-04): live API -> committed CSV snapshot (only when dense enough
+to stand alone) -> synthetic fixtures. `INGEST_STATES=ALL` (default) pulls the
+whole national feed in one shot (~10k rows / 25 states / ~7s).
 
-The OGD AGMARKNET price resource carries no arrival-volume field and there is
-no companion arrivals feed, so `arrival_volume` is always None on live/snapshot
-rows and the sell/wait signal's volume factor is powered only by the synthetic
-fixture data (or, in a later phase, a non-OGD arrivals source wired through the
-`fetch_arrivals_rows()` / `merge_arrivals()` seam — PRICE-07). `app.services.signal`
-degrades its explanation when volume is absent.
+Known resource limits:
+  * data.gov.in stalls forever on python-httpx's default User-Agent — we send a
+    real UA (see fetch_agmarknet_rows).
+  * It exposes only the LATEST day (arrival_date == today); history accumulates
+    as this job runs day after day. `backfill_series()` synthesises the gap for
+    a just-viewed series, anchored to the real latest modal price.
+  * No arrival-volume field and no companion arrivals feed, so `arrival_volume`
+    is always None on live rows and the sell/wait signal's volume factor is
+    powered only by synthetic fixture data (or a future non-OGD source via the
+    `fetch_arrivals_rows()` / `merge_arrivals()` seam — PRICE-07).
+  * State spellings vary (Keralam, Orissa, "Andaman and Nicobar") — canonicalised
+    in `normalize_rows`. The feed also carries several rows per
+    (market, crop, variety, date); `upsert_price_rows` dedupes.
 """
 
 import hashlib
