@@ -807,6 +807,115 @@ export function fetchNegotiationContext(
 }
 
 // ---------------------------------------------------------------------------
+// Forward contracts (v1.6) — pre-harvest bids + commitments
+// ---------------------------------------------------------------------------
+
+export type ForwardCommitment = {
+  id: number;
+  bid_id: number;
+  farmer_id: number;
+  quantity_kg: number;
+  price_per_qtl: number;
+  expected_ready: string;
+  note: string | null;
+  status: "pending" | "accepted" | "declined" | "withdrawn";
+  deal_id: number | null;
+  created_at: string;
+  farmer_name: string;
+  farmer_district: string;
+  farmer_verified: boolean;
+  calendar_warning: string | null;
+};
+export type ForwardBid = {
+  id: number;
+  buyer_id: number;
+  crop: string;
+  quantity_kg: number;
+  price_min: number;
+  price_max: number;
+  delivery_from: string;
+  delivery_to: string;
+  delivery_district: string;
+  latitude: number | null;
+  longitude: number | null;
+  quality_grade_min: string | null;
+  notes: string | null;
+  status: "open" | "closed" | "filled" | "cancelled";
+  created_at: string;
+  buyer_name: string;
+  buyer_verified: boolean;
+  distance_km: number | null;
+  committed_kg: number;
+  accepted_kg: number;
+  remaining_kg: number;
+  fill_pct: number;
+  my_commitment: ForwardCommitment | null;
+  harvest_window: string | null;
+  commitments?: ForwardCommitment[];
+};
+export type ForwardBidCreate = {
+  crop: string;
+  quantity_kg: number;
+  price_min: number;
+  price_max: number;
+  delivery_from: string;
+  delivery_to: string;
+  delivery_district?: string;
+  quality_grade_min?: string | null;
+  notes?: string | null;
+};
+export type ForwardCommitmentCreate = {
+  quantity_kg: number;
+  price_per_qtl: number;
+  expected_ready: string;
+  note?: string | null;
+};
+
+export function listForwardBids(
+  token: string,
+  params: { crop?: string; mine?: boolean; status?: string; lat?: number; lon?: number; radiusKm?: number } = {},
+): Promise<ForwardBid[]> {
+  return getJson(
+    `/api/forward/bids?${qs({
+      crop: params.crop,
+      mine: params.mine,
+      status: params.status,
+      lat: params.lat,
+      lon: params.lon,
+      radius_km: params.radiusKm,
+    })}`,
+    token,
+  );
+}
+export function getForwardBid(bidId: number, token: string): Promise<ForwardBid> {
+  return getJson(`/api/forward/bids/${bidId}`, token);
+}
+export function createForwardBid(body: ForwardBidCreate, token: string): Promise<ForwardBid> {
+  return postJson("/api/forward/bids", body, token);
+}
+export function setForwardBidStatus(
+  bidId: number,
+  status: "open" | "closed" | "cancelled",
+  token: string,
+): Promise<ForwardBid> {
+  return patchJson(`/api/forward/bids/${bidId}?${qs({ status })}`, {}, token);
+}
+export function commitToForwardBid(
+  bidId: number,
+  body: ForwardCommitmentCreate,
+  token: string,
+): Promise<ForwardCommitment> {
+  return postJson(`/api/forward/bids/${bidId}/commitments`, body, token);
+}
+export function actOnCommitment(
+  commitmentId: number,
+  action: "accept" | "decline" | "withdraw",
+  token: string,
+): Promise<{ commitment_id: number; status: string; deal_id: number | null }> {
+  return postJson(`/api/forward/commitments/${commitmentId}/${action}`, {}, token);
+}
+
+// ---------------------------------------------------------------------------
 // Phase 3 fetch functions
 // ---------------------------------------------------------------------------
 

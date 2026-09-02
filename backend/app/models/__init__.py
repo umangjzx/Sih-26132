@@ -14,6 +14,7 @@ from app.models.logistics import DealLogistics
 from app.models.payment import DealPayment
 from app.models.transaction_event import TransactionEvent
 from app.models.transporter import Transporter
+from app.models.forward import ForwardBid, ForwardCommitment
 
 __all__ = [
     "PriceCache",
@@ -33,4 +34,6 @@ __all__ = [
     "DealPayment",
     "TransactionEvent",
     "Transporter",
+    "ForwardBid",
+    "ForwardCommitment",
 ]

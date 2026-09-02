@@ -26,6 +26,7 @@ from app.api.matching import router as matching_router
 from app.api.offers import router as offers_router
 from app.api.prices import router as prices_router
 from app.api.public import router as public_router
+from app.api.forward import router as forward_router
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.services import ingestion
@@ -120,6 +121,7 @@ app.include_router(assistant_router)
 app.include_router(ocr_router)
 app.include_router(pools_router)
 app.include_router(prices_router)
+app.include_router(forward_router)
 
 
 @app.get("/health")

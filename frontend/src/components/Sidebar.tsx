@@ -32,6 +32,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   }
   if (user?.role === "farmer") tradeLinks.push({ href: "/pools", label: t("pools"), icon: "coins" });
   if (user?.role === "farmer" || user?.role === "buyer") {
+    tradeLinks.push({ href: "/forward", label: t("forward"), icon: "calendar" });
     tradeLinks.push({ href: "/matches", label: t("matches"), icon: "connection" });
     tradeLinks.push({ href: "/history", label: t("history"), icon: "clock" });
     tradeLinks.push({ href: "/alerts", label: t("alerts"), icon: "bell" });
