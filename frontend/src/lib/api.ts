@@ -366,24 +366,17 @@ export function fetchNearby(
 // Phase 2 auth fetch functions
 // ---------------------------------------------------------------------------
 
-export function requestOtp(
+export function login(
   phone: string,
   name: string,
   role: string,
-): Promise<{ detail: string; dev_otp?: string }> {
-  return postJson("/api/auth/otp/request", { phone, name, role });
-}
-
-export function verifyOtp(
-  phone: string,
-  code: string,
 ): Promise<{
   access_token: string;
   refresh_token: string;
   token_type: string;
   user: import("@/lib/auth").StoredUser;
 }> {
-  return postJson("/api/auth/otp/verify", { phone, code });
+  return postJson("/api/auth/login", { phone, name, role });
 }
 
 export function refreshTokens(

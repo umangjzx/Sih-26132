@@ -1,13 +1,11 @@
-"""JWT helpers, OTP generation, and FastAPI auth dependencies.
+"""JWT helpers and FastAPI auth dependencies.
 
 Design decisions (from 2-CONTEXT.md):
 - D-03: HS256 JWT, short-lived access token (30 min) + long-lived refresh token (7 days).
-- D-05: No password hashing — OTP is the only credential; compared with secrets.compare_digest.
 - D-07: Bearer token via HTTPBearer; get_current_user fetches the User row and raises 401.
-- D-11: This module owns generate_otp, create_access_token, create_refresh_token, decode_token.
+- Login is passwordless / OTP-less in this build — see app/api/auth.py.
 """
 
-import secrets
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -22,15 +20,6 @@ from app.core.database import get_db
 from app.models.user import User
 
 _bearer = HTTPBearer(auto_error=False)
-
-
-# ---------------------------------------------------------------------------
-# OTP
-# ---------------------------------------------------------------------------
-
-def generate_otp() -> str:
-    """Return a zero-padded 6-digit OTP string using a cryptographically secure source."""
-    return str(secrets.randbelow(1_000_000)).zfill(6)
 
 
 # ---------------------------------------------------------------------------

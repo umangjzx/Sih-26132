@@ -9,7 +9,7 @@ recommendation where every number that drove the call is shown on screen — in
 **English, Hindi, or Marathi**. On top of prices it layers weather, Minimum
 Support Price (MSP), crop-calendar timing, a transport-cost-adjusted "best
 market", cold-storage / FPO discovery, price alerts, and a public
-price-transparency dashboard. Phone-OTP accounts then connect farmers and buyers
+price-transparency dashboard. Phone-based accounts then connect farmers and buyers
 through scored matches, an offer thread, a deal pipeline, and a dispute + admin
 workflow.
 
@@ -22,7 +22,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | Phase | Scope | State |
 |---|---|---|
 | 1 · Price Discovery & i18n Shell | prices, trends, nearby markets, sell/wait signal, en/hi/mr | ✅ |
-| 2 · Auth & Matching | phone-OTP auth, lots, demands, scored matches, offers | ✅ |
+| 2 · Auth & Matching | phone login, lots, demands, scored matches, offers | ✅ |
 | 3 · Deal Tracking & Admin | deal pipeline, disputes, admin dashboard | ✅ |
 | v1.1 · Intelligence layer | weather, MSP, calendar, best-market, storage/FPO, alerts, public overview | ✅ |
 | v1.2 · Location awareness | geo/place picker, state-scoped prices, all-India directory, optional OpenWeather | ✅ |
@@ -74,11 +74,11 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 A **location chip** in the header (browser geolocation · place search · all-India
 state picker) sets the active location, persisted in `localStorage`.
 
-### Accounts & trade (phone-OTP auth)
+### Accounts & trade (phone login)
 
 | Route | Role | What you do |
 |---|---|---|
-| `/login` | any | Enter phone + name + role → receive OTP (returned in the API response for the demo) → verify → get access + refresh tokens. |
+| `/login` | any | Enter phone + name + role → get access + refresh tokens immediately. No OTP, no password (demo build); the account is created on first login. |
 | `/farmer` | farmer | List produce **lots** (crop, quantity, grade, expected price, availability date, location). Offline-safe: drafts autosave, submissions queue in `localStorage` and sync on reconnect. Shows nearby storage/FPOs. |
 | `/buyer` | buyer | Post **demands** (crop, quantity, quality spec, price band, delivery window). |
 | `/matches/[id]` | farmer/buyer | Scored lot×demand match with a component breakdown; an **offer thread** (propose price/quantity, counter, accept, decline). Accepting an offer creates a **deal**. |
@@ -157,7 +157,7 @@ agrilink/
 │   │   ├── core/
 │   │   │   ├── config.py       pydantic-settings (reads backend/.env)
 │   │   │   ├── database.py     engine, SessionLocal, Base, get_db
-│   │   │   └── security.py     OTP, JWT create/decode, get_current_user / CurrentUser
+│   │   │   └── security.py     JWT create/decode, get_current_user / CurrentUser
 │   │   ├── models/             11 SQLAlchemy models (see Database schema)
 │   │   ├── schemas/            Pydantic request/response models
 │   │   ├── api/                one router per domain (prices, intel, public, location, auth,
@@ -247,8 +247,6 @@ To reset the database from scratch, see [backend/README.md](backend/README.md) �
 | `JWT_ALGORITHM` | `HS256` | |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | |
-| `OTP_TTL_SECONDS` | `600` | OTP validity window |
-| `EXPOSE_OTP` | `true` | Demo build returns the OTP in the `/auth/otp/request` response (the login page auto-fills it). Set `false` in production |
 | `WEATHER_API_KEY` | *(blank)* | Optional OpenWeatherMap key — enriches the forecast with current conditions. Blank → keyless Open-Meteo only |
 | `TRANSPORT_COST_PER_QTL_KM` | `0.4` | ₹/quintal/km used by `markets/best` |
 | `REVERSE_GEOCODE_URL` | BigDataCloud | Free keyless reverse-geocoder |
@@ -336,8 +334,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 
 | Method | Path | Body / notes |
 |---|---|---|
-| POST | `/auth/otp/request` | `{phone, name, role}` — creates/updates the user, returns the OTP in the response (demo) |
-| POST | `/auth/otp/verify` | `{phone, code}` → `{access_token, refresh_token, token_type, user}` |
+| POST | `/auth/login` | `{phone, name, role}` — passwordless / OTP-less: creates the user on first login, returns `{access_token, refresh_token, token_type, user}` |
 | POST | `/auth/refresh` | `{refresh_token}` → new token pair |
 | GET | `/auth/me` | **Auth** — current user |
 
@@ -408,7 +405,7 @@ erDiagram
 | Table | Key columns | Status/enum values |
 |---|---|---|
 | `price_cache` | `crop, variety, market, district, state, date, min/max/modal_price, arrival_volume?` — unique `(market, crop, variety, date)` | — |
-| `users` | `role, name, phone` (unique), `district, taluka, kyc_status`, `otp_code?`, `otp_expires_at?`, `is_active`, `created_at` | role: `farmer` \| `buyer` \| `admin` |
+| `users` | `role, name, phone` (unique), `district, taluka, kyc_status`, `is_active`, `created_at` (plus dormant `otp_code?` / `otp_expires_at?` columns — login is passwordless / OTP-less in this build) | role: `farmer` \| `buyer` \| `admin` |
 | `lots` | `farmer_id→users`, `crop, quantity_kg, quality_grade, photo_url?, expected_price, available_from, location, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
 | `demands` | `buyer_id→users`, `crop, quantity_kg, quality_spec, price_band_min/max, delivery_window` | status: `open` \| `matched` \| `closed` |
 | `matches` | `lot_id→lots`, `demand_id→demands`, `score`, `score_detail` (JSON string) | status: `proposed` \| `offered` \| `accepted` \| `rejected` |
@@ -419,7 +416,7 @@ erDiagram
 | `price_alerts` | `user_id→users`, `crop, market, direction, threshold, active, last_triggered_at?` | direction: `above` \| `below` |
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
 
-Migrations: `0001_initial_schema` · `94f518efb70d_auth_columns` (OTP + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`).
+Migrations: `0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` — now dormant + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`).
 
 ---
 
@@ -491,17 +488,14 @@ admin (or the raiser) closes them.
 
 ## Authentication
 
-Phone-OTP only — no passwords (`app/core/security.py`).
+Passwordless **and** OTP-less in this build — identify by phone
+(`app/core/security.py` owns only the JWT helpers). The OTP flow was removed for
+the hackathon build; `git log` restores it.
 
 ```
-POST /api/auth/otp/request  {phone, name, role}
-     → upserts the user, generates a 6-digit OTP (secrets.randbelow),
-       stores it with a 10-minute expiry, and returns it in the response
-       (demo convenience — a real deployment would SMS it)
-
-POST /api/auth/otp/verify   {phone, code}
-     → constant-time compare; on success issues
-       access_token  (HS256, 30 min)  +  refresh_token (7 days)
+POST /api/auth/login        {phone, name, role}
+     → upserts the user (name/role taken on first login only) and issues
+       access_token  (HS256, 30 min)  +  refresh_token (7 days)  immediately
 
 POST /api/auth/refresh      {refresh_token}  → new pair
 ```
@@ -585,7 +579,7 @@ cd frontend && npm run test:watch    # watch mode
 Backend coverage: the sell/wait signal cases and MSP/weather factors; geo
 distance + `nearest_state`; ingestion normalise + live→snapshot→fixture fallback +
 state override; the OpenWeather enrichment; location resolve + state-filtered
-options/overview; the intelligence endpoints; auth + OTP; lots / demands /
+options/overview; the intelligence endpoints; login + token refresh; lots / demands /
 matching / offers / deals / disputes / history; alerts; the admin dashboard.
 
 Frontend: locale parity, `PriceDetail` (skeleton→data, error→Retry),
@@ -606,8 +600,9 @@ Both suites run **offline**.
   `fetch_arrivals_rows()` seam is present but off unless `ARRIVALS_SOURCE_URL` is
   set.
 - **KYC is a stub** — `kyc_status` is a flag, not real verification.
-- **OTP is returned in the API response** for the demo — a real deployment would
-  deliver it by SMS and never echo it.
+- **Login has no second factor** — the demo build issues tokens from a phone +
+  name + role alone (no OTP, no password). A real deployment would add SMS OTP or
+  a password; the removed OTP flow is in `git log`.
 - **Curated reference data** — MSP, the crop calendar, and the storage/FPO
   directory are curated samples with real geography, not live registries.
 - **Crop calendar is Maharashtra-tuned** — sowing/harvest/peak windows outside

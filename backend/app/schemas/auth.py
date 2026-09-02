@@ -5,15 +5,13 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 
-class OtpRequestBody(BaseModel):
+class LoginBody(BaseModel):
+    """Passwordless, OTP-less login for the demo build: identify by phone,
+    creating the account on first sight."""
+
     phone: str
     name: str
     role: Literal["farmer", "buyer", "admin"] = "farmer"
-
-
-class OtpVerifyBody(BaseModel):
-    phone: str
-    code: str
 
 
 class RefreshBody(BaseModel):

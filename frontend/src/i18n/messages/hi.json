@@ -66,16 +66,10 @@
     "roleLabel": "मैं हूँ",
     "roleFarmer": "किसान / FPO",
     "roleBuyer": "खरीदार / व्यापारी",
-    "sendOtp": "OTP भेजें",
-    "otpSentTo": "{phone} पर OTP भेजा गया",
-    "otpLabel": "OTP दर्ज करें",
-    "otpPlaceholder": "6 अंकों का कोड",
-    "verifyOtp": "सत्यापित करें और लॉगिन करें",
-    "back": "वापस",
     "loggingIn": "लॉगिन हो रहा है...",
-    "invalidOtp": "अमान्य या समाप्त OTP। कृपया पुनः प्रयास करें।",
     "logout": "लॉगआउट",
-    "devOtpHint": "डेमो मोड: आपका कोड {code} है (स्वतः भरा गया)।"
+    "signIn": "आगे बढ़ें",
+    "loginError": "साइन इन नहीं हो सका। अपनी जानकारी जांचें और पुनः प्रयास करें।"
   },
   "lots": {
     "title": "मेरे लॉट",

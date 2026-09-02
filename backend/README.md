@@ -10,7 +10,7 @@ Route groups (all under `/api`):
 | Intelligence (v1.1) | `weather/forecast`, `msp`, `calendar`, `storage/nearby`, `fpo/nearby`, `markets/best`, `holidays/upcoming` |
 | Public | `public/overview` |
 | Location (v1.2) | `location/resolve`, `location/states` |
-| Auth | `auth/otp/request`, `auth/otp/verify`, `auth/refresh` |
+| Auth | `auth/login` (passwordless / OTP-less), `auth/refresh`, `auth/me` |
 | Trade | `lots`, `demands`, `matches`, `offers`, `deals`, `disputes`, `history` |
 | Alerts | `alerts`, `notifications` |
 | Admin | `admin/dashboard` |
@@ -79,8 +79,9 @@ cd backend && venv/Scripts/python.exe -m pytest -q -m "not pg"   # skip the Post
 `tests/` covers the sell/wait signal cases and MSP/weather factors, geo distance and
 `nearest_state`, ingestion normalize + live→snapshot→fixture fallback + state override,
 the weather OpenWeather enrichment, location resolve / state-filtered options + overview,
-the intelligence endpoints (MSP, calendar, storage/FPO, best-market), auth + OTP, lots /
-demands / matching / offers / deals / disputes / history, alerts, and the admin dashboard.
+the intelligence endpoints (MSP, calendar, storage/FPO, best-market), login + token
+refresh, lots / demands / matching / offers / deals / disputes / history, alerts, and
+the admin dashboard.
 
 ## Data sources
 
@@ -125,7 +126,7 @@ Copy `.env.example` to `.env` (gitignored — never commit it). Placeholders onl
 | `DATA_GOV_IN_API_KEY` | Optional. Blank → snapshot/fixture fallback |
 | `INGEST_TRIGGER_SECRET` | Blank → `POST /api/ingest/run` returns 403 (disabled). Set it, then send `X-Ingest-Secret: <value>`; compared in constant time |
 | `INGEST_STATES` | Comma-separated states the scheduler ingests, or `ALL`. Default `Maharashtra` |
-| `JWT_SECRET_KEY` | Required for auth — long random string. Blank → tokens fail to verify (local demo only). Also `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`, `OTP_TTL_SECONDS` |
+| `JWT_SECRET_KEY` | Required for auth — long random string. Blank → tokens fail to verify (local demo only). Also `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS` |
 | `WEATHER_API_KEY` | Optional OpenWeatherMap key — enriches the forecast with current conditions. Blank → Open-Meteo only |
 | `TRANSPORT_COST_PER_QTL_KM` | ₹/quintal/km used by `markets/best`. Default `0.4` |
 | `ARRIVALS_SOURCE_URL` | Leave blank (see PRICE-07 above) |

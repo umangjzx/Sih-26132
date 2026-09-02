@@ -66,16 +66,10 @@
     "roleLabel": "मी आहे",
     "roleFarmer": "शेतकरी / FPO",
     "roleBuyer": "खरेदीदार / व्यापारी",
-    "sendOtp": "OTP पाठवा",
-    "otpSentTo": "{phone} वर OTP पाठवला",
-    "otpLabel": "OTP टाका",
-    "otpPlaceholder": "6 अंकी कोड",
-    "verifyOtp": "पडताळा आणि लॉगिन करा",
-    "back": "मागे",
     "loggingIn": "लॉगिन होत आहे...",
-    "invalidOtp": "चुकीचा किंवा कालबाह्य OTP. कृपया पुन्हा प्रयत्न करा.",
     "logout": "लॉगआउट",
-    "devOtpHint": "डेमो मोड: तुमचा कोड {code} आहे (स्वयंभरला)."
+    "signIn": "पुढे जा",
+    "loginError": "साइन इन होू शकले नाही। तपशील तपासा आणि पुन्हा प्रयत्न करा।"
   },
   "lots": {
     "title": "माझे लॉट",
