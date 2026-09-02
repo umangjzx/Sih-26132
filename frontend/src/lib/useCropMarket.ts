@@ -63,7 +63,12 @@ export function useCropMarket(): CropMarketState {
     [options],
   );
 
-  const crop = urlCrop || options[0]?.crop || "";
+  // Once options for the (new) state are in, a lingering ?crop= from a previous
+  // state may not exist here — fall back to the first available crop.
+  const crop =
+    urlCrop && (crops.length === 0 || crops.includes(urlCrop))
+      ? urlCrop
+      : options[0]?.crop || "";
   const marketsForCrop = useMemo(
     () => options.filter((o) => o.crop === crop).map((o) => o.market),
     [options, crop],
@@ -74,6 +79,17 @@ export function useCropMarket(): CropMarketState {
       : marketsForCrop[0] || "";
   const district =
     options.find((o) => o.crop === crop && o.market === market)?.district ?? "";
+
+  // Keep the URL honest after a location switch so shared links stay valid.
+  useEffect(() => {
+    if (!ready || options.length === 0) return;
+    if ((urlCrop && urlCrop !== crop) || (urlMarket && urlMarket !== market)) {
+      const sp = new URLSearchParams(params.toString());
+      sp.set("crop", crop);
+      sp.set("market", market);
+      router.replace(`?${sp.toString()}`, { scroll: false });
+    }
+  }, [ready, options.length, urlCrop, urlMarket, crop, market, params, router]);
 
   const write = useCallback(
     (next: { crop?: string; market?: string }) => {

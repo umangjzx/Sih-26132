@@ -110,7 +110,7 @@ function HomeInner() {
       fetchWeather({ market: cm.market }),
       fetchMsp(cm.crop),
       fetchBestMarkets(cm.crop, cm.market),
-      fetchNearby(cm.crop, cm.market),
+      fetchNearby(cm.crop, cm.district || cm.market),
     ]);
     if (tr.status === "fulfilled") {
       const pts = tr.value.points;
@@ -129,7 +129,7 @@ function HomeInner() {
     setBestMarket(bm.status === "fulfilled" ? bm.value : null);
     setNearbyMarkets(nb.status === "fulfilled" ? nb.value : []);
     setLoading(false);
-  }, [cm.crop, cm.market, location]);
+  }, [cm.crop, cm.market, cm.district, warmTick]);
 
   useEffect(() => { load(); }, [load]);
 
