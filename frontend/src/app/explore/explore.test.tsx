@@ -33,7 +33,7 @@ beforeEach(() => vi.clearAllMocks());
 it("renders statewide stats and the crop table", async () => {
   vi.mocked(api.fetchPublicOverview).mockResolvedValue(overview);
   renderWithIntl(<ExplorePage />);
-  expect(await screen.findByText(/Statewide Price Transparency/i)).toBeInTheDocument();
+  expect(await screen.findByText(/Market price transparency/i)).toBeInTheDocument();
   expect(await screen.findByText("25")).toBeInTheDocument(); // markets reporting
   expect(screen.getAllByText("Onion").length).toBeGreaterThan(0);
   expect(screen.getByText(/Top gainers/i)).toBeInTheDocument();
