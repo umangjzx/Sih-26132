@@ -150,7 +150,12 @@
     "statMatches": "सजीव जुळन्या",
     "statStrong": "{n} मजबूत",
     "statVerified": "{n} पडताळलेले विक्रेते",
-    "statNoneYet": "अजून कोणीही नाही"
+    "statNoneYet": "अजून कोणीही नाही",
+    "deliverToLabel": "Deliver to (district)",
+    "deliverToPlaceholder": "e.g. Coimbatore",
+    "deliverToHint": "Blank = your profile location ({d}). Matching ranks lots by distance to this.",
+    "deliverToNoProfile": "Set a location on your profile so nearby lots are matched.",
+    "setProfile": "Set location"
   },
   "matching": {
     "title": "माझ्या जुळण्या",
@@ -222,7 +227,18 @@
     "loadError": "हा व्यवहार लोड होऊ शकला नाही",
     "backToHistory": "इतिहासाकडे परत जा",
     "dealTitle": "व्यवहार डॅशबोर्ड",
-    "dealSubtitle": "{crop} साठी लॉजिस्टिक्स आणि पेमेंट ट्रॅक करा."
+    "dealSubtitle": "{crop} साठी लॉजिस्टिक्स आणि पेमेंट ट्रॅक करा.",
+    "nextStep": "Next: {stage}",
+    "actorSeller": "the seller confirms this",
+    "actorBuyer": "the buyer confirms this",
+    "waitingSeller": "Waiting for the seller",
+    "waitingBuyer": "Waiting for the buyer",
+    "markPaid": "Record payment",
+    "confirmDelivered": "Confirm delivered",
+    "payRefPh": "UPI / bank txn reference",
+    "paymentRecorded": "Payment recorded: {method} · {ref}",
+    "advanceForbidden": "Only the other party can take this step.",
+    "advanceNeedRef": "Add a payment reference to mark this paid."
   },
   "disputes": {
     "title": "तक्रारी",

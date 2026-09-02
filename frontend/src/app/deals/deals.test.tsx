@@ -67,7 +67,7 @@ it("calls advanceDeal when the Advance button is clicked", async () => {
 
   const btn = await screen.findByRole("button", { name: /advance to next stage/i });
   await user.click(btn);
-  expect(api.advanceDeal).toHaveBeenCalledWith("1", "mock-token");
+  expect(api.advanceDeal).toHaveBeenCalledWith("1", "mock-token", {});
 });
 
 it("disables the Advance button for a closed deal", async () => {

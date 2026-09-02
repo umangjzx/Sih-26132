@@ -150,7 +150,12 @@
     "statMatches": "Live matches",
     "statStrong": "{n} strong",
     "statVerified": "{n} verified sellers",
-    "statNoneYet": "none yet"
+    "statNoneYet": "none yet",
+    "deliverToLabel": "Deliver to (district)",
+    "deliverToPlaceholder": "e.g. Coimbatore",
+    "deliverToHint": "Blank = your profile location ({d}). Matching ranks lots by distance to this.",
+    "deliverToNoProfile": "Set a location on your profile so nearby lots are matched.",
+    "setProfile": "Set location"
   },
   "matching": {
     "title": "My Matches",
@@ -222,7 +227,18 @@
     "loadError": "Could not load this deal",
     "backToHistory": "Back to history",
     "dealTitle": "Deal dashboard",
-    "dealSubtitle": "Track logistics and payment for {crop}."
+    "dealSubtitle": "Track logistics and payment for {crop}.",
+    "nextStep": "Next: {stage}",
+    "actorSeller": "the seller confirms this",
+    "actorBuyer": "the buyer confirms this",
+    "waitingSeller": "Waiting for the seller",
+    "waitingBuyer": "Waiting for the buyer",
+    "markPaid": "Record payment",
+    "confirmDelivered": "Confirm delivered",
+    "payRefPh": "UPI / bank txn reference",
+    "paymentRecorded": "Payment recorded: {method} · {ref}",
+    "advanceForbidden": "Only the other party can take this step.",
+    "advanceNeedRef": "Add a payment reference to mark this paid."
   },
   "disputes": {
     "title": "Disputes",

@@ -74,7 +74,7 @@ export default function BuyerPage() {
   const tdash = useTranslations("dash");
 
   const [form, setForm] = useState<DemandCreate>({
-    crop: "", quantity_kg: 0, quality_spec: "", price_band_min: 0, price_band_max: 0, delivery_window: "",
+    crop: "", quantity_kg: 0, quality_spec: "", price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "",
   });
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [matches, setMatches] = useState<MatchResponse[]>([]);
@@ -132,8 +132,11 @@ export default function BuyerPage() {
     if (!token) return;
     setSubmitting(true);
     try {
-      await createDemand(form, token);
-      setForm({ crop: "", quantity_kg: 0, quality_spec: "", price_band_min: 0, price_band_max: 0, delivery_window: "" });
+      await createDemand(
+        { ...form, delivery_district: form.delivery_district?.trim() || user?.district || null },
+        token,
+      );
+      setForm({ crop: "", quantity_kg: 0, quality_spec: "", price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "" });
       setToast(td("success"));
       setTimeout(() => setToast(null), 3000);
       loadData();
@@ -228,18 +231,39 @@ export default function BuyerPage() {
             />
           </label>
           
-          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)] sm:col-span-2">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
             {td("deliveryWindowLabel")}
-            <input 
-              type="text" 
-              value={form.delivery_window} 
+            <input
+              type="text"
+              value={form.delivery_window}
               onChange={(e) => setForm({ ...form, delivery_window: e.target.value })}
-              placeholder={td("deliveryWindowPlaceholder")} 
+              placeholder={td("deliveryWindowPlaceholder")}
               required
               className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
             />
           </label>
-          
+
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+            {td("deliverToLabel")}
+            <input
+              type="text"
+              value={form.delivery_district ?? ""}
+              onChange={(e) => setForm({ ...form, delivery_district: e.target.value })}
+              placeholder={user?.district || td("deliverToPlaceholder")}
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+            />
+            <span className="text-xs font-normal text-[var(--ink-soft)]">
+              {user?.district
+                ? td("deliverToHint", { d: user.district })
+                : td("deliverToNoProfile")}
+              {!user?.district && (
+                <Link href="/profile" className="ml-1 font-semibold text-[var(--green-700)] hover:underline">
+                  {td("setProfile")}
+                </Link>
+              )}
+            </span>
+          </label>
+
           <div className="sm:col-span-2 pt-2">
             <button 
               type="submit" 

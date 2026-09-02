@@ -35,7 +35,7 @@ const STAGES = [
 ] as const;
 
 export default function DealDetailPage() {
-  const { token, isAuthenticated, ready } = useAuth();
+  const { token, isAuthenticated, ready, user } = useAuth();
   const router = useRouter();
   const params = useParams();
   const dealId = String(params.id);
@@ -66,6 +66,8 @@ export default function DealDetailPage() {
   const [deal, setDeal] = useState<DealDetailResponse | null>(null);
   const [disputes, setDisputes] = useState<DisputeResponse[]>([]);
   const [reason, setReason] = useState("");
+  const [payMethod, setPayMethod] = useState("UPI");
+  const [payRef, setPayRef] = useState("");
   const [advancing, setAdvancing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -97,13 +99,21 @@ export default function DealDetailPage() {
   async function handleAdvance() {
     if (!token || !deal || deal.pipeline_status === "closed") return;
     setAdvancing(true);
+    setError(null);
     try {
-      const updated = await advanceDeal(dealId, token);
+      const body =
+        nextStage === "paid"
+          ? { payment_method: payMethod, payment_reference: payRef.trim() }
+          : {};
+      const updated = await advanceDeal(dealId, token, body);
       setDeal(updated);
       setToast(
         t("advanceSuccess", { stage: stageLabel[updated.pipeline_status as (typeof STAGES)[number]] }),
       );
       setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setError(msg.includes("403") ? t("advanceForbidden") : msg.includes("422") ? t("advanceNeedRef") : t("loadError"));
     } finally {
       setAdvancing(false);
     }
@@ -151,6 +161,13 @@ export default function DealDetailPage() {
   }
 
   const currentIdx = STAGES.indexOf(deal.pipeline_status as (typeof STAGES)[number]);
+  const nextStage = currentIdx >= 0 && currentIdx < STAGES.length - 1 ? STAGES[currentIdx + 1] : null;
+  // who advances INTO the next stage: seller confirms "delivered", buyer records "paid"
+  const nextActor: "farmer" | "buyer" | "any" =
+    nextStage === "delivered" ? "farmer" : nextStage === "paid" ? "buyer" : "any";
+  const viewerCanAdvance =
+    user?.role === "admin" || nextActor === "any" || user?.role === nextActor;
+  const needsRef = nextStage === "paid" && user?.role !== "admin";
   const hasOpenDispute = disputes.some((d) => d.status === "open");
 
   return (
@@ -249,19 +266,66 @@ export default function DealDetailPage() {
         </ol>
         
         <div className="mt-8 border-t border-[var(--line)] pt-5">
+          {nextStage && (
+            <p className="mb-3 text-xs font-medium text-[var(--ink-soft)]">
+              {t("nextStep", { stage: stageLabel[nextStage] })}
+              {nextActor !== "any" && ` · ${t(nextActor === "farmer" ? "actorSeller" : "actorBuyer")}`}
+            </p>
+          )}
+
+          {needsRef && viewerCanAdvance && deal.pipeline_status !== "closed" && (
+            <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <select
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value)}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm"
+              >
+                <option>UPI</option>
+                <option>Bank transfer (NEFT/RTGS)</option>
+                <option>Cash</option>
+                <option>Cheque</option>
+              </select>
+              <input
+                value={payRef}
+                onChange={(e) => setPayRef(e.target.value)}
+                placeholder={t("payRefPh")}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm"
+              />
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleAdvance}
-            disabled={advancing || deal.pipeline_status === "closed"}
+            disabled={
+              advancing ||
+              deal.pipeline_status === "closed" ||
+              !viewerCanAdvance ||
+              (needsRef && !payRef.trim())
+            }
             className="flex items-center justify-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60"
           >
             {deal.pipeline_status === "closed"
               ? t("alreadyClosed")
-              : advancing
-                ? t("advancing")
-                : t("advancePipeline")}
-            {deal.pipeline_status !== "closed" && !advancing && <Icon name="chevronDown" size={16} className="-rotate-90" />}
+              : !viewerCanAdvance
+                ? t(nextActor === "farmer" ? "waitingSeller" : "waitingBuyer")
+                : advancing
+                  ? t("advancing")
+                  : nextStage === "paid"
+                    ? t("markPaid")
+                    : nextStage === "delivered"
+                      ? t("confirmDelivered")
+                      : t("advancePipeline")}
+            {deal.pipeline_status !== "closed" && viewerCanAdvance && !advancing && (
+              <Icon name="chevronDown" size={16} className="-rotate-90" />
+            )}
           </button>
+
+          {deal.payment_reference && (
+            <p className="mt-3 text-xs text-[var(--ink-soft)]">
+              {t("paymentRecorded", { method: deal.payment_method ?? "—", ref: deal.payment_reference })}
+            </p>
+          )}
         </div>
       </section>
 
