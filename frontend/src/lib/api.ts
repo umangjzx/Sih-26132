@@ -331,7 +331,7 @@ export function requestOtp(
   phone: string,
   name: string,
   role: string,
-): Promise<{ detail: string }> {
+): Promise<{ detail: string; dev_otp?: string }> {
   return postJson("/api/auth/otp/request", { phone, name, role });
 }
 

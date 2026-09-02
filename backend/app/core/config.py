@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     # OTP lives for 10 minutes by default.
     otp_ttl_seconds: int = 600
+    # Demo convenience: no SMS gateway is wired, so the OTP is also returned in
+    # the /auth/otp/request response (and the server log). Set to false for any
+    # real deployment.
+    expose_otp: bool = True
 
     # v1.1: indicative road-freight cost, ₹ per quintal per km (shared-truck haulage).
     transport_cost_per_qtl_km: float = 0.4

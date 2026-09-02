@@ -73,7 +73,8 @@
     "back": "Back",
     "loggingIn": "Logging in...",
     "invalidOtp": "Invalid or expired OTP. Please try again.",
-    "logout": "Logout"
+    "logout": "Logout",
+    "devOtpHint": "Demo mode: your code is {code} (autofilled)."
   },
   "lots": {
     "title": "My Lots",

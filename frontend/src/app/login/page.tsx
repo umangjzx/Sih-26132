@@ -27,6 +27,7 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState<"farmer" | "buyer">("farmer");
   const [code, setCode] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +43,11 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await requestOtp(phone.trim(), name.trim(), role);
+      const res = await requestOtp(phone.trim(), name.trim(), role);
+      if (res.dev_otp) {
+        setDevOtp(res.dev_otp);
+        setCode(res.dev_otp);
+      }
       setStep("otp");
     } catch {
       setError(t("invalidOtp"));
@@ -139,6 +144,12 @@ export default function LoginPage() {
           <p className="text-sm text-[var(--color-text)] opacity-70">
             {t("otpSentTo", { phone })}
           </p>
+
+          {devOtp && (
+            <p className="rounded-md bg-[var(--amber-100)] px-3 py-2 text-sm text-[var(--amber-700)]">
+              {t("devOtpHint", { code: devOtp })}
+            </p>
+          )}
 
           <label className="flex flex-col gap-1 text-sm font-medium">
             {t("otpLabel")}

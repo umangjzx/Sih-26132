@@ -80,7 +80,11 @@ def request_otp(
         settings.otp_ttl_seconds // 60,
     )
 
-    return {"detail": "OTP sent"}
+    resp: dict = {"detail": "OTP sent"}
+    if settings.expose_otp:
+        # No SMS gateway in this build — hand the code back so the demo can log in.
+        resp["dev_otp"] = otp
+    return resp
 
 
 # ---------------------------------------------------------------------------

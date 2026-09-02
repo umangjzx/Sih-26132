@@ -32,7 +32,10 @@ from app.models.user import User
 def _request_otp(client: TestClient, phone: str = "+910000000099", name: str = "Test", role: str = "farmer") -> None:
     resp = client.post("/api/auth/otp/request", json={"phone": phone, "name": name, "role": role})
     assert resp.status_code == 200, resp.text
-    assert resp.json() == {"detail": "OTP sent"}
+    body = resp.json()
+    assert body["detail"] == "OTP sent"
+    # demo build hands the code back (settings.expose_otp defaults to True)
+    assert "dev_otp" in body and len(body["dev_otp"]) == 6
 
 
 def _get_otp_code(db, phone: str) -> str:
@@ -60,6 +63,18 @@ def test_otp_request_creates_user(auth_client, db):
     assert user.name == "New User"
     assert user.otp_code is not None
     assert len(user.otp_code) == 6
+
+
+def test_otp_request_hides_code_when_expose_disabled(auth_client, db, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "expose_otp", False)
+    resp = auth_client.post(
+        "/api/auth/otp/request",
+        json={"phone": "+910000000011", "name": "Prod", "role": "buyer"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"detail": "OTP sent"}
 
 
 def test_otp_request_upserts_existing_user(auth_client, db):

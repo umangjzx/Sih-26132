@@ -247,6 +247,7 @@ To reset the database from scratch, see [backend/README.md](backend/README.md) �
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | |
 | `OTP_TTL_SECONDS` | `600` | OTP validity window |
+| `EXPOSE_OTP` | `true` | Demo build returns the OTP in the `/auth/otp/request` response (the login page auto-fills it). Set `false` in production |
 | `WEATHER_API_KEY` | *(blank)* | Optional OpenWeatherMap key — enriches the forecast with current conditions. Blank → keyless Open-Meteo only |
 | `TRANSPORT_COST_PER_QTL_KM` | `0.4` | ₹/quintal/km used by `markets/best` |
 | `REVERSE_GEOCODE_URL` | BigDataCloud | Free keyless reverse-geocoder |
