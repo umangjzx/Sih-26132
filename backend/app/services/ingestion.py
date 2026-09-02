@@ -44,6 +44,13 @@ RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
 BASE_URL = f"https://api.data.gov.in/resource/{RESOURCE_ID}"
 PAGE_SIZE = 1000
 
+# The historical archive of the same AGMARKNET feed (~81M rows, back to ~2023).
+# Same shape, capitalised field names. Used to backfill real trend history for a
+# single market+commodity on demand instead of synthesising it.
+HISTORY_RESOURCE_ID = "35985678-0d79-46b4-9ed6-6f13308a1d24"
+HISTORY_URL = f"https://api.data.gov.in/resource/{HISTORY_RESOURCE_ID}"
+_DGV_HEADERS = {"User-Agent": "AgriLink/1.0 (SIH 2026; +https://data.gov.in)"}
+
 # The snapshot is preferred over fixtures only if it can stand alone — i.e. it has
 # at least one market+crop series with enough dated points for the 7-day signal
 # window (app.services.signal.compute_signal needs >= 7).
@@ -125,8 +132,7 @@ def fetch_agmarknet_rows(
     limits = httpx.Timeout(timeout, connect=10.0, read=timeout)
     # data.gov.in stalls indefinitely on the default python-httpx User-Agent
     # (bot filtering); any real UA gets a normal ~1s response.
-    headers = {"User-Agent": "AgriLink/1.0 (SIH 2026; +https://data.gov.in)"}
-    with httpx.Client(timeout=limits, headers=headers) as client:
+    with httpx.Client(timeout=limits, headers=_DGV_HEADERS) as client:
         if not states:
             rows.extend(_fetch_state(client, api_key, None, max_pages))
         else:
@@ -185,6 +191,40 @@ def normalize_rows(raw_rows: list[dict]) -> list[dict]:
             }
         )
     return normalized
+
+
+def fetch_history(
+    api_key: str, state: str, commodity: str, market: str, *,
+    days: int = 120, timeout: float = 12.0,
+) -> list[dict]:
+    """Real daily history for one (state, commodity, market) series from the
+    AGMARKNET archive resource, newest first. Normalised rows (may be empty).
+    Never raises — a failure just means "no archive history for this series".
+    """
+    if not api_key:
+        return []
+    try:
+        with httpx.Client(timeout=timeout, headers=_DGV_HEADERS) as client:
+            resp = client.get(
+                HISTORY_URL,
+                params={
+                    "api-key": api_key, "format": "json",
+                    "offset": 0, "limit": max(100, min(days + 20, 400)),
+                    "filters[State]": state,
+                    "filters[Commodity]": commodity,
+                    "filters[Market]": market,
+                    "sort[Arrival_Date]": "desc",
+                },
+            )
+            resp.raise_for_status()
+            records = resp.json().get("records", []) or []
+    except Exception as exc:  # noqa: BLE001
+        logger.info("Archive history lookup failed for %s/%s/%s (%s)",
+                    state, commodity, market, exc)
+        return []
+    # archive fields are Capitalised; normalize_rows expects lower_snake
+    lowered = [{k.lower(): v for k, v in rec.items()} for rec in records]
+    return normalize_rows(lowered)
 
 
 def upsert_price_rows(db: Session, rows: list[dict]) -> int:
@@ -307,17 +347,17 @@ BACKFILL_MIN_REAL_DAYS = 14
 def backfill_series(db: Session, crop: str, market: str, *,
                     days: int = BACKFILL_DAYS,
                     min_real_days: int = BACKFILL_MIN_REAL_DAYS) -> int:
-    """Lazy per-series history synthesis.
+    """Lazy per-series history.
 
-    The AGMARKNET resource only exposes the latest day, so a fresh pull has no
-    history for trend charts / the sell-wait signal. Called on demand by the
+    The live AGMARKNET resource only exposes the latest day, so a fresh pull has
+    no history for trend charts / the sell-wait signal. Called on demand by the
     price endpoints: if this crop+market has fewer than ``min_real_days`` dated
-    points, synthesise a deterministic random walk from ``days`` ago up to the
-    earliest real date, anchored so it converges on the real modal price. Real
-    points replace the synthetic tail as live ingestion runs over later days.
+    points, first pull REAL history for it from the AGMARKNET archive resource;
+    only fall back to a deterministic random walk (anchored to the real latest
+    modal price) for the days the archive doesn't cover.
 
     Bounded to a single series, so it is cheap enough to run per request.
-    Returns the number of synthetic rows inserted (0 if none needed).
+    Returns the number of rows inserted (0 if none needed).
     """
     today = date.today()
     cutoff = today - timedelta(days=days)
@@ -340,16 +380,35 @@ def backfill_series(db: Session, crop: str, market: str, *,
     anchor = float(earliest.modal_price or 0)
     if anchor <= 0:
         return 0
-    span = (earliest.date - cutoff).days
+
+    inserted = 0
+
+    # 1) Real archive history for this exact series.
+    archive = [
+        r for r in fetch_history(settings.data_gov_in_api_key, state, crop, market, days=days)
+        if r["date"] >= cutoff
+    ]
+    if archive:
+        inserted += upsert_price_rows(db, archive)
+        have = {r["date"] for r in archive} | {r.date for r in existing}
+        earliest_have = min(have)
+        anchor_row = min(archive, key=lambda r: r["date"])
+        anchor = float(anchor_row["modal_price"]) or anchor
+    else:
+        earliest_have = earliest.date
+    if len(existing) + inserted and (earliest_have - cutoff).days <= 1:
+        return inserted
+
+    span = (earliest_have - cutoff).days
     if span <= 1:
-        return 0
+        return inserted
 
     seed = int(hashlib.md5(f"{state}|{market}|{crop}|{variety}".encode()).hexdigest()[:8], 16)
     rng = random.Random(seed)
     price = anchor
     new_rows: list[dict] = []
-    for i in range(1, span + 1):  # walk BACKWARDS from the real anchor
-        day = earliest.date - timedelta(days=i)
+    for i in range(1, span + 1):  # walk BACKWARDS from the earliest real/archive point
+        day = earliest_have - timedelta(days=i)
         price = max(anchor * 0.55, min(anchor * 1.7, price * (1 + rng.uniform(-0.02, 0.02))))
         spread = price * rng.uniform(0.04, 0.09)
         new_rows.append({
@@ -360,7 +419,7 @@ def backfill_series(db: Session, crop: str, market: str, *,
             "modal_price": round(price, 2),
             "arrival_volume": None,
         })
-    return upsert_price_rows(db, new_rows) if new_rows else 0
+    return inserted + (upsert_price_rows(db, new_rows) if new_rows else 0)
 
 
 def run_ingestion(db: Session, states: list[str] | None = "__default__") -> dict:
