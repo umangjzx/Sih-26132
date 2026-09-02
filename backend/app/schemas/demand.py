@@ -2,11 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from app.services.grading import GRADE_CODES, normalize_grade
+
 
 class DemandCreate(BaseModel):
     crop: str
     quantity_kg: float
     quality_spec: str
+    quality_grade_min: str | None = None
     price_band_min: float
     price_band_max: float
     delivery_window: str
@@ -14,6 +17,16 @@ class DemandCreate(BaseModel):
     delivery_district: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+
+    @field_validator("quality_grade_min")
+    @classmethod
+    def _grade(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        g = normalize_grade(v)
+        if g is None or g not in GRADE_CODES:
+            raise ValueError(f"quality_grade_min must be one of {GRADE_CODES}")
+        return g
 
     @field_validator("quantity_kg")
     @classmethod
@@ -44,6 +57,7 @@ class DemandResponse(BaseModel):
     crop: str
     quantity_kg: float
     quality_spec: str
+    quality_grade_min: str | None = None
     price_band_min: float
     price_band_max: float
     delivery_window: str
@@ -58,6 +72,7 @@ class BrowseDemandOut(BaseModel):
     crop: str
     quantity_kg: float
     quality_spec: str
+    quality_grade_min: str | None = None
     price_band_min: float
     price_band_max: float
     delivery_window: str

@@ -300,7 +300,7 @@ def run_matching(db: Session) -> int:
                 demand_coords=demand_coords,
                 lot_grade=lot.quality_grade or "",
                 lot_available_from=lot.available_from,
-                demand_quality_spec=demand.quality_spec or "",
+                demand_quality_spec=demand.quality_grade_min or demand.quality_spec or "",
                 demand_delivery_window=demand.delivery_window or "",
             )
 
@@ -365,7 +365,7 @@ def try_pair(db: Session, lot: Lot, demand: Demand) -> dict:
         demand_band_max=demand.price_band_max, buyer_district=d_district,
         lot_coords=lot_coords, demand_coords=d_coords,
         lot_grade=lot.quality_grade or "", lot_available_from=lot.available_from,
-        demand_quality_spec=demand.quality_spec or "",
+        demand_quality_spec=demand.quality_grade_min or demand.quality_spec or "",
         demand_delivery_window=demand.delivery_window or "",
     )
     if total < MIN_SCORE:
@@ -439,7 +439,7 @@ def matching_health(db: Session) -> dict:
             d_district, coords,
             demand_coords=d_coords,
             lot_grade=lot.quality_grade or "", lot_available_from=lot.available_from,
-            demand_quality_spec=demand.quality_spec or "",
+            demand_quality_spec=demand.quality_grade_min or demand.quality_spec or "",
             demand_delivery_window=demand.delivery_window or "",
         )
         delta = abs(recomputed - (match.score or 0))

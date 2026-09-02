@@ -156,7 +156,13 @@
     "deliverToPlaceholder": "e.g. Coimbatore",
     "deliverToHint": "Blank = your profile location ({d}). Matching ranks lots by distance to this.",
     "deliverToNoProfile": "Set a location on your profile so nearby lots are matched.",
-    "setProfile": "Set location"
+    "setProfile": "Set location",
+    "minGradeLabel": "न्यूनतम स्वीकार्य ग्रेड",
+    "minGradeAny": "कोई भी ग्रेड",
+    "gradeADesc": "प्रीमियम",
+    "gradeBDesc": "अच्छा",
+    "gradeFaqDesc": "सामान्य",
+    "gradeCDesc": "औसत से कम"
   },
   "matching": {
     "title": "मेरे मिलान",
@@ -752,7 +758,8 @@
     "noMatchYet": "Not a match yet.",
     "needDemand": "Post an open demand for this crop first.",
     "needLot": "List an open lot of this crop first.",
-    "error": "Something went wrong — try again."
+    "error": "Something went wrong — try again.",
+    "gradeMin": "≥ {grade}"
   },
   "logistics": {
     "title": "लॉजिस्टिक्स योजना",

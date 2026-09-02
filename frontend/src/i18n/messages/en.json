@@ -156,7 +156,13 @@
     "deliverToPlaceholder": "e.g. Coimbatore",
     "deliverToHint": "Blank = your profile location ({d}). Matching ranks lots by distance to this.",
     "deliverToNoProfile": "Set a location on your profile so nearby lots are matched.",
-    "setProfile": "Set location"
+    "setProfile": "Set location",
+    "minGradeLabel": "Minimum grade accepted",
+    "minGradeAny": "Any grade",
+    "gradeADesc": "premium",
+    "gradeBDesc": "good",
+    "gradeFaqDesc": "fair average",
+    "gradeCDesc": "below average"
   },
   "matching": {
     "title": "My Matches",
@@ -752,7 +758,8 @@
     "noMatchYet": "Not a match yet.",
     "needDemand": "Post an open demand for this crop first.",
     "needLot": "List an open lot of this crop first.",
-    "error": "Something went wrong — try again."
+    "error": "Something went wrong — try again.",
+    "gradeMin": "≥ {grade}"
   },
   "logistics": {
     "title": "Logistics plan",

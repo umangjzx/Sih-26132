@@ -74,7 +74,7 @@ export default function BuyerPage() {
   const tdash = useTranslations("dash");
 
   const [form, setForm] = useState<DemandCreate>({
-    crop: "", quantity_kg: 0, quality_spec: "", price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "",
+    crop: "", quantity_kg: 0, quality_spec: "", quality_grade_min: null, price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "",
   });
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [matches, setMatches] = useState<MatchResponse[]>([]);
@@ -136,7 +136,7 @@ export default function BuyerPage() {
         { ...form, delivery_district: form.delivery_district?.trim() || user?.district || null },
         token,
       );
-      setForm({ crop: "", quantity_kg: 0, quality_spec: "", price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "" });
+      setForm({ crop: "", quantity_kg: 0, quality_spec: "", quality_grade_min: null, price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "" });
       setToast(td("success"));
       setTimeout(() => setToast(null), 3000);
       loadData();
@@ -219,18 +219,33 @@ export default function BuyerPage() {
             </label>
           ))}
           
-          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)] sm:col-span-2">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
             {td("qualitySpecLabel")}
-            <input 
-              type="text" 
-              value={form.quality_spec} 
+            <input
+              type="text"
+              value={form.quality_spec}
               onChange={(e) => setForm({ ...form, quality_spec: e.target.value })}
-              placeholder={td("qualitySpecPlaceholder")} 
+              placeholder={td("qualitySpecPlaceholder")}
               required
               className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
             />
           </label>
-          
+
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+            {td("minGradeLabel")}
+            <select
+              value={form.quality_grade_min ?? ""}
+              onChange={(e) => setForm({ ...form, quality_grade_min: e.target.value || null })}
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
+            >
+              <option value="">{td("minGradeAny")}</option>
+              <option value="A">A — {td("gradeADesc")}</option>
+              <option value="B">B — {td("gradeBDesc")}</option>
+              <option value="FAQ">FAQ — {td("gradeFaqDesc")}</option>
+              <option value="C">C — {td("gradeCDesc")}</option>
+            </select>
+          </label>
+
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
             {td("deliveryWindowLabel")}
             <input

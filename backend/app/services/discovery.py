@@ -116,6 +116,7 @@ def browse_demands(
             "crop": dem.crop,
             "quantity_kg": dem.quantity_kg,
             "quality_spec": dem.quality_spec,
+            "quality_grade_min": dem.quality_grade_min,
             "price_band_min": dem.price_band_min,
             "price_band_max": dem.price_band_max,
             "delivery_window": dem.delivery_window,

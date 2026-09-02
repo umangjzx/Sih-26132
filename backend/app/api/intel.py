@@ -213,3 +213,11 @@ def holidays_upcoming(days: int = Query(30, ge=1, le=120)) -> dict:
             "mandis will be closed; plan sales around it."
         )
     return {"holidays": hs, "note": note}
+
+
+@router.get("/grades")
+def quality_grades() -> dict:
+    """The standard quality-grade rubric used on lots and buyer demands."""
+    from app.services.grading import GRADES
+
+    return {"grades": GRADES}

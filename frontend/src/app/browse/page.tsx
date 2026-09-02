@@ -190,7 +190,14 @@ export default function BrowsePage() {
                 <li key={d.id} className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <span className="font-heading text-base font-bold text-[var(--ink)]">{d.crop}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-heading text-base font-bold text-[var(--ink)]">{d.crop}</span>
+                        {d.quality_grade_min && (
+                          <span className="rounded-md bg-[var(--paper)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--ink-soft)]">
+                            {t("gradeMin", { grade: d.quality_grade_min })}
+                          </span>
+                        )}
+                      </div>
                       <div className="mt-1 text-sm font-medium text-[var(--ink-soft)]">
                         {Math.round(d.quantity_kg)} kg · ₹{Math.round(d.price_band_min)}–{Math.round(d.price_band_max)}/qtl · {d.delivery_window}
                       </div>

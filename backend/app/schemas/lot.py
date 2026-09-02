@@ -4,6 +4,8 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.services.grading import GRADE_CODES, normalize_grade
+
 
 class LotCreate(BaseModel):
     crop: str
@@ -13,6 +15,14 @@ class LotCreate(BaseModel):
     available_from: date
     location: str
     photo_url: str | None = None
+
+    @field_validator("quality_grade")
+    @classmethod
+    def _grade(cls, v: str) -> str:
+        g = normalize_grade(v)
+        if g is None:
+            raise ValueError(f"quality_grade must be one of {GRADE_CODES}")
+        return g
 
     @field_validator("quantity_kg")
     @classmethod

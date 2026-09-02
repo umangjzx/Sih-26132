@@ -105,6 +105,7 @@ export type DemandCreate = {
   crop: string;
   quantity_kg: number;
   quality_spec: string;
+  quality_grade_min?: string | null;
   price_band_min: number;
   price_band_max: number;
   delivery_window: string;
@@ -119,6 +120,7 @@ export type DemandResponse = {
   crop: string;
   quantity_kg: number;
   quality_spec: string;
+  quality_grade_min?: string | null;
   price_band_min: number;
   price_band_max: number;
   delivery_window: string;
@@ -513,6 +515,7 @@ export type BrowseDemand = {
   crop: string;
   quantity_kg: number;
   quality_spec: string;
+  quality_grade_min?: string | null;
   price_band_min: number;
   price_band_max: number;
   delivery_window: string;

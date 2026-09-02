@@ -67,7 +67,7 @@ def demand_candidates(db: Session, pool: Pool, members: list[PoolMember], *, lim
             if pool.latitude is not None and pool.longitude is not None
             else None,
             lot_grade=pool.grade or "",
-            demand_quality_spec=demand.quality_spec or "",
+            demand_quality_spec=demand.quality_grade_min or demand.quality_spec or "",
             demand_delivery_window=demand.delivery_window or "",
         )
         if total < MIN_SCORE:

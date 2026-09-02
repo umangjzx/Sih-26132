@@ -14,6 +14,9 @@ class Demand(Base):
     crop: Mapped[str] = mapped_column(String(120))
     quantity_kg: Mapped[float] = mapped_column(Float)
     quality_spec: Mapped[str] = mapped_column(String(500))
+    # v1.4: canonical minimum grade the buyer will accept (A | B | FAQ | C).
+    # Falls back to parsing quality_spec when unset.
+    quality_grade_min: Mapped[str | None] = mapped_column(String(10), nullable=True)
     price_band_min: Mapped[float] = mapped_column(Float)
     price_band_max: Mapped[float] = mapped_column(Float)
     delivery_window: Mapped[str] = mapped_column(String(120))
