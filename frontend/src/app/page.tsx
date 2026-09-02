@@ -87,7 +87,7 @@ function HomeInner() {
   const tb = useTranslations("bestmarket");
   const te = useTranslations("explore");
   const cm = useCropMarket();
-  const { location } = useLocation();
+  const { location, warmTick } = useLocation();
 
   const [price, setPrice] = useState<number | null>(null);
   const [pctChange, setPctChange] = useState<number | null>(null);
@@ -137,7 +137,7 @@ function HomeInner() {
     fetchPublicOverview(location?.state)
       .then(setOverview)
       .catch(() => setOverview(null));
-  }, [location?.state]);
+  }, [location?.state, warmTick]);
 
   const signalColors = rec ? SIGNAL_COLORS[rec.recommendation] : null;
 

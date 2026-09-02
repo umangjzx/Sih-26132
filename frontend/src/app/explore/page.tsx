@@ -60,7 +60,7 @@ function MoverChart({
 
 export default function ExplorePage() {
   const t = useTranslations("explore");
-  const { location } = useLocation();
+  const { location, warmTick } = useLocation();
   const [data, setData] = useState<PublicOverview | null>(null);
   const [error, setError] = useState(false);
 
@@ -71,7 +71,7 @@ export default function ExplorePage() {
     } catch {
       setError(true);
     }
-  }, [location?.state]);
+  }, [location?.state, warmTick]);
 
   useEffect(() => {
     load();

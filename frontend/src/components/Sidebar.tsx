@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { useAuth } from "./AuthProvider";
@@ -12,8 +12,9 @@ type NavLink = { href: string; label: string; icon: string };
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations("nav");
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const publicLinks: NavLink[] = [
     { href: "/", label: t("home"), icon: "house" },
@@ -101,7 +102,24 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </div>
         )}
 
-        {!isAuthenticated && (
+        {isAuthenticated && user ? (
+          <div className="border-t border-white/10 p-4">
+            <div className="mb-2 flex items-center gap-2 px-2 text-sm text-[var(--green-50)]">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-bold">
+                {(user.name.trim()[0] ?? "?").toUpperCase()}
+              </span>
+              <span className="truncate">{user.name}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => { onClose(); logout(); router.replace("/login"); }}
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--green-50)] hover:bg-white/10 hover:text-white"
+            >
+              <Icon name="close" size={18} className="opacity-80" />
+              {t("logout")}
+            </button>
+          </div>
+        ) : (
           <div className="border-t border-white/10 p-4">
             <Link
               href="/login"

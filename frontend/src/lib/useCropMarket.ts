@@ -35,7 +35,7 @@ export function useCropMarket(): CropMarketState {
   const params = useSearchParams();
   const urlCrop = params.get("crop") ?? "";
   const urlMarket = params.get("market") ?? "";
-  const { location } = useLocation();
+  const { location, warmTick } = useLocation();
   const stateScope = location?.state;
 
   const [options, setOptions] = useState<CropMarketOption[]>([]);
@@ -51,7 +51,8 @@ export function useCropMarket(): CropMarketState {
     } catch {
       setError(true);
     }
-  }, [stateScope]);
+    // warmTick: refetch once a background per-state price warm completes
+  }, [stateScope, warmTick]);
 
   useEffect(() => {
     loadOptions();

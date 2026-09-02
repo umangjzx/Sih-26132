@@ -50,16 +50,16 @@ export function LocationChip() {
           : null;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative inline-flex max-w-full">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-xl border border-[var(--line)] bg-white/70 px-3 py-2 text-sm font-semibold text-[var(--ink)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+        className="flex max-w-full items-center gap-1.5 rounded-xl border border-[var(--line)] bg-white/70 px-3 py-2 text-sm font-semibold text-[var(--ink)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
       >
-        <Icon name="pin" size={14} />
-        <span className="max-w-[10rem] truncate">
+        <Icon name="pin" size={14} className="shrink-0" />
+        <span className="truncate">
           {location?.label ?? t("setLocation")}
         </span>
       </button>
@@ -68,7 +68,8 @@ export function LocationChip() {
         <div
           role="dialog"
           aria-label={t("title")}
-          className="absolute right-0 lg:left-0 lg:right-auto z-50 mt-2 w-72 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 shadow-lg"
+          className="absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 shadow-lg"
+          style={{ top: "100%" }}
         >
           <p className="text-xs font-bold uppercase tracking-wide text-[var(--ink-soft)]">
             {t("title")}

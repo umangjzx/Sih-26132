@@ -35,7 +35,7 @@ const STAGES = [
 ] as const;
 
 export default function DealDetailPage() {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, ready } = useAuth();
   const router = useRouter();
   const params = useParams();
   const dealId = String(params.id);
@@ -72,8 +72,8 @@ export default function DealDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace("/login");
-  }, [isAuthenticated, router]);
+    if (ready && !isAuthenticated) router.replace("/login");
+  }, [ready, isAuthenticated, router]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -127,7 +127,7 @@ export default function DealDetailPage() {
     }
   }
 
-  if (!isAuthenticated) return null;
+  if (!ready || !isAuthenticated) return null;
   if (error) {
     return (
       <div className="flex flex-col gap-4">

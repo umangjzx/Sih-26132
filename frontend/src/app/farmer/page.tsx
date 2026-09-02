@@ -52,7 +52,7 @@ function saveQueue(q: LotCreate[]) {
 }
 
 export default function FarmerPage() {
-  const { isAuthenticated, user, token } = useAuth();
+  const { isAuthenticated, ready, user, token } = useAuth();
   const router = useRouter();
   const t = useTranslations("lots");
   const tdash = useTranslations("dash");
@@ -66,10 +66,10 @@ export default function FarmerPage() {
 
   // Guard
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== "farmer") {
+    if (ready && (!isAuthenticated || user?.role !== "farmer")) {
       router.replace("/login");
     }
-  }, [isAuthenticated, user, router]);
+  }, [ready, isAuthenticated, user, router]);
 
   // Restore draft
   useEffect(() => {
@@ -174,7 +174,7 @@ export default function FarmerPage() {
     }
   }, [user]);
 
-  if (!isAuthenticated) return null;
+  if (!ready || !isAuthenticated) return null;
 
   return (
     <div className="flex flex-col gap-6">

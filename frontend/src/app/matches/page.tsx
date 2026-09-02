@@ -41,7 +41,7 @@ function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null
 }
 
 export default function MatchesPage() {
-  const { isAuthenticated, user, token } = useAuth();
+  const { isAuthenticated, ready, user, token } = useAuth();
   const router = useRouter();
   const tm = useTranslations("matching");
   const tdash = useTranslations("dash");
@@ -50,8 +50,8 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace("/login");
-  }, [isAuthenticated, router]);
+    if (ready && !isAuthenticated) router.replace("/login");
+  }, [ready, isAuthenticated, router]);
 
   const loadData = useCallback(async () => {
     if (!token) return;
@@ -67,7 +67,7 @@ export default function MatchesPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  if (!isAuthenticated) return null;
+  if (!ready || !isAuthenticated) return null;
 
   return (
     <div className="flex flex-col gap-6">

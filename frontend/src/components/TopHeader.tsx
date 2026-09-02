@@ -27,50 +27,46 @@ export function TopHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-[var(--line)] bg-[var(--surface)]/90 px-4 backdrop-blur-md sm:px-6">
-      <div className="flex items-center gap-4 lg:hidden">
-        <button
-          onClick={onOpenSidebar}
-          className="rounded-lg p-2 text-[var(--ink-soft)] hover:bg-[var(--paper)]"
-          aria-label={t("openMenu")}
-        >
-          <Icon name="menu" size={24} />
-        </button>
-      </div>
+    <header className="sticky top-0 z-40 flex h-16 w-full items-center gap-2 border-b border-[var(--line)] bg-[var(--surface)]/90 px-3 backdrop-blur-md sm:gap-3 sm:px-6">
+      <button
+        onClick={onOpenSidebar}
+        className="shrink-0 rounded-lg p-2 text-[var(--ink-soft)] hover:bg-[var(--paper)] lg:hidden"
+        aria-label={t("openMenu")}
+      >
+        <Icon name="menu" size={22} />
+      </button>
 
-      {/* Spacer for desktop to keep center aligned */}
-      <div className="hidden w-8 lg:block" />
-
-      <div className="flex flex-1 justify-center lg:justify-start lg:pl-8">
+      <div className="min-w-0 flex-1 lg:pl-4">
         <LocationChip />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         {isAuthenticated && <NotificationBell />}
         <LanguageSwitcher />
         {isAuthenticated && user ? (
-          <div className="flex items-center gap-2">
+          <>
             <span
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--green-700)] text-xs font-bold text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--green-700)] text-xs font-bold text-white"
+              title={user.name}
               aria-hidden="true"
             >
               {initials(user.name)}
             </span>
-            <span className="hidden text-sm font-semibold text-[var(--ink)] sm:block">
+            <span className="hidden text-sm font-semibold text-[var(--ink)] lg:block">
               {user.name}
             </span>
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)] transition-colors hover:bg-[var(--paper)]"
+              className="hidden rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)] transition-colors hover:bg-[var(--paper)] sm:inline-flex"
             >
               {t("logout")}
             </button>
-          </div>
+          </>
         ) : (
           <Link
             href="/login"
-            className="rounded-lg bg-[var(--green-700)] px-4 py-1.5 text-sm font-bold text-white transition-colors hover:bg-[var(--green-900)]"
+            className="rounded-lg bg-[var(--green-700)] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-[var(--green-900)] sm:px-4"
           >
             {t("login")}
           </Link>

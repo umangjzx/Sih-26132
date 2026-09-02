@@ -20,6 +20,8 @@ type AuthContextValue = {
   user: StoredUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  /** false until the stored session has been read on mount — guards redirects */
+  ready: boolean;
   login: (accessToken: string, refreshToken: string, user: StoredUser) => void;
   logout: () => void;
 };
@@ -35,6 +37,7 @@ export function useAuth(): AuthContextValue {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<StoredUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   // Re-hydrate from localStorage on mount (AUTH-04: persist across refresh)
   useEffect(() => {
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(storedUser);
       setToken(storedToken);
     }
+    setReady(true);
   }, []);
 
   function login(
@@ -68,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         token,
         isAuthenticated: !!token && !!user,
+        ready,
         login,
         logout,
       }}

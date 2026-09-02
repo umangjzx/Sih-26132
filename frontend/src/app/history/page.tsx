@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 
 export default function HistoryPage() {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, ready } = useAuth();
   const router = useRouter();
   const t = useTranslations("history");
   const tdeals = useTranslations("deals");
@@ -27,8 +27,8 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace("/login");
-  }, [isAuthenticated, router]);
+    if (ready && !isAuthenticated) router.replace("/login");
+  }, [ready, isAuthenticated, router]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -44,7 +44,7 @@ export default function HistoryPage() {
     load();
   }, [load]);
 
-  if (!isAuthenticated) return null;
+  if (!ready || !isAuthenticated) return null;
 
   return (
     <div className="flex flex-col gap-6">

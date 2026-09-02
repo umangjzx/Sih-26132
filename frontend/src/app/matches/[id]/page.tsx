@@ -29,7 +29,7 @@ import {
 } from "@/lib/api";
 
 export default function MatchThreadPage() {
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, token, isAuthenticated, ready } = useAuth();
   const router = useRouter();
   const params = useParams();
   const matchId = Number(params.id);
@@ -45,8 +45,8 @@ export default function MatchThreadPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace("/login");
-  }, [isAuthenticated, router]);
+    if (ready && !isAuthenticated) router.replace("/login");
+  }, [ready, isAuthenticated, router]);
 
   const load = useCallback(async () => {
     if (!token || !matchId) return;
@@ -92,7 +92,7 @@ export default function MatchThreadPage() {
     } catch { /* non-fatal */ }
   }
 
-  if (!isAuthenticated || !user) return null;
+  if (!ready || !isAuthenticated || !user) return null;
   
   if (!match) {
     return (

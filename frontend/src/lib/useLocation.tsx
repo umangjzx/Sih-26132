@@ -36,6 +36,8 @@ type LocationContextValue = {
   location: AppLocation | null;
   loading: boolean;
   error: LocationError;
+  /** bumps when a background price-warm for the current state completes */
+  warmTick: number;
   detect: () => void;
   setPlace: (place: string) => Promise<void>;
   setStateName: (state: string) => Promise<void>;
@@ -46,6 +48,7 @@ const FALLBACK: LocationContextValue = {
   location: null,
   loading: false,
   error: null,
+  warmTick: 0,
   detect: () => {},
   setPlace: async () => {},
   setStateName: async () => {},
@@ -74,6 +77,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useState<AppLocation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<LocationError>(null);
+  const [warmTick, setWarmTick] = useState(0);
 
   useEffect(() => {
     try {
@@ -106,10 +110,13 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         const r = await resolveLocation({ ...args, ensurePrices: false });
         persist(toAppLocation(r));
         if (r.state && r.has_prices === false) {
-          // fire-and-forget: pull this state's live data, refresh label on success
+          // fire-and-forget: pull this state's data, then signal consumers to refetch
           void resolveLocation({ ...args, ensurePrices: true })
             .then((warm) => {
-              if (warm.has_prices) persist(toAppLocation(warm));
+              if (warm.has_prices) {
+                persist(toAppLocation(warm));
+                setWarmTick((n) => n + 1);
+              }
             })
             .catch(() => {});
         }
@@ -157,8 +164,8 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const clear = useCallback(() => persist(null), [persist]);
 
   const value = useMemo(
-    () => ({ location, loading, error, detect, setPlace, setStateName, clear }),
-    [location, loading, error, detect, setPlace, setStateName, clear],
+    () => ({ location, loading, error, warmTick, detect, setPlace, setStateName, clear }),
+    [location, loading, error, warmTick, detect, setPlace, setStateName, clear],
   );
 
   return (

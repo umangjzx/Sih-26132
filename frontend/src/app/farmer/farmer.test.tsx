@@ -17,6 +17,7 @@ vi.mock("@/components/AuthProvider", () => ({
     user: { id: 1, phone: "+910000000001", name: "Ravi", role: "farmer", district: "Pune", taluka: "Haveli", kyc_status: "unverified", is_active: true },
     token: "mock-token",
     isAuthenticated: true,
+    ready: true,
     login: vi.fn(),
     logout: vi.fn(),
   }),
