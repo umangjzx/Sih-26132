@@ -429,7 +429,8 @@
     "showAll": "Show all markets",
     "showLess": "Show fewer",
     "sellHere": "You are here",
-    "viewNote": "Tip"
+    "viewNote": "Tip",
+    "freightBasis": "Transport is diesel-indexed: ₹{diesel}/L diesel → ₹{rate}/quintal-km (₹{handling} handling + ₹{fuel} fuel). As of {asOf}."
   },
   "explore": {
     "title": "Market price transparency",

@@ -175,12 +175,17 @@ def markets_best(
     district: str | None = None,
     lat: float | None = None,
     lon: float | None = None,
+    state: str | None = None,
     limit: int = Query(10, ge=1, le=25),
     fast: bool = Query(False, description="skip OSRM routing, use straight-line distance"),
     db: Session = Depends(get_db),
 ) -> dict:
     origin = _resolve_point(market, district, lat, lon)
-    ranked = best_markets(db, crop, origin, limit=limit, use_routing=not fast)
+    if not state:
+        from app.services.geo import nearest_state
+
+        state = nearest_state(*origin)
+    ranked = best_markets(db, crop, origin, limit=limit, use_routing=not fast, origin_state=state)
     if not ranked:
         raise HTTPException(status_code=404, detail=f"No price data for '{crop}'")
     best = ranked[0]
@@ -194,8 +199,11 @@ def markets_best(
                 f"{market} after ₹{best['transport_cost_per_qtl']:.0f}/quintal transport "
                 f"({best['road_km']:.0f} km)."
             )
+    from app.services.freight import freight_rate
+
     return {"crop": crop, "origin": {"latitude": origin[0], "longitude": origin[1]},
-            "best": best, "here": here, "ranked": ranked, "note": note}
+            "best": best, "here": here, "ranked": ranked, "note": note,
+            "freight": freight_rate(state)}
 
 
 # --------------------------------------------------------------------------- #
@@ -221,3 +229,31 @@ def quality_grades() -> dict:
     from app.services.grading import GRADES
 
     return {"grades": GRADES}
+
+
+@router.get("/logistics/freight-rate")
+def freight_rate_endpoint(
+    from_state: str | None = None,
+    from_district: str | None = None,
+    to_district: str | None = None,
+    distance_km: float | None = None,
+    quantity_kg: float = Query(1000, gt=0),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Diesel-indexed road-freight rate (₹/quintal/km) with its full working,
+    plus a total for the given distance + load."""
+    from app.services.freight import estimate_cost
+    from app.services.geo import _district_coord, haversine_km, nearest_state
+
+    state = from_state
+    if not state and from_district:
+        c = _district_coord(from_district)
+        if c:
+            state = nearest_state(*c)
+
+    if distance_km is None and from_district and to_district:
+        a, b = _district_coord(from_district), _district_coord(to_district)
+        if a and b:
+            distance_km = round(haversine_km(a, b), 1)
+
+    return estimate_cost(state, distance_km, quantity_kg)

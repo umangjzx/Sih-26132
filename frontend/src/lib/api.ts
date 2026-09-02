@@ -1136,6 +1136,17 @@ export type BestMarketRow = {
   distance_source: string;
   date: string;
 };
+export type FreightRate = {
+  rate_per_qtl_km: number;
+  diesel_inr_per_l: number;
+  truck_kmpl: number;
+  quintals_per_truck: number;
+  breakdown: { handling: number; fuel: number };
+  source: string;
+  as_of: string;
+  distance_km?: number | null;
+  est_total_inr?: number | null;
+};
 export type BestMarketResponse = {
   crop: string;
   origin: { latitude: number; longitude: number };
@@ -1143,6 +1154,7 @@ export type BestMarketResponse = {
   here: BestMarketRow | null;
   ranked: BestMarketRow[];
   note: string | null;
+  freight?: FreightRate;
 };
 
 export type HolidayInfo = { date: string; name: string; in_days: number };

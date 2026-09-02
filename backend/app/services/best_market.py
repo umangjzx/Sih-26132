@@ -13,8 +13,8 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.price_cache import PriceCache
+from app.services.freight import freight_rate
 from app.services.geo import DISTRICT_CENTROIDS
 from app.services.market_towns import market_coords
 from app.services.routing import road_distance
@@ -34,9 +34,10 @@ def best_markets(
     limit: int = 10,
     max_km: float = 400.0,
     use_routing: bool = True,
+    origin_state: str | None = None,
 ) -> list[dict]:
-    """Latest modal price per market for ``crop``, minus transport cost from
-    ``origin``, ranked by net price descending.
+    """Latest modal price per market for ``crop``, minus a diesel-indexed
+    transport cost from ``origin``, ranked by net price descending.
     """
     latest_date = db.execute(
         select(PriceCache.date)
@@ -52,7 +53,7 @@ def best_markets(
         .where(PriceCache.crop == crop, PriceCache.date == latest_date)
     ).all()
 
-    rate = settings.transport_cost_per_qtl_km
+    rate = freight_rate(origin_state)["rate_per_qtl_km"]
     out: list[dict] = []
     seen: set[str] = set()
     for market, district, modal in rows:

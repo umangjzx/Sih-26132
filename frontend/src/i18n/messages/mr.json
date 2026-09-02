@@ -429,7 +429,8 @@
     "showAll": "सर्व बाजार दाखवा",
     "showLess": "कमी दाखवा",
     "sellHere": "तुम्ही येथे आहात",
-    "viewNote": "टीप"
+    "viewNote": "टीप",
+    "freightBasis": "वाहतूक डिझेल-आधारित आहे: ₹{diesel}/लि. डिझेल → ₹{rate}/क्विंटल-किमी (₹{handling} हाताळणी + ₹{fuel} इंधन)। {asOf} पर्ंत."
   },
   "explore": {
     "title": "बाजार भाव पारदर्शकता",

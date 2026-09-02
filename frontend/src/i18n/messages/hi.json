@@ -429,7 +429,8 @@
     "showAll": "सभी मंडियां दिखाएं",
     "showLess": "कम दिखाएं",
     "sellHere": "आप यहां हैं",
-    "viewNote": "सुझाव"
+    "viewNote": "सुझाव",
+    "freightBasis": "परिवहन डीजल-आधारित है: ₹{diesel}/ली. डीजल → ₹{rate}/क्विंटल-किमी (₹{handling} हैंडलिंग + ₹{fuel} ईंधन)। {asOf} तक।"
   },
   "explore": {
     "title": "बाज़ार भाव पारदर्शिता",

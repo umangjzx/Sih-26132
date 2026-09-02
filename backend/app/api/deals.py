@@ -21,7 +21,6 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.api.matching import _counterparty, _demand_summary, _lot_summary
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.models.deal import Deal
@@ -248,10 +247,27 @@ def _pair_km_and_points(lot: Lot, demand: Demand) -> tuple[float | None, str, st
     return km, (lot.location or ""), (demand.delivery_district or "")
 
 
-def _est_cost(km: float | None, qty_kg: float) -> float | None:
+def _origin_state(lot: Lot) -> str | None:
+    """Best-effort state for the lot's pickup point, so freight can be
+    diesel-indexed to that state."""
+    from app.services.geo import _district_coord, nearest_state
+
+    if lot.latitude is not None and lot.longitude is not None:
+        return nearest_state(lot.latitude, lot.longitude)
+    c = _district_coord(lot.location or "")
+    if c:
+        return nearest_state(*c)
+    return None
+
+
+def _est_cost(km: float | None, qty_kg: float, lot: Lot | None = None) -> float | None:
     if km is None:
         return None
-    return round(km * (qty_kg / 100.0) * settings.transport_cost_per_qtl_km, 0)
+    from app.services.freight import freight_rate
+
+    state = _origin_state(lot) if lot is not None else None
+    rate = freight_rate(state)["rate_per_qtl_km"]
+    return round(km * (qty_kg / 100.0) * rate, 0)
 
 
 @router.get("/api/deals/{deal_id}/logistics", response_model=LogisticsOut)
@@ -272,7 +288,7 @@ def get_logistics(
     # unsaved suggestion
     return LogisticsOut(
         deal_id=deal_id, mode="hired_transport", pickup_point=pickup, drop_point=drop,
-        distance_km=km, est_cost_inr=_est_cost(km, deal.agreed_quantity),
+        distance_km=km, est_cost_inr=_est_cost(km, deal.agreed_quantity, lot),
         status="planned", is_draft=True,
     )
 
@@ -301,7 +317,7 @@ def upsert_logistics(
         setattr(row, field, value)
     row.distance_km = km
     if "est_cost_inr" not in data or data.get("est_cost_inr") is None:
-        row.est_cost_inr = _est_cost(km, deal.agreed_quantity)
+        row.est_cost_inr = _est_cost(km, deal.agreed_quantity, lot)
 
     db.commit()
     db.refresh(row)

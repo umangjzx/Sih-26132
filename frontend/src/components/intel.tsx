@@ -219,6 +219,18 @@ export function BestMarketPanel({ data }: { data: BestMarketResponse | null }) {
           {expanded ? t("showLess") : t("showAll")}
         </button>
       )}
+      {data.freight && (
+        <p className="mt-3 flex items-start gap-1.5 border-t border-[var(--line)]/60 pt-2 text-xs text-[var(--ink-soft)]">
+          <Icon name="shield" size={13} className="mt-0.5 shrink-0" />
+          {t("freightBasis", {
+            diesel: data.freight.diesel_inr_per_l,
+            rate: data.freight.rate_per_qtl_km,
+            handling: data.freight.breakdown.handling,
+            fuel: data.freight.breakdown.fuel,
+            asOf: data.freight.as_of,
+          })}
+        </p>
+      )}
     </Card>
   );
 }
