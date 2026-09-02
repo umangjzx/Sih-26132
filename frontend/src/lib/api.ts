@@ -871,16 +871,38 @@ export function nearbyTransporters(
   return getJson(`/api/transporters/nearby?${p.toString()}`, token);
 }
 
-/** Fetch the printable receipt HTML with auth and open it in a new tab. */
+/**
+ * Fetch the auth-gated receipt HTML and show it in a new tab.
+ *
+ * The tab is opened synchronously inside the click so the browser doesn't
+ * treat it as a pop-up; the HTML is written in once the fetch resolves. If the
+ * pop-up is still blocked, we fall back to a same-tab data-URL navigation.
+ */
 export async function openDealReceipt(dealId: number | string, token: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/deals/${dealId}/receipt`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  const html = await res.text();
-  const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-  window.open(url, "_blank", "noopener");
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const win = typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
+  if (win) {
+    win.document.write(
+      "<!doctype html><title>Receipt…</title><p style='font:14px system-ui;padding:24px'>Preparing receipt…</p>",
+    );
+  }
+  try {
+    const res = await fetch(`${API_URL}/api/deals/${dealId}/receipt`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    const html = await res.text();
+    if (win && !win.closed) {
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    } else {
+      // pop-up blocked — navigate the current tab to the receipt instead
+      window.location.href = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    }
+  } catch (err) {
+    if (win && !win.closed) win.close();
+    throw err;
+  }
 }
 
 export function getDealDisputes(
