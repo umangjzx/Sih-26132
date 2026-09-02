@@ -22,7 +22,12 @@ import {
   YAxis,
 } from "recharts";
 import { useAuth } from "@/components/AuthProvider";
-import { getAdminDashboard, type AdminDashboardResponse } from "@/lib/api";
+import {
+  getAdminDashboard,
+  getMatchingHealth,
+  type AdminDashboardResponse,
+  type MatchingHealth,
+} from "@/lib/api";
 
 export default function AdminPage() {
   const { user, token, isAuthenticated } = useAuth();
@@ -30,6 +35,7 @@ export default function AdminPage() {
   const t = useTranslations("admin");
 
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
+  const [health, setHealth] = useState<MatchingHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,6 +49,11 @@ export default function AdminPage() {
       setData(await getAdminDashboard(token));
     } catch {
       setError(t("loadError"));
+    }
+    try {
+      setHealth(await getMatchingHealth(token));
+    } catch {
+      // match-health panel is optional — don't block the dashboard
     }
   }, [token, t]);
 
@@ -92,6 +103,54 @@ export default function AdminPage() {
           </div>
         ))}
       </section>
+
+      {/* Match quality — every live match re-scored against the current lot & demand */}
+      {health && (
+        <section>
+          <h2 className="mb-1 text-sm font-semibold opacity-80">{t("matchHealth")}</h2>
+          <p className="mb-3 text-xs opacity-60">{t("matchHealthSubtitle")}</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center">
+              <div className="font-serif text-2xl font-bold text-[var(--color-brand-dark)]">{health.total_matches}</div>
+              <div className="text-xs opacity-60">{t("mh_total")}</div>
+            </div>
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center">
+              <div className="font-serif text-2xl font-bold text-[var(--color-brand-dark)]">{Math.round(health.precision * 100)}%</div>
+              <div className="text-xs opacity-60">{t("mh_precision")}</div>
+            </div>
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center">
+              <div className="font-serif text-2xl font-bold text-[var(--color-brand-dark)]">{health.mean_abs_score_delta}</div>
+              <div className="text-xs opacity-60">{t("mh_drift")}</div>
+            </div>
+            <div
+              className={`rounded-xl border p-4 text-center ${
+                health.healthy
+                  ? "border-[var(--color-sell)]/40 bg-[var(--color-sell)]/10 text-[var(--color-sell)]"
+                  : "border-[var(--color-wait)]/40 bg-[var(--color-wait)]/10 text-[var(--color-wait)]"
+              }`}
+            >
+              <div className="font-serif text-lg font-bold">{health.healthy ? t("mh_healthy") : t("mh_unhealthy")}</div>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            {(
+              [
+                ["mh_consistent", health.buckets.consistent, "text-[var(--color-sell)]"],
+                ["mh_drifted", health.buckets.drifted, "text-[var(--color-brand-dark)]"],
+                ["mh_degraded", health.buckets.degraded, "text-[var(--color-wait)]"],
+                ["mh_orphaned", health.buckets.orphaned, "text-[var(--color-wait)]"],
+              ] as const
+            ).map(([key, n, cls]) => (
+              <span
+                key={key}
+                className="rounded-full border border-[var(--color-border)] bg-white/50 px-3 py-1"
+              >
+                {t(key)}: <span className={`font-bold ${cls}`}>{n}</span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Price trend sparkline */}
       <section>

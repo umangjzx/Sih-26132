@@ -154,7 +154,14 @@
     "farmerLabel": "Farmer",
     "buyerLabel": "Buyer",
     "offerThreadSubtitle": "Negotiate directly with verified counterparties.",
-    "offerMessagePlaceholder": "Add a friendly note…"
+    "offerMessagePlaceholder": "Add a friendly note…",
+    "tier_strong": "Strong match",
+    "tier_good": "Good match",
+    "tier_fair": "Fair match",
+    "tier_weak": "Weak match",
+    "gradeFit": "Grade fit",
+    "timing": "Delivery timing",
+    "modifiersNote": "Grade and timing scale the core score down when they don't line up."
   },
   "deals": {
     "title": "My Deals",
@@ -226,7 +233,19 @@
     "reason": "Reason",
     "date": "Date",
     "loadError": "Could not load the dashboard",
-    "forbidden": "Admin access only"
+    "forbidden": "Admin access only",
+    "matchHealth": "Match Quality",
+    "matchHealthSubtitle": "Every live match re-scored against the current lot & demand.",
+    "mh_total": "Live matches",
+    "mh_precision": "Still valid",
+    "mh_drift": "Avg score drift",
+    "mh_consistent": "Consistent",
+    "mh_drifted": "Drifted",
+    "mh_degraded": "Degraded",
+    "mh_orphaned": "Orphaned",
+    "mh_healthy": "Healthy",
+    "mh_unhealthy": "Needs review",
+    "mh_loadError": "Could not load match health"
   },
   "weather": {
     "title": "7-Day Weather",

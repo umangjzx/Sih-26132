@@ -14,9 +14,20 @@ function parseScoreDetail(raw: string | null): ScoreDetail | null {
   try { return JSON.parse(raw) as ScoreDetail; } catch { return null; }
 }
 
+const TIER_STYLE: Record<string, string> = {
+  strong: "bg-[var(--green-100)] text-[var(--green-700)]",
+  good: "bg-[var(--green-100)] text-[var(--green-700)]",
+  fair: "bg-[var(--amber-100)] text-[var(--amber-700)]",
+  weak: "bg-[var(--line)] text-[var(--ink-soft)]",
+};
+
 function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null }) {
   const tm = useTranslations("matching");
   const tdash = useTranslations("dash");
+  const tier = detail?.tier;
+  const qf = detail?.quality_factor;
+  const tf = detail?.timing_factor;
+  const hasModifier = (qf !== undefined && qf < 1) || (tf !== undefined && tf < 1);
   return (
     <div className="mt-3 flex flex-col gap-2 rounded-xl bg-[var(--paper)] p-3 border border-[var(--line)]">
       <div className="flex items-center gap-3">
@@ -28,13 +39,27 @@ function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null
           />
         </div>
         <span className="text-sm font-extrabold text-[var(--green-700)]">{score}%</span>
+        {tier && (
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${TIER_STYLE[tier] ?? TIER_STYLE.weak}`}>
+            {tm(`tier_${tier}` as "tier_strong")}
+          </span>
+        )}
       </div>
       {detail && (
-        <div className="flex items-center gap-4 text-xs font-medium text-[var(--ink-soft)]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-[var(--ink-soft)]">
           <span className="flex items-center gap-1"><Icon name="leaf" size={14} className="text-[var(--amber-600)]" /> {tdash("qty")}: {detail.quantity}/30</span>
           <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--amber-600)]" /> {tdash("price")}: {detail.price}/40</span>
           <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> {tdash("dist")}: {detail.distance}/30</span>
+          {qf !== undefined && qf < 1 && (
+            <span className="flex items-center gap-1 text-[var(--amber-700)]"><Icon name="check" size={14} /> {tm("gradeFit")}: ×{qf}</span>
+          )}
+          {tf !== undefined && tf < 1 && (
+            <span className="flex items-center gap-1 text-[var(--amber-700)]"><Icon name="clock" size={14} /> {tm("timing")}: ×{tf}</span>
+          )}
         </div>
+      )}
+      {hasModifier && (
+        <p className="text-[11px] font-medium text-[var(--ink-soft)]">{tm("modifiersNote")}</p>
       )}
     </div>
   );

@@ -119,6 +119,10 @@ export type ScoreDetail = {
   distance: number;
   total: number;
   max: number;
+  base?: number;
+  quality_factor?: number;
+  timing_factor?: number;
+  tier?: "strong" | "good" | "fair" | "weak";
 };
 
 export type CounterpartySummary = {
@@ -515,6 +519,25 @@ export function getAdminDashboard(
   token: string,
 ): Promise<AdminDashboardResponse> {
   return getJson("/api/admin/dashboard", token);
+}
+
+export type MatchingHealth = {
+  total_matches: number;
+  buckets: {
+    consistent: number;
+    drifted: number;
+    degraded: number;
+    crop_mismatch: number;
+    orphaned: number;
+  };
+  tier_distribution: Record<string, number>;
+  mean_abs_score_delta: number;
+  precision: number;
+  healthy: boolean;
+};
+
+export function getMatchingHealth(token: string): Promise<MatchingHealth> {
+  return getJson("/api/admin/matching-health", token);
 }
 
 // ===========================================================================

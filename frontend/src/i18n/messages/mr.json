@@ -154,7 +154,14 @@
     "farmerLabel": "शेतकरी",
     "buyerLabel": "खरेदीदार",
     "offerThreadSubtitle": "सत्यापित पक्षांशी थेट वाटाघाटी करा.",
-    "offerMessagePlaceholder": "एक मैत्रीपूर्ण नोंद जोडा…"
+    "offerMessagePlaceholder": "एक मैत्रीपूर्ण नोंद जोडा…",
+    "tier_strong": "मजबूत जुळनी",
+    "tier_good": "चांगली जुळनी",
+    "tier_fair": "बरी जुळनी",
+    "tier_weak": "कमकुवत जुळनी",
+    "gradeFit": "दर्जा जुळनी",
+    "timing": "डिलिव्हरी वेळ",
+    "modifiersNote": "दर्जा आणि वेळ जुळली नाही तर मूळ गुण कमी होतो।"
   },
   "deals": {
     "title": "माझे व्यवहार",
@@ -226,7 +233,19 @@
     "reason": "कारण",
     "date": "तारीख",
     "loadError": "डॅशबोर्ड लोड होऊ शकला नाही",
-    "forbidden": "केवळ अॅडमिन प्रवेश"
+    "forbidden": "केवळ अॅडमिन प्रवेश",
+    "matchHealth": "जुळनी गुणवत्ता",
+    "matchHealthSubtitle": "प्रत्येक सजीव जुळनी सध्याच्या लॉट आणि मागणीनुसार पुन्हा गुणांकित।",
+    "mh_total": "सजीव जुळन्या",
+    "mh_precision": "अजूनही वैध",
+    "mh_drift": "सरासरी गुण बदल",
+    "mh_consistent": "सुसंगत",
+    "mh_drifted": "बदलले",
+    "mh_degraded": "घटले",
+    "mh_orphaned": "अनाथ",
+    "mh_healthy": "निरोगी",
+    "mh_unhealthy": "आढावा आवश्यक",
+    "mh_loadError": "जुळनी आरोग्य लोड होऊ शकले नाही"
   },
   "weather": {
     "title": "7-दिवसांचे हवामान",

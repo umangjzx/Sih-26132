@@ -154,7 +154,14 @@
     "farmerLabel": "किसान",
     "buyerLabel": "खरीदार",
     "offerThreadSubtitle": "सत्यापित पक्षों के साथ सीधे मोलभाव करें।",
-    "offerMessagePlaceholder": "एक मैत्रीपूर्ण नोट जोड़ें…"
+    "offerMessagePlaceholder": "एक मैत्रीपूर्ण नोट जोड़ें…",
+    "tier_strong": "मजबूत मेल",
+    "tier_good": "अच्छा मेल",
+    "tier_fair": "ठीक-ठाक मेल",
+    "tier_weak": "कमज़ोर मेल",
+    "gradeFit": "ग्रेड मेल",
+    "timing": "डिलीवरी समय",
+    "modifiersNote": "ग्रेड और समय मेल न खाने पर मूल स्कोर घटा देते हैं।"
   },
   "deals": {
     "title": "मेरे सौदे",
@@ -226,7 +233,19 @@
     "reason": "कारण",
     "date": "तारीख",
     "loadError": "डैशबोर्ड लोड नहीं हो सका",
-    "forbidden": "केवल एडमिन पहुंच"
+    "forbidden": "केवल एडमिन पहुंच",
+    "matchHealth": "मैच गुणवत्ता",
+    "matchHealthSubtitle": "प्रत्येक सजीव मैच को वर्तमान लॉट और मांग के विरुद्ध फिर से स्कोर किया गया।",
+    "mh_total": "सजीव मैच",
+    "mh_precision": "अभी भी मान्य",
+    "mh_drift": "औसत स्कोर बहाव",
+    "mh_consistent": "सुसंगत",
+    "mh_drifted": "बहा",
+    "mh_degraded": "घटा",
+    "mh_orphaned": "अनाथ",
+    "mh_healthy": "स्वस्थ",
+    "mh_unhealthy": "समीक्षा चाहिए",
+    "mh_loadError": "मैच हेल्थ लोड नहीं हो सकी"
   },
   "weather": {
     "title": "7-दिन का मौसम",
