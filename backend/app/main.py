@@ -17,6 +17,7 @@ from app.api.demands import router as demands_router
 from app.api.disputes import router as disputes_router
 from app.api.history import router as history_router
 from app.api.intel import router as intel_router
+from app.api.assistant import router as assistant_router
 from app.api.location import router as location_router
 from app.api.lots import router as lots_router
 from app.api.matching import router as matching_router
@@ -104,6 +105,7 @@ app.include_router(intel_router)
 app.include_router(public_router)
 app.include_router(alerts_router)
 app.include_router(location_router)
+app.include_router(assistant_router)
 app.include_router(prices_router)
 
 

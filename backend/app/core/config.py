@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # v1.1: indicative road-freight cost, ₹ per quintal per km (shared-truck haulage).
     transport_cost_per_qtl_km: float = 0.4
 
+    # v1.3: optional LLM (OpenRouter) — a *readability layer* only. Plain-language
+    # advisor summary, the "Ask AgriLink" assistant, and live-string translation.
+    # Blank -> those features degrade to the rule-based output / English.
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openai/gpt-4o-mini"
+    openrouter_url: str = "https://openrouter.ai/api/v1/chat/completions"
+
     # v1.2: optional OpenWeatherMap key. When set, the 7-day forecast is enriched
     # with current conditions (humidity, feels-like, description). Blank -> the
     # keyless Open-Meteo forecast is used on its own, unchanged.

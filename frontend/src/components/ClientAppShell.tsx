@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { AskAgriLink } from "./AskAgriLink";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 
@@ -31,6 +32,9 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
           </div>
         </footer>
       </div>
+      <Suspense fallback={null}>
+        <AskAgriLink />
+      </Suspense>
     </div>
   );
 }

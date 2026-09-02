@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
+import { useAppLocale } from "@/i18n/LocaleProvider";
+
 import { CropMarketPicker } from "@/components/CropMarketPicker";
 import { StateDataNotice } from "@/components/StateDataNotice";
 import { PriceTrendChart } from "@/components/PriceTrendChart";
@@ -80,6 +82,7 @@ function StatCard({
 
 function HomeInner() {
   const t = useTranslations("home");
+  const { locale } = useAppLocale();
   const td = useTranslations("dashboard");
   const ts = useTranslations("signal");
   const tw = useTranslations("weather");
@@ -107,7 +110,7 @@ function HomeInner() {
     const [tr, sg, wx, mp, bm, nb] = await Promise.allSettled([
       fetchTrend(cm.crop, cm.market, 7),
       fetchSignal(cm.crop, cm.market),
-      fetchWeather({ market: cm.market, district: cm.district, lat: location?.lat, lon: location?.lon }),
+      fetchWeather({ market: cm.market, district: cm.district, lat: location?.lat, lon: location?.lon, lang: locale }),
       fetchMsp(cm.crop),
       fetchBestMarkets(cm.crop, cm.market),
       fetchNearby(cm.crop, cm.district || cm.market),
@@ -129,7 +132,7 @@ function HomeInner() {
     setBestMarket(bm.status === "fulfilled" ? bm.value : null);
     setNearbyMarkets(nb.status === "fulfilled" ? nb.value : []);
     setLoading(false);
-  }, [cm.crop, cm.market, cm.district, location?.lat, location?.lon, warmTick]);
+  }, [cm.crop, cm.market, cm.district, location?.lat, location?.lon, locale, warmTick]);
 
   useEffect(() => { load(); }, [load]);
 

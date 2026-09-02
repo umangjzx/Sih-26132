@@ -432,7 +432,8 @@
     "value_stable": "स्थिर",
     "value_belowMsp": "MSP से नीचे",
     "value_aboveMsp": "MSP से ऊपर",
-    "value_na": "लागू नहीं"
+    "value_na": "लागू नहीं",
+    "aiSummary": "सरल शब्दों में"
   },
   "dash": {
     "farmerTitle": "किसान डैशबोर्ड",
@@ -454,5 +455,13 @@
     "price": "भाव",
     "dist": "दूरी",
     "gradeShort": "ग्रेड"
+  },
+  "assistant": {
+    "title": "AgriLink से पूछें",
+    "hint": "मौजूदा भाव, बेचें या रुकें, मौसम, MSP के बारे में पूछें…",
+    "placeholder": "अपना प्रश्न लिखें…",
+    "send": "भेजें",
+    "unavailable": "इस बिल्ड में सहायक सक्षम नहीं है।",
+    "error": "क्षमा करें, कुछ गलत हुआ। फिर से कोशिश करें।"
   }
 }

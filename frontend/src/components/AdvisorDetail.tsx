@@ -3,7 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useAppLocale } from "@/i18n/LocaleProvider";
 import {
+  fetchAdvisorSummary,
   fetchCalendar,
   fetchHolidays,
   fetchMsp,
@@ -140,6 +142,8 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
   const tc = useTranslations("common");
   const ts = useTranslations("signal");
   const ta = useTranslations("advisor");
+  const { locale } = useAppLocale();
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [signal, setSignal] = useState<SellWaitSignalResponse | null>(null);
   const [weather, setWeather] = useState<WeatherForecast | null>(null);
   const [msp, setMsp] = useState<MspInfo | null>(null);
@@ -156,7 +160,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       const sig = await fetchSignal(cm.crop, cm.market).catch(() => null);
       setSignal(sig);
       const [w, m, c, h] = await Promise.allSettled([
-        fetchWeather({ market: cm.market, district: cm.district, includeAnomaly: true }),
+        fetchWeather({ market: cm.market, district: cm.district, includeAnomaly: true, lang: locale }),
         fetchMsp(cm.crop, cm.market),
         fetchCalendar(cm.crop),
         fetchHolidays(45),
@@ -166,12 +170,16 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       setCalendar(c.status === "fulfilled" ? c.value : null);
       setHolidays(h.status === "fulfilled" ? h.value : null);
       if (!sig) setError(true);
+      setAiSummary(null);
+      fetchAdvisorSummary(cm.crop, cm.market, locale)
+        .then((r) => setAiSummary(r.available ? r.summary : null))
+        .catch(() => setAiSummary(null));
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [cm.crop, cm.market, cm.district]);
+  }, [cm.crop, cm.market, cm.district, locale]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -269,6 +277,16 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
               <SignalGaugeChart recommendation={signal.recommendation} />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Plain-language summary (LLM readability layer; hidden without a key) */}
+      {aiSummary && (
+        <div className="rounded-2xl border border-[var(--green-600)]/25 bg-[var(--green-50)] p-5">
+          <div className="mb-1.5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--green-700)]">
+            <Icon name="spark" size={14} /> {ta("aiSummary")}
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--ink)]">{aiSummary}</p>
         </div>
       )}
 

@@ -665,6 +665,7 @@ export function fetchWeather(
     lat?: number | null;
     lon?: number | null;
     includeAnomaly?: boolean;
+    lang?: string;
   } = {},
 ): Promise<WeatherForecast> {
   return getJson(
@@ -674,6 +675,7 @@ export function fetchWeather(
       lat: opts.lat ?? undefined,
       lon: opts.lon ?? undefined,
       include_anomaly: opts.includeAnomaly,
+      lang: opts.lang,
     })}`,
   );
 }
@@ -747,4 +749,25 @@ export async function markAllNotificationsRead(token: string): Promise<void> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok && res.status !== 204) throw new Error(`Request failed: ${res.status}`);
+}
+
+// ===========================================================================
+// v1.3 — LLM readability layer (OpenRouter). All degrade to null without a key.
+// ===========================================================================
+
+export function fetchAdvisorSummary(
+  crop: string,
+  market: string,
+  lang: string,
+): Promise<{ available: boolean; summary: string | null; lang?: string }> {
+  return getJson(`/api/advisor/summary?${qs({ crop, market, lang })}`);
+}
+
+export function askAssistant(body: {
+  question: string;
+  crop?: string;
+  market?: string;
+  lang: string;
+}): Promise<{ available: boolean; answer: string | null; lang?: string }> {
+  return postJson("/api/assistant/ask", body);
 }

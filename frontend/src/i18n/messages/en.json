@@ -432,7 +432,8 @@
     "value_stable": "Stable",
     "value_belowMsp": "Below MSP",
     "value_aboveMsp": "Above MSP",
-    "value_na": "N/A"
+    "value_na": "N/A",
+    "aiSummary": "In plain words"
   },
   "dash": {
     "farmerTitle": "Farmer dashboard",
@@ -454,5 +455,13 @@
     "price": "Price",
     "dist": "Dist",
     "gradeShort": "Grade"
+  },
+  "assistant": {
+    "title": "Ask AgriLink",
+    "hint": "Ask about the current price, whether to sell or wait, weather, MSP…",
+    "placeholder": "Type your question…",
+    "send": "Send",
+    "unavailable": "The assistant isn't configured on this build.",
+    "error": "Sorry, something went wrong. Please try again."
   }
 }

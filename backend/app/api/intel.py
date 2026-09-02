@@ -52,12 +52,28 @@ def weather_forecast(
     lat: float | None = None,
     lon: float | None = None,
     include_anomaly: bool = Query(False),
+    lang: str = "en",
 ) -> dict:
     pt = _resolve_point(market, district, lat, lon)
     fc = weather_svc.get_forecast(*pt)
     out = {"latitude": pt[0], "longitude": pt[1], **fc}
     if include_anomaly:
         out["rain_anomaly"] = weather_svc.get_rain_anomaly(*pt)
+
+    # v1.3: translate the live English strings (OpenWeather condition + our note)
+    # when a non-English UI asks and the LLM is available.
+    if lang and lang.lower() != "en":
+        from app.services import llm
+
+        if llm.available():
+            if out.get("note"):
+                out["note"] = llm.translate(out["note"], lang)
+            cur = out.get("current")
+            if cur and cur.get("conditions"):
+                cur["conditions"] = llm.translate(cur["conditions"], lang)
+            ra = out.get("rain_anomaly")
+            if ra and ra.get("note"):
+                ra["note"] = llm.translate(ra["note"], lang)
     return out
 
 
