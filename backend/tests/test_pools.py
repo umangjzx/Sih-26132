@@ -209,6 +209,118 @@ def test_pool_accept_demand_creates_a_deal(farmer_client, db):
     assert farmer_client.post(f"/api/pools/{pid}/withdraw").status_code == 409
 
 
+def test_pool_cannot_be_manually_moved_to_matched(farmer_client):
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 1000, "floor_price": 2000,
+    }).json()["id"]
+    assert farmer_client.post(f"/api/pools/{pid}/status", json={"status": "locked"}).status_code == 200
+    # locked -> matched is no longer a legal manual jump (only accept-demand sets it)
+    assert farmer_client.post(f"/api/pools/{pid}/status", json={"status": "matched"}).status_code == 409
+
+
+def test_pool_accept_demand_rejects_price_below_floor(farmer_client, db):
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 5000,
+        "floor_price": 2500, "grade": "B", "location": "Pune",
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join", json={"quantity_kg": 2000, "expected_price": 2600})
+    buyer = User(role="buyer", name="LowballCo", phone="+91lowball", district="Pune", taluka="")
+    db.add(buyer); db.commit()
+    dem = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=5000, quality_spec="",
+                 price_band_min=2000, price_band_max=2600, delivery_window="", status="open")
+    db.add(dem); db.commit()
+    r = farmer_client.post(f"/api/pools/{pid}/accept-demand",
+                           json={"demand_id": dem.id, "agreed_price": 2300})
+    assert r.status_code == 422
+    assert db.get(Pool, pid).status in ("open", "locked")  # unchanged
+
+
+def test_pool_accept_demand_rejects_demand_smaller_than_pool(farmer_client, db):
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 5000,
+        "floor_price": 2000, "grade": "B", "location": "Pune",
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join", json={"quantity_kg": 3000, "expected_price": 2200})
+    buyer = User(role="buyer", name="SmallCo", phone="+91small", district="Pune", taluka="")
+    db.add(buyer); db.commit()
+    dem = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=1000, quality_spec="",
+                 price_band_min=2000, price_band_max=2600, delivery_window="", status="open")
+    db.add(dem); db.commit()
+    r = farmer_client.post(f"/api/pools/{pid}/accept-demand", json={"demand_id": dem.id})
+    assert r.status_code == 409
+
+
+def test_pool_accept_demand_retires_stale_demand_matches(farmer_client, db):
+    from datetime import date as _date
+
+    from app.models.lot import Lot
+    from app.models.match import Match
+
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 5000,
+        "floor_price": 2000, "grade": "B", "location": "Pune",
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join", json={"quantity_kg": 2000, "expected_price": 2200})
+    buyer = User(role="buyer", name="BulkCo", phone="+91bulk2", district="Pune", taluka="")
+    db.add(buyer); db.flush()
+    dem = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=5000, quality_spec="",
+                 price_band_min=2000, price_band_max=2600, delivery_window="", status="open")
+    db.add(dem); db.flush()
+    stray_lot = Lot(farmer_id=1, crop="Onion", quantity_kg=800, quality_grade="B",
+                    expected_price=2100, available_from=_date.today(), location="Pune",
+                    status="open")
+    db.add(stray_lot); db.flush()
+    stale = Match(lot_id=stray_lot.id, demand_id=dem.id, score=55.0, status="proposed")
+    db.add(stale); db.commit()
+
+    r = farmer_client.post(f"/api/pools/{pid}/accept-demand", json={"demand_id": dem.id})
+    assert r.status_code == 201, r.text
+    db.expire_all()
+    assert db.get(Match, stale.id).status == "rejected"
+
+
+def test_pool_accept_demand_closes_member_linked_lots(farmer_client, db):
+    from datetime import date as _date
+
+    from app.models.lot import Lot
+
+    lot = Lot(farmer_id=1, crop="Onion", quantity_kg=1500, quality_grade="B",
+              expected_price=2200, available_from=_date.today(), location="Pune", status="open")
+    db.add(lot); db.commit()
+
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 5000,
+        "floor_price": 2000, "grade": "B", "location": "Pune",
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join",
+                       json={"quantity_kg": 1500, "expected_price": 2200, "lot_id": lot.id})
+
+    buyer = User(role="buyer", name="BulkCo3", phone="+91bulk3", district="Pune", taluka="")
+    db.add(buyer); db.commit()
+    dem = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=5000, quality_spec="",
+                 price_band_min=2000, price_band_max=2600, delivery_window="", status="open")
+    db.add(dem); db.commit()
+
+    r = farmer_client.post(f"/api/pools/{pid}/accept-demand", json={"demand_id": dem.id})
+    assert r.status_code == 201, r.text
+    db.expire_all()
+    assert db.get(Lot, lot.id).status == "matched"
+
+
+def test_pool_create_rejects_absurd_quantity(farmer_client):
+    r = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 99_000_000, "floor_price": 2000,
+    })
+    assert r.status_code == 422
+
+
+def test_pool_create_rejects_blank_title(farmer_client):
+    r = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "   ", "target_quantity_kg": 1000, "floor_price": 2000,
+    })
+    assert r.status_code == 422
+
+
 def test_pool_accept_demand_is_farmer_only(buyer_client):
     # role gate fires before anything else — a buyer is 403 regardless of the pool
     assert buyer_client.post("/api/pools/1/accept-demand", json={"demand_id": 1}).status_code == 403

@@ -13,6 +13,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   acceptDemandForPool,
   getPool,
   joinPool,
@@ -89,6 +90,13 @@ export default function PoolDetailPage() {
   const [qty, setQty] = useState("");
   const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const flash = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 5000);
+  }, []);
+  const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : t("actionFailed"));
 
   useEffect(() => {
     if (!ready) return;
@@ -120,10 +128,18 @@ export default function PoolDetailPage() {
   async function doJoin(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
+    const q = parseFloat(qty);
+    const p = parseFloat(price);
+    if (!Number.isFinite(q) || q <= 0 || !Number.isFinite(p) || p <= 0) {
+      flash(t("actionFailed"));
+      return;
+    }
     setBusy(true);
     try {
-      await joinPool(poolId, { quantity_kg: parseFloat(qty), expected_price: parseFloat(price) }, token);
+      await joinPool(poolId, { quantity_kg: q, expected_price: p }, token);
       await load();
+    } catch (e) {
+      flash(errMsg(e));
     } finally {
       setBusy(false);
     }
@@ -135,6 +151,8 @@ export default function PoolDetailPage() {
     try {
       await withdrawPool(poolId, token);
       await load();
+    } catch (e) {
+      flash(errMsg(e));
     } finally {
       setBusy(false);
     }
@@ -146,6 +164,8 @@ export default function PoolDetailPage() {
     try {
       await setPoolStatus(poolId, next, token);
       await load();
+    } catch (e) {
+      flash(errMsg(e));
     } finally {
       setBusy(false);
     }
@@ -157,7 +177,8 @@ export default function PoolDetailPage() {
     try {
       const r = await acceptDemandForPool(poolId, { demand_id: demandId }, token);
       router.push(`/deals/${r.deal_id}`);
-    } catch {
+    } catch (e) {
+      flash(errMsg(e));
       setBusy(false);
     }
   }
@@ -183,6 +204,13 @@ export default function PoolDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <Link href="/pools" className="text-sm font-semibold text-[var(--green-700)] hover:underline">← {t("backToPools")}</Link>
+
+      {toast && (
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-bold text-[var(--red-700)]">
+          <Icon name="close" size={16} />
+          {toast}
+        </div>
+      )}
 
       <PageHeader
         icon="coins"

@@ -12,7 +12,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
-import { createPool, listPools, type PoolCreate, type PoolSummary } from "@/lib/api";
+import { ApiError, createPool, listPools, type PoolCreate, type PoolSummary } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
 import { NEARBY_RADIUS_KM } from "@/lib/useCropMarket";
 
@@ -86,7 +86,6 @@ export default function PoolsPage() {
   const { isAuthenticated, ready, user, token } = useAuth();
   const router = useRouter();
   const t = useTranslations("pools");
-  const tlots = useTranslations("lots");
 
   const [open, setOpen] = useState<PoolSummary[]>([]);
   const [mine, setMine] = useState<PoolSummary[]>([]);
@@ -153,9 +152,9 @@ export default function PoolsPage() {
       setToast(t("createTitle"));
       setTimeout(() => setToast(null), 2500);
       router.push(`/pools/${created.id}`);
-    } catch {
-      setToast(tlots("scanFailed"));
-      setTimeout(() => setToast(null), 3500);
+    } catch (err) {
+      setToast(err instanceof ApiError ? err.message : t("createFailed"));
+      setTimeout(() => setToast(null), 4500);
     } finally {
       setSubmitting(false);
     }

@@ -5,6 +5,7 @@ asking price. The pool aggregates into a single virtual lot and is scored
 against open buyer demands with the shared rule-based matcher.
 """
 
+from collections import defaultdict
 from datetime import date
 from typing import Annotated
 
@@ -12,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.core.security import CurrentUser, require_role
 from app.models.deal import Deal
@@ -38,13 +40,19 @@ from app.services.geo import _district_coord, haversine_km
 
 router = APIRouter(prefix="/api/pools", tags=["pools"])
 
-# organizer-driven pool lifecycle: which target states are reachable from each
+# organizer-driven pool lifecycle: which target states are reachable from each.
+# 'matched' is deliberately NOT reachable manually — it is set only by
+# accept_demand_for_pool once a real deal exists (otherwise a pool could be
+# parked in 'matched' with no matched_deal_id).
 _POOL_TRANSITIONS: dict[str, set[str]] = {
     "open": {"locked", "closed"},
-    "locked": {"open", "matched", "closed"},
+    "locked": {"open", "closed"},
     "matched": {"closed"},
     "closed": set(),
 }
+
+_CREATE_LIMIT, _CREATE_WINDOW_S = 20, 600
+_ACCEPT_LIMIT, _ACCEPT_WINDOW_S = 10, 600
 
 
 def _members(db: Session, pool_id: int) -> list[PoolMember]:
@@ -53,13 +61,20 @@ def _members(db: Session, pool_id: int) -> list[PoolMember]:
     )
 
 
-def _summary(db: Session, pool: Pool, members: list[PoolMember] | None = None) -> PoolSummary:
+def _summary(
+    db: Session,
+    pool: Pool,
+    members: list[PoolMember] | None = None,
+    organizer_name: str | None = None,
+) -> PoolSummary:
     members = members if members is not None else _members(db, pool.id)
     committed = [m for m in members if m.status == "committed"]
     qty = round(sum(m.quantity_kg for m in committed), 2)
-    organizer = db.get(User, pool.organizer_id)
+    if organizer_name is None:
+        organizer = db.get(User, pool.organizer_id)
+        organizer_name = organizer.name if organizer else None
     s = PoolSummary.model_validate(pool)
-    s.organizer_name = organizer.name if organizer else None
+    s.organizer_name = organizer_name
     s.members = len(committed)
     s.committed_quantity_kg = qty
     s.fill_pct = round(100 * qty / pool.target_quantity_kg, 1) if pool.target_quantity_kg else 0.0
@@ -73,6 +88,13 @@ def create_pool(
     _role: Annotated[None, require_role("farmer")] = None,
     db: Session = Depends(get_db),
 ) -> PoolSummary:
+    if not ratelimit.check(
+        f"pool_create:{current_user.id}", limit=_CREATE_LIMIT, window_s=_CREATE_WINDOW_S
+    ):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "You are creating pools too quickly — please wait a minute.",
+        )
     pool = Pool(organizer_id=current_user.id, **body.model_dump())
     if not pool.location:
         pool.location = current_user.district or ""
@@ -138,7 +160,24 @@ def list_pools(
                 return c is None or haversine_km(origin, c) <= radius_km
             pools = [p for p in pools if near(p)]
 
-    return [_summary(db, p) for p in pools]
+    # one query for every pool's members + one for every organizer name, so the
+    # summary build is O(1) queries instead of O(pools).
+    pool_ids = [p.id for p in pools]
+    members_by_pool: dict[int, list[PoolMember]] = defaultdict(list)
+    if pool_ids:
+        for m in db.execute(
+            select(PoolMember).where(PoolMember.pool_id.in_(pool_ids))
+        ).scalars():
+            members_by_pool[m.pool_id].append(m)
+    org_ids = {p.organizer_id for p in pools} or {0}
+    org_names = dict(
+        db.execute(select(User.id, User.name).where(User.id.in_(org_ids))).all()
+    )
+
+    return [
+        _summary(db, p, members_by_pool.get(p.id, []), org_names.get(p.organizer_id))
+        for p in pools
+    ]
 
 
 @router.get("/{pool_id}", response_model=PoolDetail)
@@ -297,6 +336,14 @@ def accept_demand_for_pool(
     demand: it materialises a Lot from the pool total, an accepted Match + Offer,
     and a Deal — so the normal deal pipeline (logistics, payment, disputes) takes
     over. The pool is locked to `matched` and members can no longer withdraw."""
+    if not ratelimit.check(
+        f"pool_accept:{current_user.id}", limit=_ACCEPT_LIMIT, window_s=_ACCEPT_WINDOW_S
+    ):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many attempts — please wait a minute and try again.",
+        )
+
     pool = db.get(Pool, pool_id)
     if pool is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pool not found")
@@ -316,8 +363,22 @@ def accept_demand_for_pool(
     if demand.crop.strip().lower() != pool.crop.strip().lower():
         raise HTTPException(status.HTTP_409_CONFLICT, "That demand is for a different crop")
 
-    agreed_price = body.agreed_price or agg["effective_price"]
     qty = agg["quantity_kg"]
+    if qty > demand.quantity_kg + 1e-6:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"This demand is for {demand.quantity_kg:g} kg but the pool has aggregated "
+            f"{qty:g} kg. Reduce member commitments or pick a demand that can take the "
+            f"whole pool.",
+        )
+
+    agreed_price = body.agreed_price or agg["effective_price"]
+    if agreed_price < pool.floor_price - 1e-6:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Agreed price ₹{agreed_price:g}/qtl is below the pool floor "
+            f"₹{pool.floor_price:g}/qtl that members signed up to.",
+        )
 
     lot = Lot(
         farmer_id=pool.organizer_id, crop=pool.crop, quantity_kg=qty,
@@ -341,6 +402,36 @@ def accept_demand_for_pool(
     pool.status = "matched"
     pool.matched_deal_id = deal.id
     demand.status = "matched"
+
+    # the 1:1 matcher may already have queued matches against this demand — they
+    # are moot now that the pool has consumed it.
+    siblings = db.execute(
+        select(Match).where(
+            Match.id != match.id,
+            Match.status.in_(("proposed", "offered")),
+            Match.demand_id == demand.id,
+        )
+    ).scalars().all()
+    for sib in siblings:
+        sib.status = "rejected"
+
+    # members who committed a real lot: take that lot off the open market too, so
+    # it can't be separately matched and double-sold. Retire its live matches.
+    committed_lot_ids = [
+        m.lot_id for m in members if m.status == "committed" and m.lot_id is not None
+    ]
+    if committed_lot_ids:
+        for member_lot in db.execute(
+            select(Lot).where(Lot.id.in_(committed_lot_ids), Lot.status == "open")
+        ).scalars():
+            member_lot.status = "matched"
+        for stale in db.execute(
+            select(Match).where(
+                Match.lot_id.in_(committed_lot_ids),
+                Match.status.in_(("proposed", "offered")),
+            )
+        ).scalars():
+            stale.status = "rejected"
 
     log_event(db, actor_id=current_user.id, entity_type="pool", entity_id=pool.id,
               action="pool_deal_created",

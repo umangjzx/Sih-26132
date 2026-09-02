@@ -48,11 +48,13 @@ def demand_candidates(db: Session, pool: Pool, members: list[PoolMember], *, lim
     rows = db.execute(
         select(Demand, User)
         .join(User, Demand.buyer_id == User.id)
-        .where(Demand.status == "open")
+        .where(Demand.status == "open", Demand.crop.ilike(pool.crop.strip()))
     ).all()
 
     out: list[dict] = []
     for demand, buyer in rows:
+        # ilike without wildcards is an exact case-insensitive match; keep a
+        # defensive check in case a crop name carries odd internal spacing.
         if demand.crop.strip().lower() != pool.crop.strip().lower():
             continue
         total, detail = score_pair(

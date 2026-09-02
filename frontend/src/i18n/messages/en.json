@@ -795,7 +795,9 @@
     "cancel": "Cancel",
     "acceptDemand": "Create deal",
     "poolMatched": "This pool is matched to a buyer",
-    "viewDeal": "View deal"
+    "viewDeal": "View deal",
+    "actionFailed": "Something went wrong. Please try again.",
+    "createFailed": "Could not create the pool."
   },
   "forward": {
     "title": "Forward deals",

@@ -2,24 +2,69 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Absolute sanity ceilings — mirror app.schemas.offer so pool-materialised deals
+# can never carry a value the 1:1 path would have rejected.
+_MAX_QTY = 10_000_000      # kg
+_MAX_PRICE = 5_000_000     # ₹/quintal
+_GRADES = {"A", "B", "C"}
+
+
+def _pos_qty(v: float) -> float:
+    if v is None or v <= 0:
+        raise ValueError("must be greater than 0")
+    if v > _MAX_QTY:
+        raise ValueError(f"must be at most {_MAX_QTY:,} kg")
+    return round(float(v), 2)
+
+
+def _pos_price(v: float) -> float:
+    if v is None or v <= 0:
+        raise ValueError("must be greater than 0")
+    if v > _MAX_PRICE:
+        raise ValueError(f"must be at most {_MAX_PRICE:,}")
+    return round(float(v), 2)
 
 
 class PoolCreate(BaseModel):
-    crop: str
-    title: str
+    crop: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=200)
     target_quantity_kg: float
     floor_price: float
     grade: str = "B"
-    delivery_window: str = ""
-    location: str = ""
+    delivery_window: str = Field(default="", max_length=120)
+    location: str = Field(default="", max_length=120)
 
-    @field_validator("target_quantity_kg", "floor_price")
+    @field_validator("crop", "title", "delivery_window", "location")
     @classmethod
-    def _positive(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("must be greater than 0")
+    def _strip(cls, v: str) -> str:
+        return (v or "").strip()
+
+    @field_validator("crop", "title")
+    @classmethod
+    def _required(cls, v: str) -> str:
+        if not v:
+            raise ValueError("must not be empty")
         return v
+
+    @field_validator("grade")
+    @classmethod
+    def _grade(cls, v: str) -> str:
+        v = (v or "B").strip().upper()
+        if v not in _GRADES:
+            raise ValueError(f"grade must be one of {sorted(_GRADES)}")
+        return v
+
+    @field_validator("target_quantity_kg")
+    @classmethod
+    def _target(cls, v: float) -> float:
+        return _pos_qty(v)
+
+    @field_validator("floor_price")
+    @classmethod
+    def _floor(cls, v: float) -> float:
+        return _pos_price(v)
 
 
 class PoolJoin(BaseModel):
@@ -27,12 +72,15 @@ class PoolJoin(BaseModel):
     expected_price: float
     lot_id: int | None = None
 
-    @field_validator("quantity_kg", "expected_price")
+    @field_validator("quantity_kg")
     @classmethod
-    def _positive(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("must be greater than 0")
-        return v
+    def _qty(cls, v: float) -> float:
+        return _pos_qty(v)
+
+    @field_validator("expected_price")
+    @classmethod
+    def _price(cls, v: float) -> float:
+        return _pos_price(v)
 
 
 class PoolStatusUpdate(BaseModel):
@@ -53,9 +101,9 @@ class PoolAcceptDemand(BaseModel):
     @field_validator("agreed_price")
     @classmethod
     def _positive(cls, v: float | None) -> float | None:
-        if v is not None and v <= 0:
-            raise ValueError("must be greater than 0")
-        return v
+        if v is None:
+            return None
+        return _pos_price(v)
 
 
 class PoolDealResult(BaseModel):
