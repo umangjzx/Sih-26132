@@ -32,10 +32,11 @@ function parseScoreDetail(raw: string | null): ScoreDetail | null {
 
 function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null }) {
   const tm = useTranslations("matching");
+  const tdash = useTranslations("dash");
   return (
     <div className="mt-3 flex flex-col gap-2 rounded-xl bg-[var(--paper)] p-3 border border-[var(--line)]">
       <div className="flex items-center gap-3">
-        <span className="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-widest shrink-0">Match Score</span>
+        <span className="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-widest shrink-0">{tm("scoreLabel")}</span>
         <div className="h-2 flex-1 rounded-full bg-[var(--line)] overflow-hidden">
           <div
             className="h-full rounded-full bg-[var(--green-600)]"
@@ -46,9 +47,9 @@ function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null
       </div>
       {detail && (
         <div className="flex items-center gap-4 text-xs font-medium text-[var(--ink-soft)]">
-          <span className="flex items-center gap-1"><Icon name="leaf" size={14} className="text-[var(--amber-600)]" /> Qty: {detail.quantity}/30</span>
-          <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--amber-600)]" /> Price: {detail.price}/40</span>
-          <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> Dist: {detail.distance}/30</span>
+          <span className="flex items-center gap-1"><Icon name="leaf" size={14} className="text-[var(--amber-600)]" /> {tdash("qty")}: {detail.quantity}/30</span>
+          <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--amber-600)]" /> {tdash("price")}: {detail.price}/40</span>
+          <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> {tdash("dist")}: {detail.distance}/30</span>
         </div>
       )}
     </div>
@@ -60,6 +61,7 @@ export default function BuyerPage() {
   const router = useRouter();
   const td = useTranslations("demands");
   const tm = useTranslations("matching");
+  const tdash = useTranslations("dash");
 
   const [form, setForm] = useState<DemandCreate>({
     crop: "", quantity_kg: 0, quality_spec: "", price_band_min: 0, price_band_max: 0, delivery_window: "",
@@ -108,8 +110,8 @@ export default function BuyerPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         icon="handshake"
-        title="Buyer Dashboard"
-        subtitle={`Welcome back${user?.name ? `, ${user.name}` : ""}! Post your demands and find matching sellers.`}
+        title={tdash("buyerTitle")}
+        subtitle={tdash("buyerSubtitle")}
       />
 
       {toast && (
@@ -122,10 +124,10 @@ export default function BuyerPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { icon: "handshake", label: "Post Demand", href: "#create-demand", color: "bg-[var(--green-700)]" },
-          { icon: "connection", label: "View Matches", href: "#matches", color: "bg-[var(--green-600)]" },
-          { icon: "clock", label: "Track Deals", href: "/history", color: "bg-[var(--amber-700)]" },
-          { icon: "warehouse", label: "Find FPOs", href: "/directory", color: "bg-slate-700" },
+          { icon: "handshake", label: tdash("qaPostDemand"), href: "#create-demand", color: "bg-[var(--green-700)]" },
+          { icon: "connection", label: tdash("qaViewMatches"), href: "#matches", color: "bg-[var(--green-600)]" },
+          { icon: "clock", label: tdash("qaTrackDeals"), href: "/history", color: "bg-[var(--amber-700)]" },
+          { icon: "warehouse", label: tdash("qaFindFpos"), href: "/directory", color: "bg-slate-700" },
         ].map((action) => (
           <Link
             key={action.label}
@@ -148,7 +150,7 @@ export default function BuyerPage() {
           </div>
           <div>
             <h2 className="font-heading text-base font-bold text-[var(--ink)]">{td("createTitle")}</h2>
-            <p className="text-xs text-[var(--ink-soft)]">Specify your requirements to find sellers</p>
+            <p className="text-xs text-[var(--ink-soft)]">{tdash("createDemandHint")}</p>
           </div>
         </div>
         
@@ -221,7 +223,7 @@ export default function BuyerPage() {
             )}
           </h2>
           <Link href="#matches" className="text-xs font-semibold text-[var(--green-700)] hover:underline">
-            View All →
+            {tdash("viewAll")} →
           </Link>
         </div>
         {matches.length === 0 ? (

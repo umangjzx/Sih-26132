@@ -23,6 +23,8 @@ import {
 export default function AlertsPage() {
   const { token, isAuthenticated } = useAuth();
   const t = useTranslations("alerts");
+  const tc = useTranslations("common");
+  const tn = useTranslations("nav");
 
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [crop, setCrop] = useState("");
@@ -50,14 +52,14 @@ export default function AlertsPage() {
           <Icon name="bell" size={32} />
         </div>
         <div>
-          <h2 className="font-heading text-xl font-bold text-[var(--ink)]">Login Required</h2>
+          <h2 className="font-heading text-xl font-bold text-[var(--ink)]">{tc("loginRequired")}</h2>
           <p className="mt-1 text-sm text-[var(--ink-soft)]">{t("loginRequired")}</p>
         </div>
         <Link
           href="/login"
           className="rounded-xl bg-[var(--green-700)] px-6 py-2.5 text-sm font-bold text-white hover:bg-[var(--green-900)] transition-colors"
         >
-          Sign In
+          {tn("login")}
         </Link>
       </div>
     );
@@ -95,39 +97,37 @@ export default function AlertsPage() {
       {success && (
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-semibold text-[var(--green-700)]">
           <Icon name="check" size={18} />
-          Alert created successfully!
+          {t("createdSuccess")}
         </div>
       )}
 
       {/* Alert Creation Form */}
       <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
         <h2 className="mb-2 font-heading text-base font-bold text-[var(--ink)]">
-          Create New Alert
+          {t("create")}
         </h2>
-        <p className="mb-5 text-sm text-[var(--ink-soft)]">
-          We will notify you when the price reaches your target.
-        </p>
+        <p className="mb-5 text-sm text-[var(--ink-soft)]">{t("createHint")}</p>
 
         <form onSubmit={add}>
           {/* Visual form builder */}
           <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper)] p-4 text-sm">
-            <span className="font-semibold text-[var(--ink-soft)]">Notify me when</span>
+            <span className="font-semibold text-[var(--ink-soft)]">{t("builderNotifyWhen")}</span>
             <input
               value={crop}
               onChange={(e) => setCrop(e.target.value)}
               required
-              placeholder="Crop (e.g. Onion)"
+              placeholder={t("cropPlaceholder")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
-            <span className="font-semibold text-[var(--ink-soft)]">at</span>
+            <span className="font-semibold text-[var(--ink-soft)]">{t("builderAt")}</span>
             <input
               value={market}
               onChange={(e) => setMarket(e.target.value)}
               required
-              placeholder="Market (e.g. Pune)"
+              placeholder={t("marketPlaceholder")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
-            <span className="font-semibold text-[var(--ink-soft)]">goes</span>
+            <span className="font-semibold text-[var(--ink-soft)]">{t("builderGoes")}</span>
             <select
               value={direction}
               onChange={(e) => setDirection(e.target.value as "above" | "below")}
@@ -144,7 +144,7 @@ export default function AlertsPage() {
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
                 required
-                placeholder="Price"
+                placeholder={t("thresholdShort")}
                 className="w-24 text-sm font-semibold focus:outline-none"
               />
             </div>
@@ -178,10 +178,8 @@ export default function AlertsPage() {
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
             <Icon name="bell" size={28} className="text-[var(--green-400)]" />
             <div>
-              <p className="font-semibold text-[var(--ink)]">No active alerts yet</p>
-              <p className="mt-0.5 text-sm text-[var(--ink-soft)]">
-                Create an alert and we&apos;ll notify you when the market reaches your target price.
-              </p>
+              <p className="font-semibold text-[var(--ink)]">{t("none")}</p>
+              <p className="mt-0.5 text-sm text-[var(--ink-soft)]">{t("noneHint")}</p>
             </div>
           </div>
         ) : (
@@ -208,7 +206,7 @@ export default function AlertsPage() {
                     <span className="text-sm text-[var(--ink-soft)]"> @ {al.market}</span>
                     <div className="mt-0.5 text-sm">
                       <span className={al.direction === "above" ? "text-[var(--green-700)]" : "text-[var(--red-700)]"}>
-                        {al.direction === "above" ? "▲ Above" : "▼ Below"} ₹{al.threshold}
+                        {al.direction === "above" ? `▲ ${t("above")}` : `▼ ${t("below")}`} ₹{al.threshold}
                       </span>
                     </div>
                   </div>

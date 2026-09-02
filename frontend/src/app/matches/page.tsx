@@ -15,10 +15,12 @@ function parseScoreDetail(raw: string | null): ScoreDetail | null {
 }
 
 function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null }) {
+  const tm = useTranslations("matching");
+  const tdash = useTranslations("dash");
   return (
     <div className="mt-3 flex flex-col gap-2 rounded-xl bg-[var(--paper)] p-3 border border-[var(--line)]">
       <div className="flex items-center gap-3">
-        <span className="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-widest shrink-0">Match Score</span>
+        <span className="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-widest shrink-0">{tm("scoreLabel")}</span>
         <div className="h-2 flex-1 rounded-full bg-[var(--line)] overflow-hidden">
           <div
             className="h-full rounded-full bg-[var(--green-600)]"
@@ -29,9 +31,9 @@ function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null
       </div>
       {detail && (
         <div className="flex items-center gap-4 text-xs font-medium text-[var(--ink-soft)]">
-          <span className="flex items-center gap-1"><Icon name="leaf" size={14} className="text-[var(--amber-600)]" /> Qty: {detail.quantity}/30</span>
-          <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--amber-600)]" /> Price: {detail.price}/40</span>
-          <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> Dist: {detail.distance}/30</span>
+          <span className="flex items-center gap-1"><Icon name="leaf" size={14} className="text-[var(--amber-600)]" /> {tdash("qty")}: {detail.quantity}/30</span>
+          <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--amber-600)]" /> {tdash("price")}: {detail.price}/40</span>
+          <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> {tdash("dist")}: {detail.distance}/30</span>
         </div>
       )}
     </div>
@@ -42,6 +44,7 @@ export default function MatchesPage() {
   const { isAuthenticated, user, token } = useAuth();
   const router = useRouter();
   const tm = useTranslations("matching");
+  const tdash = useTranslations("dash");
 
   const [matches, setMatches] = useState<MatchResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +73,8 @@ export default function MatchesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         icon="connection"
-        title="All Matches"
-        subtitle="Discover and negotiate with recommended counterparties."
+        title={tm("title")}
+        subtitle={tdash("matchesSubtitle")}
       />
 
       {loading ? (
@@ -83,7 +86,7 @@ export default function MatchesPage() {
       ) : matches.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--paper)] py-12 text-center shadow-sm">
           <Icon name="connection" size={32} className="text-[var(--green-300)]" />
-          <p className="font-heading text-lg font-bold text-[var(--ink)]">No Matches Yet</p>
+          <p className="font-heading text-lg font-bold text-[var(--ink)]">{tdash("noMatchesYet")}</p>
           <p className="text-sm font-medium text-[var(--ink-soft)]">{tm("noMatches")}</p>
         </div>
       ) : (

@@ -157,8 +157,8 @@ export default function DealDetailPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         icon="handshake"
-        title="Deal Dashboard"
-        subtitle={`Track logistics and payments for ${deal.lot.crop}`}
+        title={t("dealTitle")}
+        subtitle={t("dealSubtitle", { crop: deal.lot.crop })}
       />
       
       {toast && (
@@ -224,6 +224,7 @@ export default function DealDetailPage() {
               <li
                 key={stage}
                 data-state={state}
+                aria-current={state === "current" ? "step" : undefined}
                 className="flex items-center gap-2 sm:flex-1 sm:flex-col sm:items-start"
               >
                 <div 

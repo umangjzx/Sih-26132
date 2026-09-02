@@ -74,5 +74,9 @@ it("shows score breakdown for each match", async () => {
 
   renderWithIntl(<BuyerPage />);
 
-  expect(await screen.findByText(/85\/100/)).toBeInTheDocument();
+  // overall score, then the per-component breakdown (quantity / price / distance)
+  expect(await screen.findByText("85%")).toBeInTheDocument();
+  expect(screen.getByText(/25\/30/)).toBeInTheDocument();
+  expect(screen.getByText(/40\/40/)).toBeInTheDocument();
+  expect(screen.getByText(/20\/30/)).toBeInTheDocument();
 });

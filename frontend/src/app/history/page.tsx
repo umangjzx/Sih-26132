@@ -21,6 +21,7 @@ export default function HistoryPage() {
   const { token, isAuthenticated } = useAuth();
   const router = useRouter();
   const t = useTranslations("history");
+  const tdeals = useTranslations("deals");
 
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export default function HistoryPage() {
       <PageHeader
         icon="clock"
         title={t("title")}
-        subtitle="View all your past lots, demands, and finalized deals in one place."
+        subtitle={t("subtitle")}
       />
 
       {error && (
@@ -185,11 +186,11 @@ export default function HistoryPage() {
                       </div>
                       <div className="flex items-center justify-between text-sm font-medium">
                         <span className="flex flex-col text-[var(--green-800)]">
-                          <span className="text-[10px] uppercase tracking-wider opacity-70">Agreed Price</span>
+                          <span className="text-[10px] uppercase tracking-wider opacity-70">{tdeals("agreedPrice")}</span>
                           ₹{deal.agreed_price}/qtl
                         </span>
                         <span className="flex flex-col text-right text-[var(--green-800)]">
-                          <span className="text-[10px] uppercase tracking-wider opacity-70">Quantity</span>
+                          <span className="text-[10px] uppercase tracking-wider opacity-70">{tdeals("agreedQty")}</span>
                           {deal.agreed_quantity} kg
                         </span>
                       </div>

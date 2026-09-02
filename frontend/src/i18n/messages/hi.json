@@ -3,7 +3,8 @@
     "appName": "AgriLink",
     "loading": "लोड हो रहा है...",
     "error": "कुछ गड़बड़ हो गई",
-    "retry": "पुनः प्रयास करें"
+    "retry": "पुनः प्रयास करें",
+    "loginRequired": "लॉगिन आवश्यक"
   },
   "nav": {
     "prices": "भाव",
@@ -17,7 +18,12 @@
     "explore": "एक्सप्लोर",
     "alerts": "अलर्ट",
     "advisor": "सलाहकार",
-    "directory": "डायरेक्टरी"
+    "directory": "डायरेक्टरी",
+    "home": "होम",
+    "openMenu": "मेनू खोलें",
+    "tradeSection": "व्यापार और लॉजिस्टिक्स",
+    "matches": "मैच",
+    "administration": "प्रशासन"
   },
   "dashboard": {
     "title": "मंडी भाव जानकारी",
@@ -145,7 +151,9 @@
     "youLabel": "आप",
     "cropLabel": "फसल",
     "farmerLabel": "किसान",
-    "buyerLabel": "खरीदार"
+    "buyerLabel": "खरीदार",
+    "offerThreadSubtitle": "सत्यापित पक्षों के साथ सीधे मोलभाव करें।",
+    "offerMessagePlaceholder": "एक मैत्रीपूर्ण नोट जोड़ें…"
   },
   "deals": {
     "title": "मेरे सौदे",
@@ -170,7 +178,9 @@
     "advanceSuccess": "{stage} में उन्नत हुआ",
     "alreadyClosed": "यह सौदा पहले से बंद है",
     "loadError": "यह सौदा लोड नहीं हो सका",
-    "backToHistory": "इतिहास पर वापस जाएं"
+    "backToHistory": "इतिहास पर वापस जाएं",
+    "dealTitle": "सौदा डैशबोर्ड",
+    "dealSubtitle": "{crop} के लिए लॉजिस्टिक्स और भुगतान ट्रैक करें।"
   },
   "disputes": {
     "title": "विवाद",
@@ -196,7 +206,8 @@
     "noDemands": "अभी कोई मांग नहीं",
     "noDeals": "अभी कोई सौदा नहीं",
     "viewDeal": "सौदा देखें",
-    "loadError": "आपका इतिहास लोड नहीं हो सका"
+    "loadError": "आपका इतिहास लोड नहीं हो सका",
+    "subtitle": "आपके सभी पिछले लॉट, मांग और अंतिम सौदे एक ही जगह।"
   },
   "admin": {
     "title": "एडमिन डैशबोर्ड",
@@ -236,7 +247,8 @@
     "belowBy": "बाज़ार MSP से नीचे है - खरीद केंद्र अधिक दे सकता है",
     "season": "मौसम",
     "mspValue": "MSP",
-    "marketValue": "बाज़ार भाव"
+    "marketValue": "बाज़ार भाव",
+    "short": "MSP"
   },
   "calendar": {
     "title": "फसल कैलेंडर",
@@ -299,7 +311,16 @@
     "resume": "फिर शुरू करें",
     "delete": "हटाएं",
     "lastTriggered": "अंतिम बार",
-    "loginRequired": "भाव अलर्ट के लिए लॉगिन करें"
+    "loginRequired": "भाव अलर्ट के लिए लॉगिन करें",
+    "createdSuccess": "अलर्ट सफलतापूर्वक बनाया गया।",
+    "createHint": "जब भाव आपके लक्ष्य तक पहुंचेगा तो हम आपको सूचित करेंगे।",
+    "builderNotifyWhen": "मुझे सूचित करें जब",
+    "builderAt": "पर",
+    "builderGoes": "जाए",
+    "noneHint": "एक अलर्ट बनाएं और जब बाज़ार आपके लक्ष्य भाव पर पहुंचेगा तो हम आपको सूचित करेंगे।",
+    "cropPlaceholder": "फ़सल (जैसे प्याज)",
+    "marketPlaceholder": "बाज़ार (जैसे पुणे)",
+    "thresholdShort": "भाव"
   },
   "storage": {
     "title": "आपके पास भंडारण",
@@ -326,7 +347,7 @@
   },
   "home": {
     "heroTitle": "अपना भाव जानें। सही समय पर बेचें।",
-    "heroSubtitle": "महाराष्ट्र के किसानों और FPO के लिए - लाइव मंडी भाव, समझाने योग्य बेचें-या-रुकें सलाह, मौसम और MSP जानकारी, और सत्यापित खरीदार।",
+    "heroSubtitle": "किसानों, FPO और खरीदारों के लिए रीयल-टाइम कृषि बाज़ार जानकारी।",
     "seeWhy": "क्यों देखें",
     "pricesTitle": "भाव और मंडियां",
     "pricesDesc": "रुझान, आसपास की मंडियां, और परिवहन लागत के बाद सर्वोत्तम मंडी",
@@ -338,7 +359,42 @@
     "exploreDesc": "राज्यव्यापी भाव पारदर्शिता - लॉगिन की ज़रूरत नहीं",
     "snapshotTitle": "राज्यव्यापी स्नैपशॉट",
     "snapshotMore": "एक्सप्लोर खोलें",
-    "loadError": "अभी भाव लोड नहीं हो सके"
+    "loadError": "अभी भाव लोड नहीं हो सके",
+    "realTime": "रीयल-टाइम",
+    "heroLine1": "स्मार्ट बाज़ार।",
+    "heroLine2": "बेहतर निर्णय।",
+    "ctaViewPrices": "भाव देखें",
+    "ctaGetAdvice": "सलाह लें",
+    "exploreMarket": "बाज़ार खोजें",
+    "seeFullAnalysis": "पूर्ण विश्लेषण देखें →",
+    "selectCropMarket": "फ़सल और बाज़ार चुनें",
+    "weather": "मौसम",
+    "mspGap": "अंतर",
+    "priceTrend7d": "7-दिन भाव रुझान",
+    "viewFullChart": "पूरा चार्ट देखें →",
+    "bestMarketForYou": "आपके लिए सबसे अच्छा बाज़ार",
+    "viewMarketDetails": "बाज़ार विवरण देखें",
+    "selectCropLocation": "सबसे अच्छा बाज़ार देखने के लिए फ़सल और स्थान चुनें",
+    "nearbyComparison": "आसपास के बाज़ारों की तुलना",
+    "viewAllMarkets": "सभी बाज़ार देखें →",
+    "platformOverview": "प्लेटफ़ॉर्म अवलोकन",
+    "fullDashboard": "पूर्ण डैशबोर्ड →",
+    "subReportingToday": "आज रिपोर्ट कर रहे",
+    "subBeingTracked": "ट्रैक किए जा रहे",
+    "subByFarmers": "किसानों द्वारा",
+    "subByBuyers": "खरीदारों द्वारा",
+    "subCompleted": "पूर्ण",
+    "subOpen": "खुले",
+    "liveCropPrices": "लाइव फ़सल भाव",
+    "allCrops": "सभी फ़सलें →",
+    "vp1Label": "डेटा-आधारित अंतर्दृष्टि",
+    "vp1Sub": "वास्तविक मंडी भाव और रुझान",
+    "vp2Label": "बेहतर निर्णय",
+    "vp2Sub": "सही समय पर बेचें",
+    "vp3Label": "बाज़ार संपर्क",
+    "vp3Sub": "किसानों और खरीदारों को जोड़ता है",
+    "vp4Label": "पारदर्शिता",
+    "vp4Sub": "खुला और विश्वसनीय प्लेटफ़ॉर्म"
   },
   "location": {
     "title": "आपका स्थान",
@@ -354,5 +410,46 @@
     "errorUnsupported": "यह डिवाइस स्थान का समर्थन नहीं करता।",
     "errorResolve": "उस स्थान को पहचाना नहीं जा सका। कोई स्थान नाम आज़माएं।",
     "directoryScope": "{state} के लिए निर्देशिका अभी एक प्रतिनिधि नमूना है।"
+  },
+  "advisor": {
+    "recommendation": "हमारी सिफारिश",
+    "daysOfData": "{n} दिन का डेटा",
+    "current": "वर्तमान",
+    "breakdown": "निर्णय विश्लेषण",
+    "factor_price": "भाव गति",
+    "factor_arrivals": "आवक रुझान",
+    "factor_weather": "मौसम दबाव",
+    "factor_msp": "MSP तुलना",
+    "factor_calendar": "फ़सल कैलेंडर",
+    "factor_holiday": "मंडी अवकाश",
+    "value_momentum": "विश्लेषित",
+    "value_analysed": "विश्लेषित",
+    "value_note": "नोट",
+    "value_caution": "सावधानी",
+    "value_stable": "स्थिर",
+    "value_belowMsp": "MSP से नीचे",
+    "value_aboveMsp": "MSP से ऊपर",
+    "value_na": "लागू नहीं"
+  },
+  "dash": {
+    "farmerTitle": "किसान डैशबोर्ड",
+    "farmerSubtitle": "अपनी उपज प्रबंधित करें और सौदों को ट्रैक करें।",
+    "buyerTitle": "खरीदार डैशबोर्ड",
+    "buyerSubtitle": "अपनी मांग पोस्ट करें और मेल खाते विक्रेता खोजें।",
+    "matchesSubtitle": "मेल के आधार पर रैंक किए गए अनुशंसित पक्ष।",
+    "qaListProduce": "उपज सूचीबद्ध करें",
+    "qaPostDemand": "मांग पोस्ट करें",
+    "qaViewMatches": "मैच देखें",
+    "qaTrackDeals": "सौदे ट्रैक करें",
+    "qaFindStorage": "भंडारण खोजें",
+    "qaFindFpos": "FPO खोजें",
+    "createLotHint": "अपनी उपज सूचीबद्ध करने के लिए विवरण भरें।",
+    "createDemandHint": "विक्रेता खोजने के लिए अपनी आवश्यकताएं बताएं।",
+    "viewAll": "सभी देखें",
+    "noMatchesYet": "अभी कोई मैच नहीं",
+    "qty": "मात्रा",
+    "price": "भाव",
+    "dist": "दूरी",
+    "gradeShort": "ग्रेड"
   }
 }

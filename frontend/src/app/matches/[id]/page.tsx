@@ -117,7 +117,7 @@ export default function MatchThreadPage() {
       <PageHeader
         icon="connection"
         title={t("offerThreadTitle")}
-        subtitle="Negotiate directly with verified counterparties"
+        subtitle={t("offerThreadSubtitle")}
       />
 
       {/* Match header */}
@@ -275,7 +275,7 @@ export default function MatchThreadPage() {
               {t("offerMessageLabel")}
               <textarea 
                 value={offerMsg} onChange={(e) => setOfferMsg(e.target.value)} rows={2}
-                placeholder="Add a friendly note..."
+                placeholder={t("offerMessagePlaceholder")}
                 className="resize-none rounded-xl border border-[var(--line)] p-3 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors" 
               />
             </label>

@@ -29,12 +29,6 @@ import {
 import { useCropMarket } from "@/lib/useCropMarket";
 import { useLocation } from "@/lib/useLocation";
 
-const SIGNAL_LABEL: Record<SellWaitSignalResponse["recommendation"], string> = {
-  sell_now: "SELL NOW",
-  wait: "WAIT",
-  hold: "HOLD",
-};
-
 const SIGNAL_COLORS: Record<
   SellWaitSignalResponse["recommendation"],
   { bg: string; text: string; border: string }
@@ -87,6 +81,10 @@ function HomeInner() {
   const t = useTranslations("home");
   const td = useTranslations("dashboard");
   const ts = useTranslations("signal");
+  const tw = useTranslations("weather");
+  const tm = useTranslations("msp");
+  const tb = useTranslations("bestmarket");
+  const te = useTranslations("explore");
   const cm = useCropMarket();
   const { location } = useLocation();
 
@@ -140,7 +138,6 @@ function HomeInner() {
       .catch(() => setOverview(null));
   }, [location?.state]);
 
-  const recLabel = rec ? SIGNAL_LABEL[rec.recommendation] : null;
   const signalColors = rec ? SIGNAL_COLORS[rec.recommendation] : null;
 
   return (
@@ -171,30 +168,28 @@ function HomeInner() {
           <div className="flex-1">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white/80">
               <Icon name="leaf" size={13} />
-              {location?.district ?? location?.state ?? "Maharashtra"} · Real-Time
+              {location?.district ?? location?.state ?? "Maharashtra"} · {t("realTime")}
             </span>
             <h1 className="mt-4 font-heading text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">
-              Smarter Markets.
+              {t("heroLine1")}
               <br />
-              <span className="text-[var(--amber-500)]">Better Decisions.</span>
+              <span className="text-[var(--amber-500)]">{t("heroLine2")}</span>
             </h1>
-            <p className="mt-3 max-w-lg text-base text-white/70">
-              Real-time agricultural market intelligence for farmers, FPOs, and buyers across Maharashtra.
-            </p>
+            <p className="mt-3 max-w-lg text-base text-white/70">{t("heroSubtitle")}</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href={`/prices?crop=${cm.crop}&market=${cm.market}`}
                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--amber-500)] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-900/30 transition hover:brightness-110"
               >
                 <Icon name="chart" size={16} />
-                View Prices
+                {t("ctaViewPrices")}
               </Link>
               <Link
                 href={`/advisor?crop=${cm.crop}&market=${cm.market}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
               >
                 <Icon name="spark" size={16} />
-                Get Advice
+                {t("ctaGetAdvice")}
               </Link>
             </div>
           </div>
@@ -202,7 +197,7 @@ function HomeInner() {
           {/* Right: Crop & Market Picker */}
           <div className="w-full max-w-sm rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-md">
             <p className="mb-3 text-sm font-bold uppercase tracking-widest text-white/60">
-              Explore Market
+              {t("exploreMarket")}
             </p>
             <CropMarketPicker cm={cm} />
           </div>
@@ -265,18 +260,18 @@ function HomeInner() {
                 href={`/advisor?crop=${cm.crop}&market=${cm.market}`}
                 className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[var(--green-700)] hover:underline"
               >
-                See full analysis →
+                {t("seeFullAnalysis")}
               </Link>
             </>
           ) : (
-            <p className="mt-4 text-sm text-[var(--ink-soft)]">Select crop &amp; market</p>
+            <p className="mt-4 text-sm text-[var(--ink-soft)]">{t("selectCropMarket")}</p>
           )}
         </div>
 
         {/* Weather */}
         <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--ink-soft)]">Weather</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[var(--ink-soft)]">{t("weather")}</p>
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-500">
               <Icon name="cloudRain" size={20} />
             </span>
@@ -293,12 +288,12 @@ function HomeInner() {
               </p>
               {weather.current.humidity_pct != null && (
                 <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                  Humidity: {weather.current.humidity_pct}%
+                  {tw("humidity")}: {weather.current.humidity_pct}%
                 </p>
               )}
             </>
           ) : (
-            <p className="mt-4 text-sm text-[var(--ink-soft)]">Weather unavailable</p>
+            <p className="mt-4 text-sm text-[var(--ink-soft)]">{tw("unavailable")}</p>
           )}
         </div>
 
@@ -306,7 +301,7 @@ function HomeInner() {
         <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[var(--ink-soft)]">MSP</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-[var(--ink-soft)]">{tm("short")}</p>
               <p className="mt-0.5 text-sm text-[var(--ink-soft)]">{cm.crop || "—"}</p>
             </div>
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--amber-100)] text-[var(--amber-700)]">
@@ -325,12 +320,12 @@ function HomeInner() {
                 <div
                   className={`mt-2 text-sm font-semibold ${msp.below_msp ? "text-[var(--red-500)]" : "text-[var(--green-600)]"}`}
                 >
-                  Gap: {msp.below_msp ? "−" : "+"}₹{Math.abs(msp.gap_vs_msp)} vs mandi
+                  {t("mspGap")}: {msp.below_msp ? "−" : "+"}₹{Math.abs(msp.gap_vs_msp)}
                 </div>
               )}
             </>
           ) : (
-            <p className="mt-4 text-sm text-[var(--ink-soft)]">No MSP for this crop</p>
+            <p className="mt-4 text-sm text-[var(--ink-soft)]">{tm("noMsp", { crop: cm.crop || "—" })}</p>
           )}
         </div>
       </div>
@@ -343,7 +338,7 @@ function HomeInner() {
             <div>
               <h2 className="font-heading text-base font-bold text-[var(--ink)]">
                 <Icon name="chart" size={16} className="mr-2 inline text-[var(--green-600)]" />
-                7-Day Price Trend
+                {t("priceTrend7d")}
               </h2>
               <p className="text-xs text-[var(--ink-soft)]">{cm.crop} · {cm.market}</p>
             </div>
@@ -351,7 +346,7 @@ function HomeInner() {
               href={`/prices?crop=${cm.crop}&market=${cm.market}`}
               className="text-xs font-semibold text-[var(--green-700)] hover:underline"
             >
-              View Full Chart →
+              {t("viewFullChart")}
             </Link>
           </div>
           <PriceTrendChart points={trendPoints} />
@@ -361,7 +356,7 @@ function HomeInner() {
         <div className="rounded-2xl border border-[var(--green-600)]/20 bg-gradient-to-br from-[var(--green-700)] to-[var(--green-900)] p-5 shadow-lg text-white">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/60">
             <Icon name="pin" size={14} />
-            Best Market For You
+            {t("bestMarketForYou")}
           </div>
           {loading ? (
             <div className="mt-4 space-y-3">
@@ -380,11 +375,11 @@ function HomeInner() {
               </div>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between border-t border-white/10 pt-2">
-                  <span className="text-white/60">Transport cost</span>
+                  <span className="text-white/60">{tb("transport")}</span>
                   <span className="font-semibold">−₹{bestMarket.best.transport_cost_per_qtl}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60">Distance</span>
+                  <span className="text-white/60">{tb("roadDistance")}</span>
                   <span className="font-semibold">{bestMarket.best.road_km} km</span>
                 </div>
               </div>
@@ -393,11 +388,11 @@ function HomeInner() {
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/25"
               >
                 <Icon name="map" size={15} />
-                View Market Details
+                {t("viewMarketDetails")}
               </Link>
             </>
           ) : (
-            <p className="mt-4 text-sm text-white/60">Select crop &amp; location to see best market</p>
+            <p className="mt-4 text-sm text-white/60">{t("selectCropLocation")}</p>
           )}
         </div>
       </div>
@@ -408,13 +403,13 @@ function HomeInner() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-heading text-base font-bold text-[var(--ink)]">
               <Icon name="warehouse" size={16} className="mr-2 inline text-[var(--green-600)]" />
-              Nearby Market Comparison
+              {t("nearbyComparison")}
             </h2>
             <Link
               href={`/prices?crop=${cm.crop}&market=${cm.market}`}
               className="text-xs font-semibold text-[var(--green-700)] hover:underline"
             >
-              View all markets →
+              {t("viewAllMarkets")}
             </Link>
           </div>
           <MarketComparisonChart
@@ -434,19 +429,19 @@ function HomeInner() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-heading text-base font-bold text-[var(--ink)]">
               <Icon name="globe" size={16} className="mr-2 inline text-[var(--green-600)]" />
-              Platform Overview · {location?.state ?? "Maharashtra"}
+              {t("platformOverview")} · {location?.state ?? "Maharashtra"}
             </h2>
             <Link href="/explore" className="text-xs font-semibold text-[var(--green-700)] hover:underline">
-              Full Dashboard →
+              {t("fullDashboard")}
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-            <StatCard icon="warehouse" label="Markets" value={overview.activity.markets_reporting ?? 0} sub="Reporting today" />
-            <StatCard icon="leaf" label="Crops" value={overview.activity.crops_tracked ?? 0} sub="Being tracked" />
-            <StatCard icon="chart" label="Open Lots" value={overview.activity.open_lots ?? 0} sub="By farmers" />
-            <StatCard icon="users" label="Demands" value={overview.activity.open_demands ?? 0} sub="By buyers" />
-            <StatCard icon="handshake" label="Deals" value={overview.activity.total_deals ?? 0} sub="Completed" iconColor="text-[var(--amber-700)]" />
-            <StatCard icon="alert" label="Disputes" value={overview.activity.open_disputes ?? 0} sub="Open" iconColor="text-[var(--red-500)]" />
+            <StatCard icon="warehouse" label={te("marketsReporting")} value={overview.activity.markets_reporting ?? 0} sub={t("subReportingToday")} />
+            <StatCard icon="leaf" label={te("cropsTracked")} value={overview.activity.crops_tracked ?? 0} sub={t("subBeingTracked")} />
+            <StatCard icon="chart" label={te("openLots")} value={overview.activity.open_lots ?? 0} sub={t("subByFarmers")} />
+            <StatCard icon="users" label={te("openDemands")} value={overview.activity.open_demands ?? 0} sub={t("subByBuyers")} />
+            <StatCard icon="handshake" label={te("deals")} value={overview.activity.total_deals ?? 0} sub={t("subCompleted")} iconColor="text-[var(--amber-700)]" />
+            <StatCard icon="alert" label={te("openDisputes")} value={overview.activity.open_disputes ?? 0} sub={t("subOpen")} iconColor="text-[var(--red-500)]" />
           </div>
         </div>
       )}
@@ -457,10 +452,10 @@ function HomeInner() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-heading text-base font-bold text-[var(--ink)]">
               <Icon name="spark" size={16} className="mr-2 inline text-[var(--amber-500)]" />
-              Live Crop Prices
+              {t("liveCropPrices")}
             </h2>
             <Link href="/explore" className="text-xs font-semibold text-[var(--green-700)] hover:underline">
-              All crops →
+              {t("allCrops")}
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -495,10 +490,10 @@ function HomeInner() {
       {/* ─── Footer Value Props ─── */}
       <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--green-700)] p-6 text-white sm:grid-cols-4">
         {[
-          { icon: "chart", label: "Data-Driven Insights", sub: "Real mandi prices & trends" },
-          { icon: "spark", label: "Better Decisions", sub: "Sell at the right time" },
-          { icon: "connection", label: "Market Linkage", sub: "Connects farmers & buyers" },
-          { icon: "shield", label: "Transparency", sub: "Open & trusted platform" },
+          { icon: "chart", label: t("vp1Label"), sub: t("vp1Sub") },
+          { icon: "spark", label: t("vp2Label"), sub: t("vp2Sub") },
+          { icon: "connection", label: t("vp3Label"), sub: t("vp3Sub") },
+          { icon: "shield", label: t("vp4Label"), sub: t("vp4Sub") },
         ].map((f) => (
           <div key={f.label} className="flex flex-col gap-1">
             <Icon name={f.icon} size={20} className="text-[var(--amber-500)]" />

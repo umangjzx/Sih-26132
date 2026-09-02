@@ -55,6 +55,7 @@ export default function FarmerPage() {
   const { isAuthenticated, user, token } = useAuth();
   const router = useRouter();
   const t = useTranslations("lots");
+  const tdash = useTranslations("dash");
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [lots, setLots] = useState<LotResponse[]>([]);
@@ -179,8 +180,8 @@ export default function FarmerPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         icon="leaf"
-        title="Farmer Dashboard"
-        subtitle={`Welcome back${user?.name ? `, ${user.name}` : ""}! Manage your produce and track deals.`}
+        title={tdash("farmerTitle")}
+        subtitle={tdash("farmerSubtitle")}
       />
 
       {/* Status Banners */}
@@ -206,10 +207,10 @@ export default function FarmerPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { icon: "leaf", label: "List Produce", href: "#create-lot", color: "bg-[var(--green-700)]" },
-          { icon: "connection", label: "View Matches", href: "/matches", color: "bg-[var(--green-600)]" },
-          { icon: "handshake", label: "Track Deals", href: "/deals", color: "bg-[var(--amber-700)]" },
-          { icon: "warehouse", label: "Find Storage", href: "/directory", color: "bg-slate-700" },
+          { icon: "leaf", label: tdash("qaListProduce"), href: "#create-lot", color: "bg-[var(--green-700)]" },
+          { icon: "connection", label: tdash("qaViewMatches"), href: "/matches", color: "bg-[var(--green-600)]" },
+          { icon: "handshake", label: tdash("qaTrackDeals"), href: "/history", color: "bg-[var(--amber-700)]" },
+          { icon: "warehouse", label: tdash("qaFindStorage"), href: "/directory", color: "bg-slate-700" },
         ].map((action) => (
           <Link
             key={action.label}
@@ -232,7 +233,7 @@ export default function FarmerPage() {
           </div>
           <div>
             <h2 className="font-heading text-base font-bold text-[var(--ink)]">{t("createTitle")}</h2>
-            <p className="text-xs text-[var(--ink-soft)]">Fill in the details to list your produce</p>
+            <p className="text-xs text-[var(--ink-soft)]">{tdash("createLotHint")}</p>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -295,7 +296,7 @@ export default function FarmerPage() {
             )}
           </h2>
           <Link href="/matches" className="text-xs font-semibold text-[var(--green-700)] hover:underline">
-            View Matches →
+            {tdash("qaViewMatches")} →
           </Link>
         </div>
         {lots.length === 0 ? (
@@ -317,7 +318,7 @@ export default function FarmerPage() {
                   <div>
                     <span className="font-bold text-[var(--ink)]">{lot.crop}</span>
                     <div className="mt-0.5 text-xs text-[var(--ink-soft)]">
-                      {lot.quantity_kg} kg · Grade {lot.quality_grade} · ₹{lot.expected_price}/qtl
+                      {lot.quantity_kg} kg · {tdash("gradeShort")} {lot.quality_grade} · ₹{lot.expected_price}/qtl
                     </div>
                     <div className="text-xs text-[var(--ink-soft)]/70">{lot.location} · {lot.available_from}</div>
                   </div>

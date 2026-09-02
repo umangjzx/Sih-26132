@@ -3,7 +3,8 @@
     "appName": "AgriLink",
     "loading": "Loading...",
     "error": "Something went wrong",
-    "retry": "Retry"
+    "retry": "Retry",
+    "loginRequired": "Login required"
   },
   "nav": {
     "prices": "Prices",
@@ -17,7 +18,12 @@
     "explore": "Explore",
     "alerts": "Alerts",
     "advisor": "Advisor",
-    "directory": "Directory"
+    "directory": "Directory",
+    "home": "Home",
+    "openMenu": "Open menu",
+    "tradeSection": "Trade & Logistics",
+    "matches": "Matches",
+    "administration": "Administration"
   },
   "dashboard": {
     "title": "Mandi Price Discovery",
@@ -145,7 +151,9 @@
     "youLabel": "You",
     "cropLabel": "Crop",
     "farmerLabel": "Farmer",
-    "buyerLabel": "Buyer"
+    "buyerLabel": "Buyer",
+    "offerThreadSubtitle": "Negotiate directly with verified counterparties.",
+    "offerMessagePlaceholder": "Add a friendly note…"
   },
   "deals": {
     "title": "My Deals",
@@ -170,7 +178,9 @@
     "advanceSuccess": "Deal advanced to {stage}",
     "alreadyClosed": "This deal is already closed",
     "loadError": "Could not load this deal",
-    "backToHistory": "Back to history"
+    "backToHistory": "Back to history",
+    "dealTitle": "Deal dashboard",
+    "dealSubtitle": "Track logistics and payment for {crop}."
   },
   "disputes": {
     "title": "Disputes",
@@ -196,7 +206,8 @@
     "noDemands": "No demands yet",
     "noDeals": "No deals yet",
     "viewDeal": "View Deal",
-    "loadError": "Could not load your history"
+    "loadError": "Could not load your history",
+    "subtitle": "All your past lots, demands, and finalised deals in one place."
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -236,7 +247,8 @@
     "belowBy": "Market is below MSP by the shown gap - a procurement centre may pay more",
     "season": "Season",
     "mspValue": "MSP",
-    "marketValue": "Market price"
+    "marketValue": "Market price",
+    "short": "MSP"
   },
   "calendar": {
     "title": "Crop Calendar",
@@ -299,7 +311,16 @@
     "resume": "Resume",
     "delete": "Delete",
     "lastTriggered": "Last fired",
-    "loginRequired": "Log in to manage price alerts"
+    "loginRequired": "Log in to manage price alerts",
+    "createdSuccess": "Alert created successfully.",
+    "createHint": "We'll notify you when the price reaches your target.",
+    "builderNotifyWhen": "Notify me when",
+    "builderAt": "at",
+    "builderGoes": "goes",
+    "noneHint": "Create an alert and we'll notify you when the market hits your target price.",
+    "cropPlaceholder": "Crop (e.g. Onion)",
+    "marketPlaceholder": "Market (e.g. Pune)",
+    "thresholdShort": "Price"
   },
   "storage": {
     "title": "Storage Near You",
@@ -326,7 +347,7 @@
   },
   "home": {
     "heroTitle": "Know your price. Sell at the right time.",
-    "heroSubtitle": "Live mandi prices, an explainable sell-now-or-wait call, weather and MSP context, and verified buyers - for Maharashtra farmers and FPOs.",
+    "heroSubtitle": "Real-time agricultural market intelligence for farmers, FPOs, and buyers.",
     "seeWhy": "See why",
     "pricesTitle": "Prices & Markets",
     "pricesDesc": "Trends, nearby mandis, and the best market after transport cost",
@@ -338,7 +359,42 @@
     "exploreDesc": "Statewide price transparency - no login needed",
     "snapshotTitle": "Statewide snapshot",
     "snapshotMore": "Open Explore",
-    "loadError": "Could not load prices right now"
+    "loadError": "Could not load prices right now",
+    "realTime": "Real-time",
+    "heroLine1": "Smarter markets.",
+    "heroLine2": "Better decisions.",
+    "ctaViewPrices": "View prices",
+    "ctaGetAdvice": "Get advice",
+    "exploreMarket": "Explore market",
+    "seeFullAnalysis": "See full analysis →",
+    "selectCropMarket": "Select crop & market",
+    "weather": "Weather",
+    "mspGap": "Gap",
+    "priceTrend7d": "7-day price trend",
+    "viewFullChart": "View full chart →",
+    "bestMarketForYou": "Best market for you",
+    "viewMarketDetails": "View market details",
+    "selectCropLocation": "Select crop & location to see the best market",
+    "nearbyComparison": "Nearby market comparison",
+    "viewAllMarkets": "View all markets →",
+    "platformOverview": "Platform overview",
+    "fullDashboard": "Full dashboard →",
+    "subReportingToday": "Reporting today",
+    "subBeingTracked": "Being tracked",
+    "subByFarmers": "By farmers",
+    "subByBuyers": "By buyers",
+    "subCompleted": "Completed",
+    "subOpen": "Open",
+    "liveCropPrices": "Live crop prices",
+    "allCrops": "All crops →",
+    "vp1Label": "Data-driven insights",
+    "vp1Sub": "Real mandi prices & trends",
+    "vp2Label": "Better decisions",
+    "vp2Sub": "Sell at the right time",
+    "vp3Label": "Market linkage",
+    "vp3Sub": "Connects farmers & buyers",
+    "vp4Label": "Transparency",
+    "vp4Sub": "Open & trusted platform"
   },
   "location": {
     "title": "Your location",
@@ -354,5 +410,46 @@
     "errorUnsupported": "This device does not support location.",
     "errorResolve": "Could not resolve that location. Try a place name.",
     "directoryScope": "Directory coverage for {state} is a representative sample for now."
+  },
+  "advisor": {
+    "recommendation": "Our recommendation",
+    "daysOfData": "{n}d of data",
+    "current": "Current",
+    "breakdown": "Decision breakdown",
+    "factor_price": "Price momentum",
+    "factor_arrivals": "Arrival trend",
+    "factor_weather": "Weather pressure",
+    "factor_msp": "MSP comparison",
+    "factor_calendar": "Crop calendar",
+    "factor_holiday": "Mandi holiday",
+    "value_momentum": "Analysed",
+    "value_analysed": "Analysed",
+    "value_note": "Note",
+    "value_caution": "Caution",
+    "value_stable": "Stable",
+    "value_belowMsp": "Below MSP",
+    "value_aboveMsp": "Above MSP",
+    "value_na": "N/A"
+  },
+  "dash": {
+    "farmerTitle": "Farmer dashboard",
+    "farmerSubtitle": "Manage your produce and track your deals.",
+    "buyerTitle": "Buyer dashboard",
+    "buyerSubtitle": "Post your demands and find matching sellers.",
+    "matchesSubtitle": "Recommended counterparties, ranked by fit.",
+    "qaListProduce": "List produce",
+    "qaPostDemand": "Post demand",
+    "qaViewMatches": "View matches",
+    "qaTrackDeals": "Track deals",
+    "qaFindStorage": "Find storage",
+    "qaFindFpos": "Find FPOs",
+    "createLotHint": "Fill in the details to list your produce.",
+    "createDemandHint": "Specify your requirements to find sellers.",
+    "viewAll": "View all",
+    "noMatchesYet": "No matches yet",
+    "qty": "Qty",
+    "price": "Price",
+    "dist": "Dist",
+    "gradeShort": "Grade"
   }
 }

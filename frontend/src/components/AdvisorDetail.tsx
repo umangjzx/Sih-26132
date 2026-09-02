@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   fetchCalendar,
@@ -24,12 +24,6 @@ const SIGNAL_BG: Record<SellWaitSignalResponse["recommendation"], string> = {
   sell_now: "from-[var(--green-700)] to-[var(--green-900)]",
   wait: "from-[#7a1f1f] to-[#4a1010]",
   hold: "from-[#7a5a00] to-[#4a3800]",
-};
-
-const SIGNAL_LABEL: Record<SellWaitSignalResponse["recommendation"], string> = {
-  sell_now: "SELL NOW",
-  wait: "WAIT",
-  hold: "HOLD",
 };
 
 type FactorTone = "positive" | "neutral" | "negative";
@@ -95,8 +89,57 @@ function FactorCard({
   );
 }
 
+/**
+ * Classify a backend reason string into a factor by keyword, so the label and
+ * tone always match the sentence — the reason ORDER from the API is not fixed
+ * (price → volume → [weather] → [MSP] → [holiday]).
+ */
+function classifyReason(reason: string, ctx: {
+  weatherCaution: boolean;
+  belowMsp: boolean;
+  hasMsp: boolean;
+  glutRisk: boolean;
+  phase: string | null;
+}): { key: string; icon: string; value: string; tone: FactorTone } {
+  const r = reason.toLowerCase();
+  if (/support price|\bmsp\b/.test(r)) {
+    return {
+      key: "msp",
+      icon: "scale",
+      value: ctx.belowMsp ? "belowMsp" : ctx.hasMsp ? "aboveMsp" : "na",
+      tone: ctx.belowMsp ? "negative" : ctx.hasMsp ? "positive" : "neutral",
+    };
+  }
+  if (/rain|weather|wet|dry spell|monsoon/.test(r)) {
+    return {
+      key: "weather",
+      icon: "cloudRain",
+      value: ctx.weatherCaution ? "caution" : "stable",
+      tone: ctx.weatherCaution ? "negative" : "neutral",
+    };
+  }
+  if (/arrival|volume|supply|glut/.test(r)) {
+    return { key: "arrivals", icon: "warehouse", value: "analysed", tone: "neutral" };
+  }
+  if (/holiday|mandi closed|apmc/.test(r)) {
+    return { key: "holiday", icon: "calendar", value: "note", tone: "neutral" };
+  }
+  if (/sow|harvest|calendar|season/.test(r)) {
+    return {
+      key: "calendar",
+      icon: "calendar",
+      value: ctx.phase ?? "na",
+      tone: ctx.glutRisk ? "negative" : "neutral",
+    };
+  }
+  // default: price momentum
+  return { key: "price", icon: "chart", value: "momentum", tone: "neutral" };
+}
+
 export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
   const tc = useTranslations("common");
+  const ts = useTranslations("signal");
+  const ta = useTranslations("advisor");
   const [signal, setSignal] = useState<SellWaitSignalResponse | null>(null);
   const [weather, setWeather] = useState<WeatherForecast | null>(null);
   const [msp, setMsp] = useState<MspInfo | null>(null);
@@ -132,6 +175,37 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Factor cards from signal reasons — labelled by keyword, not by position, so
+  // each card matches the sentence the backend actually sent. Declared before
+  // any early return so hook order stays stable.
+  const factors = useMemo(() => {
+    if (!signal) return [];
+    const ctx = {
+      weatherCaution: weather?.sell_bias === 1,
+      belowMsp: Boolean(msp?.below_msp),
+      hasMsp: Boolean(msp?.has_msp),
+      glutRisk: Boolean(calendar?.glut_risk),
+      phase: calendar?.current_phase ?? null,
+    };
+    return signal.reasons.map((reason) => {
+      const c = classifyReason(reason, ctx);
+      const rawValue = ["momentum", "analysed", "note", "caution", "stable", "belowMsp", "aboveMsp", "na"].includes(c.value)
+        ? ta(`value_${c.value}` as
+            | "value_momentum" | "value_analysed" | "value_note" | "value_caution"
+            | "value_stable" | "value_belowMsp" | "value_aboveMsp" | "value_na")
+        : c.value; // calendar phase string comes straight from the API
+      return {
+        icon: c.icon,
+        label: ta(`factor_${c.key}` as
+          | "factor_price" | "factor_arrivals" | "factor_weather"
+          | "factor_msp" | "factor_calendar" | "factor_holiday"),
+        value: rawValue,
+        description: reason,
+        tone: c.tone,
+      };
+    });
+  }, [signal, weather?.sell_bias, msp?.below_msp, msp?.has_msp, calendar?.glut_risk, calendar?.current_phase, ta]);
+
   if (loading) {
     return (
       <div className="flex flex-col gap-4">
@@ -158,68 +232,8 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
     );
   }
 
-  // Build factor cards from signal reasons
-  const factors: Array<{
-    icon: string;
-    label: string;
-    value: string;
-    description: string;
-    tone: FactorTone;
-  }> = [];
-
-  if (signal) {
-    // Price momentum
-    factors.push({
-      icon: "chart",
-      label: "Price Momentum",
-      value: signal.recommendation === "sell_now" ? "Positive" : signal.recommendation === "hold" ? "Neutral" : "Negative",
-      description: signal.reasons[0] ?? "Based on current price trend vs previous period.",
-      tone: signal.recommendation === "sell_now" ? "positive" : signal.recommendation === "hold" ? "neutral" : "negative",
-    });
-
-    if (signal.reasons[1]) {
-      factors.push({
-        icon: "cloudRain",
-        label: "Weather Pressure",
-        value: weather?.sell_bias === 1 ? "Caution" : "Stable",
-        description: signal.reasons[1],
-        tone: weather?.sell_bias === 1 ? "negative" : "neutral",
-      });
-    }
-
-    if (signal.reasons[2]) {
-      factors.push({
-        icon: "scale",
-        label: "MSP Comparison",
-        value: msp?.below_msp ? "Below MSP" : msp?.has_msp ? "Above MSP" : "N/A",
-        description: signal.reasons[2],
-        tone: msp?.below_msp ? "negative" : msp?.has_msp ? "positive" : "neutral",
-      });
-    }
-
-    if (signal.reasons[3]) {
-      factors.push({
-        icon: "calendar",
-        label: "Crop Calendar",
-        value: calendar?.current_phase ?? "N/A",
-        description: signal.reasons[3],
-        tone: calendar?.glut_risk ? "negative" : "neutral",
-      });
-    }
-
-    if (signal.reasons.slice(4).length > 0) {
-      factors.push({
-        icon: "chart",
-        label: "Arrival Trend",
-        value: "Analysed",
-        description: signal.reasons.slice(4).join(" "),
-        tone: "neutral",
-      });
-    }
-  }
-
   const bgGradient = signal ? SIGNAL_BG[signal.recommendation] : "from-[var(--green-700)] to-[var(--green-900)]";
-  const recLabel = signal ? SIGNAL_LABEL[signal.recommendation] : "—";
+  const recLabel = signal ? ts(signal.recommendation).toUpperCase() : "—";
 
   return (
     <div className="flex flex-col gap-6">
@@ -233,7 +247,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
           <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-10">
             <div className="flex-1">
               <p className="text-xs font-bold uppercase tracking-widest text-white/50">
-                Our Recommendation
+                {ta("recommendation")}
               </p>
               <div className="mt-2 font-heading text-5xl font-extrabold tracking-tight">
                 {recLabel}
@@ -242,11 +256,11 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
                 {signal.days_of_data > 0 && (
                   <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1">
                     <div className="h-2 w-2 rounded-full bg-[var(--amber-500)]"></div>
-                    <span>{signal.days_of_data}d of data</span>
+                    <span>{ta("daysOfData", { n: signal.days_of_data })}</span>
                   </div>
                 )}
                 {signal.current_price > 0 && (
-                  <span className="text-white/60">· Current: ₹{signal.current_price.toFixed(0)}/qtl</span>
+                  <span className="text-white/60">· {ta("current")}: ₹{signal.current_price.toFixed(0)}/qtl</span>
                 )}
               </div>
             </div>
@@ -266,7 +280,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
         <div>
           <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">
             <Icon name="spark" size={16} className="mr-2 inline text-[var(--amber-500)]" />
-            Decision Breakdown
+            {ta("breakdown")}
           </h2>
           <div className="flex flex-col gap-3">
             {factors.map((f, i) => (
