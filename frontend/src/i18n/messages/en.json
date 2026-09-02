@@ -604,6 +604,23 @@
     "decisionScore": "Decision score",
     "scoreHint": "Each factor adds points: +2/-2 or more → Sell, -2 or less → Wait, in between → Hold. Price counts double."
   },
+  "brief": {
+    "title": "Your action plan",
+    "inShort": "In short",
+    "asOf": "As of {date} · reference market {market}",
+    "priceLine": "₹{price}/qtl now",
+    "basis": "Built from the sell/wait signal, price forecast, diesel-indexed best market, MSP, weather, crop calendar, mandi holidays and nearby buyers.",
+    "confidence": "Confidence: {level}",
+    "confidence_high": "high",
+    "confidence_moderate": "moderate",
+    "confidence_low": "low",
+    "urgency_now": "Do now",
+    "urgency_soon": "Soon",
+    "urgency_watch": "Keep watching",
+    "noActions": "No action needed right now — check back after the next price update.",
+    "loadError": "Could not build an action plan for this crop and market yet.",
+    "viewBuyers": "View buyers"
+  },
   "dash": {
     "farmerTitle": "Farmer dashboard",
     "farmerSubtitle": "Manage your produce and track your deals.",

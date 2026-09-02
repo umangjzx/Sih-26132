@@ -231,6 +231,31 @@ def quality_grades() -> dict:
     return {"grades": GRADES}
 
 
+@router.get("/brief")
+def decision_brief(
+    crop: str,
+    market: str | None = None,
+    district: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    radius_km: float = Query(200.0, ge=25, le=600),
+    lang: str = "en",
+    db: Session = Depends(get_db),
+) -> dict:
+    """One orchestrated, prioritised action plan for a crop — the sell/wait
+    signal, forecast, diesel-costed best market, MSP gap, weather, crop
+    calendar, mandi holidays and nearby verified buyers, ranked by urgency."""
+    from app.services.brief import build_brief
+
+    try:
+        return build_brief(
+            db, crop=crop, market=market, district=district,
+            lat=lat, lon=lon, radius_km=radius_km, lang=lang,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.get("/logistics/freight-rate")
 def freight_rate_endpoint(
     from_state: str | None = None,

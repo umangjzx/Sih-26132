@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { AdvisorDetail } from "@/components/AdvisorDetail";
 import { CropMarketPicker } from "@/components/CropMarketPicker";
+import { DecisionBrief } from "@/components/DecisionBrief";
 import { StateDataNotice } from "@/components/StateDataNotice";
 import { Icon, Skeleton } from "@/components/ui";
 import { useCropMarket } from "@/lib/useCropMarket";
@@ -40,7 +41,10 @@ function AdvisorInner() {
       ) : cm.noDataForState ? (
         <StateDataNotice state={cm.scopeState} />
       ) : (
-        <AdvisorDetail cm={cm} />
+        <>
+          <DecisionBrief cm={cm} />
+          <AdvisorDetail cm={cm} />
+        </>
       )}
     </div>
   );

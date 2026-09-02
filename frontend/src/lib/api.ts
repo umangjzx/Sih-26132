@@ -1289,6 +1289,71 @@ export function fetchBestMarkets(
 export function fetchHolidays(days = 30): Promise<{ holidays: HolidayInfo[]; note: string | null }> {
   return getJson(`/api/holidays/upcoming?${qs({ days })}`);
 }
+
+export type BriefAction = {
+  rank: number;
+  kind: "sell" | "wait" | "hold" | "msp" | "best_market" | "holiday" | "weather" | "calendar" | "buyers" | "storage";
+  urgency: "now" | "soon" | "watch";
+  title: string;
+  detail: string;
+};
+export type DecisionBrief = {
+  crop: string;
+  reference_market: string;
+  district: string | null;
+  state: string | null;
+  as_of: string;
+  headline: { action: "sell_now" | "wait" | "hold"; score: number; confidence: "high" | "moderate" | "low" };
+  price: { latest_per_qtl: number; ma_7: number; ma_30: number | null; trend_note: string };
+  signal: { recommendation: string; total_score: number; factors: unknown[]; reasons: string[] };
+  forecast: { available: boolean; change_pct_7d: number | null; note: string | null };
+  best_market: {
+    here: BestMarketRow | null;
+    best: BestMarketRow | null;
+    better_alternative: (BestMarketRow & { net_gain_per_qtl: number }) | null;
+    freight: FreightRate;
+  };
+  msp: { price: number; gap: number; below: boolean; season: string } | null;
+  weather: { note: string | null; next3_rain_mm: number | null; sell_bias: number | null } | null;
+  calendar: CropCalendar | null;
+  holiday: HolidayInfo | null;
+  buyers_nearby: {
+    count: number;
+    top: {
+      demand_id: number;
+      buyer_name: string;
+      buyer_district: string;
+      buyer_verified: boolean;
+      quantity_kg: number;
+      price_band: [number, number];
+      distance_km: number | null;
+    }[];
+  };
+  storage_nearby: { name: string; type?: string; district?: string; distance_km?: number }[];
+  actions: BriefAction[];
+  summary: string;
+};
+export function fetchBrief(params: {
+  crop: string;
+  market?: string;
+  district?: string;
+  lat?: number;
+  lon?: number;
+  radiusKm?: number;
+  lang?: string;
+}): Promise<DecisionBrief> {
+  return getJson(
+    `/api/brief?${qs({
+      crop: params.crop,
+      market: params.market,
+      district: params.district,
+      lat: params.lat,
+      lon: params.lon,
+      radius_km: params.radiusKm,
+      lang: params.lang,
+    })}`,
+  );
+}
 export function fetchPublicOverview(state?: string): Promise<PublicOverview> {
   return getJson(`/api/public/overview?${qs({ state })}`);
 }
