@@ -313,7 +313,9 @@
     "evt_offer_countered": "Counter-offer made",
     "evt_offer_accepted": "Offer accepted",
     "evt_deal_created": "Deal created",
-    "evt_dispute_raised": "Dispute raised"
+    "evt_dispute_raised": "Dispute raised",
+    "enterAmount": "Enter a payment amount.",
+    "overOutstanding": "That is more than the ₹{amount} outstanding on this deal."
   },
   "disputes": {
     "title": "Disputes",

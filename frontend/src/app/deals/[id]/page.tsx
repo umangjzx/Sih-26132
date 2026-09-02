@@ -17,6 +17,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   advanceDeal,
   getDealById,
   getDealDisputes,
@@ -122,8 +123,8 @@ export default function DealDetailPage() {
       );
       setTimeout(() => setToast(null), 3000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      setError(msg.includes("403") ? t("advanceForbidden") : msg.includes("422") ? t("advanceNeedRef") : t("loadError"));
+      // Prefer the backend's own message; fall back to a friendly generic.
+      setError(err instanceof ApiError ? err.message : t("loadError"));
     } finally {
       setAdvancing(false);
     }
@@ -139,9 +140,9 @@ export default function DealDetailPage() {
       setToast(tp("success"));
       setTimeout(() => setToast(null), 3000);
       await load();
-    } catch {
-      setToast(tp("duplicateError"));
-      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      setToast(err instanceof ApiError ? err.message : tp("duplicateError"));
+      setTimeout(() => setToast(null), 5000);
     } finally {
       setSubmitting(false);
     }

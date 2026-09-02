@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   getDealEvents,
   getDealPayments,
   openDealReceipt,
@@ -64,7 +65,14 @@ export function DealTransactionPanel({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return;
+    if (!(amt > 0)) {
+      setErr(t("enterAmount"));
+      return;
+    }
+    if (outstanding > 0 && amt > outstanding * 1.05) {
+      setErr(t("overOutstanding", { amount: Math.round(outstanding) }));
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
@@ -73,8 +81,7 @@ export function DealTransactionPanel({
       setReference("");
       await load();
     } catch (e2) {
-      const m = e2 instanceof Error ? e2.message : "";
-      setErr(m.includes("403") ? t("buyerOnlyPay") : t("loadError"));
+      setErr(e2 instanceof ApiError ? e2.message : t("loadError"));
     } finally {
       setBusy(false);
     }

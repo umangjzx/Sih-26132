@@ -313,7 +313,9 @@
     "evt_offer_countered": "प्रति-ऑफर दिली",
     "evt_offer_accepted": "ऑफर स्वीकारली",
     "evt_deal_created": "व्यवहार तयार झाला",
-    "evt_dispute_raised": "विवाद उपस्थित केला"
+    "evt_dispute_raised": "विवाद उपस्थित केला",
+    "enterAmount": "पेमेंट रक्कम टाका.",
+    "overOutstanding": "हे या व्यवहारावरील ₹{amount} थकबाकीपेक्षा जास्त आहे."
   },
   "disputes": {
     "title": "तक्रारी",

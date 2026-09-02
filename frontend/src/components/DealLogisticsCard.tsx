@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   getDealLogistics,
   nearbyTransporters,
   saveDealLogistics,
@@ -88,7 +89,8 @@ export function DealLogisticsCard({
       setForm(saved);
       setEditing(false);
     } catch (e) {
-      setErr(e instanceof Error && e.message.includes("409") ? t("closed") : t("error"));
+      if (e instanceof ApiError) setErr(e.status === 409 ? t("closed") : e.message);
+      else setErr(t("error"));
     } finally {
       setSaving(false);
     }

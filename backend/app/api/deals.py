@@ -13,6 +13,9 @@
 import html
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+_IST = ZoneInfo("Asia/Kolkata")
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
@@ -193,6 +196,13 @@ def advance_deal(
 
     new_status = PIPELINE_STAGES[idx + 1]
 
+    # A deal can't be closed until it's paid.
+    if new_status == "closed" and deal.payment_status != "paid":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Mark the deal paid before closing it.",
+        )
+
     # Role gate: the seller confirms delivery, the buyer confirms payment.
     # Admins may push any stage (they are not a party).
     required = _STAGE_ACTOR.get(new_status)
@@ -313,11 +323,16 @@ def upsert_logistics(
         db.add(row)
 
     data = body.cleaned()
+    pod_added = bool(data.get("pod_url")) and not row.pod_url
     for field, value in data.items():
         setattr(row, field, value)
     row.distance_km = km
     if "est_cost_inr" not in data or data.get("est_cost_inr") is None:
         row.est_cost_inr = _est_cost(km, deal.agreed_quantity, lot)
+    if pod_added:
+        row.pod_confirmed_at = datetime.now(_IST)
+        log_event(db, actor_id=current_user.id, entity_type="logistics", entity_id=deal_id,
+                  action="pod_attached", detail={"pod_url": row.pod_url})
 
     db.commit()
     db.refresh(row)
@@ -345,7 +360,7 @@ def get_deal_events(
 # ---------------------------------------------------------------------------
 
 class PaymentCreate(BaseModel):
-    amount_inr: float = Field(gt=0)
+    amount_inr: float = Field(gt=0, le=50_000_000)
     method: str = Field(default="UPI", max_length=30)
     reference: str | None = Field(default=None, max_length=160)
     note: str | None = Field(default=None, max_length=300)
@@ -396,8 +411,27 @@ def record_payment(
     is automatically set to 'paid'.
     """
     deal, _m, lot, demand = _load_deal_with_access(deal_id, current_user, db)
-    if current_user.role not in ("buyer", "admin") and current_user.id != demand.buyer_id:
+    if current_user.role != "admin" and current_user.id != demand.buyer_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the buyer can record a payment")
+    if deal.pipeline_status == "closed":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This deal is closed.")
+
+    already_paid = float(
+        db.execute(
+            select(func.coalesce(func.sum(DealPayment.amount_inr), 0.0))
+            .where(DealPayment.deal_id == deal_id)
+        ).scalar_one()
+    )
+    agreed_value = deal.agreed_price * deal.agreed_quantity / 100.0
+    total_paid = already_paid + body.amount_inr
+    # allow a small overage for fees/rounding, but not a wildly wrong amount
+    if agreed_value > 0 and total_paid > agreed_value * 1.05:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"That would take total payments to ₹{total_paid:,.0f}, over the "
+            f"₹{agreed_value:,.0f} deal value. Outstanding is "
+            f"₹{max(0.0, agreed_value - already_paid):,.0f}.",
+        )
 
     row = DealPayment(
         deal_id=deal_id,
@@ -409,14 +443,6 @@ def record_payment(
     )
     db.add(row)
 
-    # auto-mark deal as paid if total payments >= agreed value
-    total_paid = float(
-        db.execute(
-            select(func.coalesce(func.sum(DealPayment.amount_inr), 0.0))
-            .where(DealPayment.deal_id == deal_id)
-        ).scalar_one()
-    ) + body.amount_inr
-    agreed_value = deal.agreed_price * deal.agreed_quantity / 100.0
     if total_paid >= agreed_value * 0.999:  # 0.1% tolerance for float rounding
         deal.payment_status = "paid"
 
@@ -522,7 +548,7 @@ def get_receipt(
 </head>
 <body>
 <h1>AgriLink — Deal Receipt</h1>
-<div class="sub">Deal #{deal.id} · Generated {datetime.now().strftime('%d %b %Y %H:%M')} IST</div>
+<div class="sub">Deal #{deal.id} · Generated {datetime.now(_IST).strftime('%d %b %Y %H:%M')} IST</div>
 
 <table>
   <tr><th colspan="2">Crop & Trade Terms</th></tr>

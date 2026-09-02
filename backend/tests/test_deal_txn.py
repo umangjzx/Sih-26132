@@ -229,3 +229,63 @@ def test_transporter_seed_and_nearby(db, farmer_user):
             assert rows == sorted(rows, key=lambda t: t["distance_km"] if t["distance_km"] is not None else 1e9)
     finally:
         app.dependency_overrides.clear()
+
+
+# --------------------------------------------------------------------------- #
+# Module 5 hardening
+# --------------------------------------------------------------------------- #
+
+def test_overpayment_is_rejected(db, farmer_user, buyer_user):
+    d = _deal(db, farmer_user, buyer_user, price=2500, qty=1000)  # value ₹25,000
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        # 105% tolerance -> ₹26,250 ok, ₹40,000 rejected
+        assert client.post(f"/api/deals/{d.id}/payments", json={"amount_inr": 26000}).status_code == 201
+        r = client.post(f"/api/deals/{d.id}/payments", json={"amount_inr": 40000})
+        assert r.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_cannot_close_an_unpaid_deal(db, farmer_user, buyer_user):
+    d = _deal(db, farmer_user, buyer_user, status="paid")
+    d.payment_status = "pending"
+    db.commit()
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        r = client.patch(f"/api/deals/{d.id}/advance", json={})
+        assert r.status_code == 409
+        # once paid, closing works
+        d.payment_status = "paid"
+        db.commit()
+        assert client.patch(f"/api/deals/{d.id}/advance", json={}).status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_payment_on_closed_deal_rejected(db, farmer_user, buyer_user):
+    d = _deal(db, farmer_user, buyer_user, status="closed")
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        assert client.post(f"/api/deals/{d.id}/payments", json={"amount_inr": 100}).status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_logistics_rejects_bad_pod_url(db, farmer_user, buyer_user):
+    d = _deal(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        assert client.put(f"/api/deals/{d.id}/logistics",
+                          json={"pod_url": "javascript:alert(1)"}).status_code == 422
+        r = client.put(f"/api/deals/{d.id}/logistics",
+                       json={"pod_url": "https://example.com/pod/42.jpg"})
+        assert r.status_code == 200
+        assert r.json()["pod_url"].startswith("https://")
+        assert r.json()["pod_confirmed_at"] is not None
+    finally:
+        app.dependency_overrides.clear()
