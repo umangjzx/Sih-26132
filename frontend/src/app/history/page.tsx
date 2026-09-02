@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { getMyHistory, type HistoryResponse } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
+import { PriceRealizationCard } from "@/components/PriceRealizationCard";
 import { Icon } from "@/components/ui";
 
 export default function HistoryPage() {
@@ -62,6 +63,8 @@ export default function HistoryPage() {
           {error}
         </div>
       )}
+
+      {token && user?.role === "farmer" && <PriceRealizationCard token={token} />}
       
       {!data && !error && (
         <div className="flex flex-col gap-4">

@@ -1425,3 +1425,38 @@ export function assistantSearch(
 ): Promise<{ query: string; results: { title: string; topic: string; score: number; text: string }[] }> {
   return getJson(`/api/assistant/search?${qs({ q, k })}`);
 }
+
+export type RealizationDeal = {
+  deal_id: number;
+  crop: string;
+  date: string;
+  quantity_kg: number;
+  realized_per_qtl: number;
+  value_inr: number;
+  mandi_benchmark_per_qtl: number | null;
+  mandi_basis: string;
+  msp_per_qtl: number | null;
+  vs_mandi_pct: number | null;
+  vs_msp_pct: number | null;
+  pipeline_status: string;
+  completed: boolean;
+};
+export type RealizationReport = {
+  farmer_id: number;
+  state: string | null;
+  summary: {
+    deals_total: number;
+    deals_completed: number;
+    total_quantity_kg: number;
+    total_value_inr: number;
+    weighted_realized_per_qtl: number | null;
+    weighted_mandi_per_qtl: number | null;
+    uplift_vs_mandi_pct: number | null;
+    below_msp_deals: number;
+    best_deal: { deal_id: number; crop: string; vs_mandi_pct: number } | null;
+  };
+  deals: RealizationDeal[];
+};
+export function fetchRealization(token: string, farmerId?: number): Promise<RealizationReport> {
+  return getJson(`/api/history/realization${farmerId ? `?${qs({ farmer_id: farmerId })}` : ""}`, token);
+}

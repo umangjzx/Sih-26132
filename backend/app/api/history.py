@@ -9,7 +9,7 @@ Deals are assembled into DealDetailResponse the same way as in deals.py, reusing
 the summary helpers from api/matching.py.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -72,3 +72,26 @@ def get_my_history(
             for deal, lot, demand in deal_rows
         ],
     )
+
+
+@router.get("/api/history/realization")
+def price_realization(
+    current_user: CurrentUser,
+    farmer_id: int | None = Query(None, description="admin only — inspect another farmer"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Per-deal realised price vs the mandi benchmark and MSP, with a
+    volume-weighted uplift summary. Farmers see their own; admins may pass
+    ``farmer_id``."""
+    from app.services.realization import farmer_realization
+
+    if current_user.role == "admin":
+        target = farmer_id or current_user.id
+    elif current_user.role == "farmer":
+        if farmer_id is not None and farmer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Farmers can only view their own realisation")
+        target = current_user.id
+    else:
+        # buyers have no lots — return an empty, well-formed payload
+        target = current_user.id
+    return farmer_realization(db, target)
