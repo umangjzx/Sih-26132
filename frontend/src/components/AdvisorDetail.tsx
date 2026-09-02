@@ -156,7 +156,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       const sig = await fetchSignal(cm.crop, cm.market).catch(() => null);
       setSignal(sig);
       const [w, m, c, h] = await Promise.allSettled([
-        fetchWeather({ market: cm.market, includeAnomaly: true }),
+        fetchWeather({ market: cm.market, district: cm.district, includeAnomaly: true }),
         fetchMsp(cm.crop, cm.market),
         fetchCalendar(cm.crop),
         fetchHolidays(45),
@@ -171,7 +171,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
     } finally {
       setLoading(false);
     }
-  }, [cm.crop, cm.market]);
+  }, [cm.crop, cm.market, cm.district]);
 
   useEffect(() => { load(); }, [load]);
 

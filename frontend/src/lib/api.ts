@@ -291,9 +291,16 @@ export async function patchJson<T>(
 // Phase 1 fetch functions
 // ---------------------------------------------------------------------------
 
-export function fetchOptions(state?: string): Promise<CropMarketOption[]> {
+export function fetchOptions(
+  state?: string,
+  coords?: { lat?: number | null; lon?: number | null },
+): Promise<CropMarketOption[]> {
   const p = new URLSearchParams();
   if (state) p.set("state", state);
+  if (typeof coords?.lat === "number" && typeof coords?.lon === "number") {
+    p.set("lat", String(coords.lat));
+    p.set("lon", String(coords.lon));
+  }
   const q = p.toString();
   return getJson(`/api/options${q ? `?${q}` : ""}`);
 }
@@ -652,13 +659,20 @@ export function listStates(): Promise<string[]> {
 }
 
 export function fetchWeather(
-  opts: { market?: string; lat?: number; lon?: number; includeAnomaly?: boolean } = {},
+  opts: {
+    market?: string;
+    district?: string;
+    lat?: number | null;
+    lon?: number | null;
+    includeAnomaly?: boolean;
+  } = {},
 ): Promise<WeatherForecast> {
   return getJson(
     `/api/weather/forecast?${qs({
       market: opts.market,
-      lat: opts.lat,
-      lon: opts.lon,
+      district: opts.district,
+      lat: opts.lat ?? undefined,
+      lon: opts.lon ?? undefined,
       include_anomaly: opts.includeAnomaly,
     })}`,
   );

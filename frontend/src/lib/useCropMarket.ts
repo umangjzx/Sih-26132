@@ -37,6 +37,8 @@ export function useCropMarket(): CropMarketState {
   const urlMarket = params.get("market") ?? "";
   const { location, warmTick } = useLocation();
   const stateScope = location?.state;
+  const lat = location?.lat ?? null;
+  const lon = location?.lon ?? null;
 
   const [options, setOptions] = useState<CropMarketOption[]>([]);
   const [ready, setReady] = useState(false);
@@ -45,21 +47,24 @@ export function useCropMarket(): CropMarketState {
   const loadOptions = useCallback(async () => {
     setError(false);
     try {
-      const opts = await fetchOptions(stateScope);
+      // coords -> markets sorted nearest-first (a big state's picker is huge)
+      const opts = await fetchOptions(stateScope, { lat, lon });
       setOptions(opts);
       setReady(true);
     } catch {
       setError(true);
     }
     // warmTick: refetch once a background per-state price warm completes
-  }, [stateScope, warmTick]);
+  }, [stateScope, lat, lon, warmTick]);
 
   useEffect(() => {
     loadOptions();
   }, [loadOptions]);
 
+  // Preserve the server order (nearest-first when coords were sent) so the most
+  // relevant crops surface; the picker adds a type-to-filter box on top.
   const crops = useMemo(
-    () => [...new Set(options.map((o) => o.crop))].sort(),
+    () => [...new Set(options.map((o) => o.crop))],
     [options],
   );
 

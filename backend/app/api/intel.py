@@ -26,16 +26,18 @@ router = APIRouter(prefix="/api", tags=["intel"])
 def _resolve_point(
     market: str | None, district: str | None, lat: float | None, lon: float | None
 ) -> tuple[float, float]:
+    from app.services.geo import _district_coord
+
     if lat is not None and lon is not None:
         return (lat, lon)
     if market:
         c = market_coords(market)
         if c:
             return c
-    if district and district in DISTRICT_CENTROIDS:
-        return DISTRICT_CENTROIDS[district]
-    if market and market in DISTRICT_CENTROIDS:
-        return DISTRICT_CENTROIDS[market]
+    for name in (district, market):
+        c = _district_coord(name or "")  # all-India district HQ coords
+        if c:
+            return c
     raise HTTPException(status_code=404, detail="Could not resolve a location for the request")
 
 

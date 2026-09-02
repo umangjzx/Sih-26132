@@ -27,6 +27,8 @@ router = APIRouter(prefix="/api", tags=["prices"])
 @router.get("/options", response_model=list[CropMarketOption])
 def list_options(
     state: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
     db: Session = Depends(get_db),
 ) -> list[CropMarketOption]:
     stmt = select(
@@ -35,10 +37,37 @@ def list_options(
     if state:
         stmt = stmt.where(PriceCache.state == state)
     rows = db.execute(stmt).all()
-    return [
+    opts = [
         CropMarketOption(crop=r.crop, market=r.market, district=r.district, state=r.state or "")
         for r in rows
     ]
+
+    # When the caller shares a location, order markets nearest-first (and crops
+    # by how close their nearest market is) so a big state's picker is usable.
+    if lat is not None and lon is not None:
+        from app.services.geo import _district_coord, haversine_km
+
+        origin = (lat, lon)
+
+        def dist(o: CropMarketOption) -> float:
+            c = market_coords(o.market) or _district_coord(o.district)
+            return haversine_km(origin, c) if c else 1e9
+
+        cache: dict[tuple[str, str], float] = {}
+
+        def dkey(o: CropMarketOption) -> float:
+            k = (o.market, o.district)
+            if k not in cache:
+                cache[k] = dist(o)
+            return cache[k]
+
+        best_for_crop: dict[str, float] = {}
+        for o in opts:
+            best_for_crop[o.crop] = min(best_for_crop.get(o.crop, 1e9), dkey(o))
+        opts.sort(key=lambda o: (best_for_crop[o.crop], o.crop, dkey(o), o.market))
+    else:
+        opts.sort(key=lambda o: (o.crop, o.market))
+    return opts
 
 
 def _fetch_series(db: Session, crop: str, market: str, days: int) -> list[PriceCache]:
