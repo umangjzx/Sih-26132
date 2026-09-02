@@ -19,8 +19,10 @@ class User(Base):
     taluka: Mapped[str] = mapped_column(String(120))
     kyc_status: Mapped[str] = mapped_column(String(20), default="unverified")
 
-    # Phase 2: auth columns
+    # Phase 2: auth columns. otp_* are dormant (OTP flow removed); password_hash
+    # holds a PBKDF2-HMAC-SHA256 digest (see app/core/security.py).
     otp_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
     otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

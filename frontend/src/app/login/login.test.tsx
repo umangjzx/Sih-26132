@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
-// Mocks must be declared before any imports that use the mocked modules.
 vi.mock("@/lib/api", () => ({
   login: vi.fn(),
+  register: vi.fn(),
 }));
 
 const mockReplace = vi.fn();
@@ -37,52 +37,68 @@ const USER = {
   kyc_status: "unverified",
   is_active: true,
 };
+const AUTH = { access_token: "tok", refresh_token: "ref", token_type: "bearer", user: USER };
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-it("renders a single-step login form", () => {
+it("defaults to the sign-in form (phone + password, no name field)", () => {
   renderWithIntl(<LoginPage />);
   expect(screen.getByPlaceholderText("+91XXXXXXXXXX")).toBeInTheDocument();
-  expect(screen.getByPlaceholderText(/Enter your name/i)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Continue/i })).toBeInTheDocument();
+  expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+  expect(screen.queryByPlaceholderText(/Enter your name/i)).not.toBeInTheDocument();
 });
 
-it("submitting calls login() with phone, name, role", async () => {
-  vi.mocked(api.login).mockResolvedValue({
-    access_token: "tok", refresh_token: "ref", token_type: "bearer", user: USER,
-  });
+it("sign in calls login() with phone + password, then redirects", async () => {
+  vi.mocked(api.login).mockResolvedValue(AUTH);
   renderWithIntl(<LoginPage />);
 
   await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
-  await userEvent.type(screen.getByPlaceholderText(/Enter your name/i), "Ravi");
-  await userEvent.click(screen.getByRole("button", { name: /Continue/i }));
+  await userEvent.type(screen.getByLabelText(/Password/i), "s3cret!!");
+  await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 
-  expect(api.login).toHaveBeenCalledWith("+910000000001", "Ravi", "farmer");
-});
-
-it("successful login calls login() with tokens and user, then redirects", async () => {
-  vi.mocked(api.login).mockResolvedValue({
-    access_token: "tok", refresh_token: "ref", token_type: "bearer", user: USER,
-  });
-  renderWithIntl(<LoginPage />);
-
-  await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
-  await userEvent.type(screen.getByPlaceholderText(/Enter your name/i), "Ravi");
-  await userEvent.click(screen.getByRole("button", { name: /Continue/i }));
-
+  expect(api.login).toHaveBeenCalledWith("+910000000001", "s3cret!!");
   expect(mockLogin).toHaveBeenCalledWith("tok", "ref", expect.objectContaining({ role: "farmer" }));
   expect(mockReplace).toHaveBeenCalledWith("/farmer");
 });
 
-it("a failed login shows the error message", async () => {
-  vi.mocked(api.login).mockRejectedValue(new Error("Request failed: 500"));
+it("wrong credentials show the badCredentials error", async () => {
+  vi.mocked(api.login).mockRejectedValue(new Error("Request failed: 401"));
   renderWithIntl(<LoginPage />);
 
   await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
-  await userEvent.type(screen.getByPlaceholderText(/Enter your name/i), "Ravi");
-  await userEvent.click(screen.getByRole("button", { name: /Continue/i }));
+  await userEvent.type(screen.getByLabelText(/Password/i), "nope");
+  await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 
-  expect(await screen.findByText(/Could not sign in/i)).toBeInTheDocument();
+  expect(await screen.findByText(/Wrong phone number or password/i)).toBeInTheDocument();
+});
+
+it("register tab reveals name + role and calls register()", async () => {
+  vi.mocked(api.register).mockResolvedValue(AUTH);
+  renderWithIntl(<LoginPage />);
+
+  await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
+  await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
+  await userEvent.type(screen.getByPlaceholderText(/Enter your name/i), "Ravi");
+  await userEvent.type(screen.getByLabelText(/Password/i), "s3cret!!");
+  await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
+
+  expect(api.register).toHaveBeenCalledWith("+910000000001", "Ravi", "farmer", "s3cret!!");
+  expect(mockLogin).toHaveBeenCalledWith("tok", "ref", expect.objectContaining({ role: "farmer" }));
+});
+
+it("registering a taken phone flips back to sign in with a hint", async () => {
+  vi.mocked(api.register).mockRejectedValue(new Error("Request failed: 409"));
+  renderWithIntl(<LoginPage />);
+
+  await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
+  await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
+  await userEvent.type(screen.getByPlaceholderText(/Enter your name/i), "Ravi");
+  await userEvent.type(screen.getByLabelText(/Password/i), "s3cret!!");
+  await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
+
+  expect(await screen.findByText(/already has an account/i)).toBeInTheDocument();
+  // back on the sign-in form: name field gone
+  expect(screen.queryByPlaceholderText(/Enter your name/i)).not.toBeInTheDocument();
 });

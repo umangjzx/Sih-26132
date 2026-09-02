@@ -10,7 +10,7 @@ Route groups (all under `/api`):
 | Intelligence (v1.1) | `weather/forecast`, `msp`, `calendar`, `storage/nearby`, `fpo/nearby`, `markets/best`, `holidays/upcoming` |
 | Public | `public/overview` |
 | Location (v1.2) | `location/resolve`, `location/states` |
-| Auth | `auth/login` (passwordless / OTP-less), `auth/refresh`, `auth/me` |
+| Auth | `auth/register`, `auth/login` (phone + PBKDF2 password), `auth/refresh`, `auth/me` |
 | Trade | `lots`, `demands`, `matches`, `offers`, `deals`, `disputes`, `history` |
 | Alerts | `alerts`, `notifications` |
 | Admin | `admin/dashboard` |

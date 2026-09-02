@@ -366,17 +366,24 @@ export function fetchNearby(
 // Phase 2 auth fetch functions
 // ---------------------------------------------------------------------------
 
-export function login(
-  phone: string,
-  name: string,
-  role: string,
-): Promise<{
+type AuthPayload = {
   access_token: string;
   refresh_token: string;
   token_type: string;
   user: import("@/lib/auth").StoredUser;
-}> {
-  return postJson("/api/auth/login", { phone, name, role });
+};
+
+export function login(phone: string, password: string): Promise<AuthPayload> {
+  return postJson("/api/auth/login", { phone, password });
+}
+
+export function register(
+  phone: string,
+  name: string,
+  role: string,
+  password: string,
+): Promise<AuthPayload> {
+  return postJson("/api/auth/register", { phone, name, role, password });
 }
 
 export function refreshTokens(

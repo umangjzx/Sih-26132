@@ -2,16 +2,23 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class LoginBody(BaseModel):
-    """Passwordless, OTP-less login for the demo build: identify by phone,
-    creating the account on first sight."""
+class RegisterBody(BaseModel):
+    """Create an account: phone is the identity, password is the credential."""
 
     phone: str
     name: str
     role: Literal["farmer", "buyer", "admin"] = "farmer"
+    password: str = Field(min_length=6, max_length=128)
+
+
+class LoginBody(BaseModel):
+    """Sign in with phone + password."""
+
+    phone: str
+    password: str
 
 
 class RefreshBody(BaseModel):

@@ -1,11 +1,16 @@
-"""JWT helpers and FastAPI auth dependencies.
+"""JWT helpers, password hashing, and FastAPI auth dependencies.
 
 Design decisions (from 2-CONTEXT.md):
 - D-03: HS256 JWT, short-lived access token (30 min) + long-lived refresh token (7 days).
 - D-07: Bearer token via HTTPBearer; get_current_user fetches the User row and raises 401.
-- Login is passwordless / OTP-less in this build — see app/api/auth.py.
+- Passwords are hashed with PBKDF2-HMAC-SHA256 (stdlib only — no bcrypt/passlib
+  dependency, keeps the build offline-installable) and compared in constant time.
 """
 
+import base64
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -20,6 +25,38 @@ from app.core.database import get_db
 from app.models.user import User
 
 _bearer = HTTPBearer(auto_error=False)
+
+
+# ---------------------------------------------------------------------------
+# Password hashing — PBKDF2-HMAC-SHA256, Django-style "algo$iters$salt$hash"
+# ---------------------------------------------------------------------------
+
+_PBKDF2_ITERS = 600_000
+
+
+def hash_password(raw: str) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", raw.encode("utf-8"), salt, _PBKDF2_ITERS)
+    return "pbkdf2_sha256${}${}${}".format(
+        _PBKDF2_ITERS,
+        base64.b64encode(salt).decode("ascii"),
+        base64.b64encode(dk).decode("ascii"),
+    )
+
+
+def verify_password(raw: str, stored: str | None) -> bool:
+    if not stored:
+        return False
+    try:
+        algo, iters_s, salt_b64, hash_b64 = stored.split("$")
+        if algo != "pbkdf2_sha256":
+            return False
+        salt = base64.b64decode(salt_b64)
+        expected = base64.b64decode(hash_b64)
+        dk = hashlib.pbkdf2_hmac("sha256", raw.encode("utf-8"), salt, int(iters_s))
+    except (ValueError, TypeError):
+        return False
+    return hmac.compare_digest(dk, expected)
 
 
 # ---------------------------------------------------------------------------

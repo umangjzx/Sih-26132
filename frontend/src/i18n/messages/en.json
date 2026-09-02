@@ -68,8 +68,15 @@
     "roleBuyer": "Buyer / Trader",
     "loggingIn": "Logging in...",
     "logout": "Logout",
-    "signIn": "Continue",
-    "loginError": "Could not sign in. Check your details and try again."
+    "loginError": "Could not sign in. Check your details and try again.",
+    "signInTab": "Sign in",
+    "registerTab": "Create account",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Your password",
+    "passwordHint": "At least 6 characters.",
+    "phoneTaken": "That phone number already has an account. Please sign in.",
+    "badCredentials": "Wrong phone number or password.",
+    "continueBtn": "Continue"
   },
   "lots": {
     "title": "My Lots",

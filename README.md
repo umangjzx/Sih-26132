@@ -78,7 +78,7 @@ state picker) sets the active location, persisted in `localStorage`.
 
 | Route | Role | What you do |
 |---|---|---|
-| `/login` | any | Enter phone + name + role → get access + refresh tokens immediately. No OTP, no password (demo build); the account is created on first login. |
+| `/login` | any | Two tabs on one screen: **Sign in** (phone + password) or **Create account** (phone + name + role + password). Returns access + refresh tokens. Passwords are PBKDF2-hashed; no OTP / SMS. |
 | `/farmer` | farmer | List produce **lots** (crop, quantity, grade, expected price, availability date, location). Offline-safe: drafts autosave, submissions queue in `localStorage` and sync on reconnect. Shows nearby storage/FPOs. |
 | `/buyer` | buyer | Post **demands** (crop, quantity, quality spec, price band, delivery window). |
 | `/matches/[id]` | farmer/buyer | Scored lot×demand match with a component breakdown; an **offer thread** (propose price/quantity, counter, accept, decline). Accepting an offer creates a **deal**. |
@@ -334,7 +334,8 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 
 | Method | Path | Body / notes |
 |---|---|---|
-| POST | `/auth/login` | `{phone, name, role}` — passwordless / OTP-less: creates the user on first login, returns `{access_token, refresh_token, token_type, user}` |
+| POST | `/auth/register` | `{phone, name, role, password}` (password ≥ 6) — creates the account, 409 if the phone is taken, returns `{access_token, refresh_token, token_type, user}` |
+| POST | `/auth/login` | `{phone, password}` — verifies the PBKDF2 hash; 401 on wrong phone/password, 403 if inactive |
 | POST | `/auth/refresh` | `{refresh_token}` → new token pair |
 | GET | `/auth/me` | **Auth** — current user |
 
@@ -405,7 +406,7 @@ erDiagram
 | Table | Key columns | Status/enum values |
 |---|---|---|
 | `price_cache` | `crop, variety, market, district, state, date, min/max/modal_price, arrival_volume?` — unique `(market, crop, variety, date)` | — |
-| `users` | `role, name, phone` (unique), `district, taluka, kyc_status`, `is_active`, `created_at` (plus dormant `otp_code?` / `otp_expires_at?` columns — login is passwordless / OTP-less in this build) | role: `farmer` \| `buyer` \| `admin` |
+| `users` | `role, name, phone` (unique), `district, taluka, kyc_status`, `password_hash?` (PBKDF2), `is_active`, `created_at` (plus dormant `otp_code?` / `otp_expires_at?` — the OTP flow was removed) | role: `farmer` \| `buyer` \| `admin` |
 | `lots` | `farmer_id→users`, `crop, quantity_kg, quality_grade, photo_url?, expected_price, available_from, location, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
 | `demands` | `buyer_id→users`, `crop, quantity_kg, quality_spec, price_band_min/max, delivery_window` | status: `open` \| `matched` \| `closed` |
 | `matches` | `lot_id→lots`, `demand_id→demands`, `score`, `score_detail` (JSON string) | status: `proposed` \| `offered` \| `accepted` \| `rejected` |
@@ -416,7 +417,7 @@ erDiagram
 | `price_alerts` | `user_id→users`, `crop, market, direction, threshold, active, last_triggered_at?` | direction: `above` \| `below` |
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
 
-Migrations: `0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` — now dormant + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`).
+Migrations: `0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` — now dormant + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`).
 
 ---
 
@@ -488,14 +489,19 @@ admin (or the raiser) closes them.
 
 ## Authentication
 
-Passwordless **and** OTP-less in this build — identify by phone
-(`app/core/security.py` owns only the JWT helpers). The OTP flow was removed for
-the hackathon build; `git log` restores it.
+Phone + password. Passwords are hashed with **PBKDF2-HMAC-SHA256** (600k
+iterations, per-user salt, `algo$iters$salt$hash` string) using only the Python
+stdlib — no `bcrypt` / `passlib` dependency, so the build stays offline-installable
+(`hash_password` / `verify_password` in `app/core/security.py`, constant-time
+compare). No OTP / SMS; the earlier OTP flow is in `git log`.
 
 ```
-POST /api/auth/login        {phone, name, role}
-     → upserts the user (name/role taken on first login only) and issues
-       access_token  (HS256, 30 min)  +  refresh_token (7 days)  immediately
+POST /api/auth/register     {phone, name, role, password}   (password ≥ 6 chars)
+     → 409 if the phone is taken; else creates the account (password_hash) and
+       issues access_token (HS256, 30 min) + refresh_token (7 days)
+
+POST /api/auth/login        {phone, password}
+     → verify_password against the stored hash; 401 on mismatch, 403 if inactive
 
 POST /api/auth/refresh      {refresh_token}  → new pair
 ```
@@ -600,9 +606,9 @@ Both suites run **offline**.
   `fetch_arrivals_rows()` seam is present but off unless `ARRIVALS_SOURCE_URL` is
   set.
 - **KYC is a stub** — `kyc_status` is a flag, not real verification.
-- **Login has no second factor** — the demo build issues tokens from a phone +
-  name + role alone (no OTP, no password). A real deployment would add SMS OTP or
-  a password; the removed OTP flow is in `git log`.
+- **Login is phone + password only** — no SMS OTP / second factor, no email
+  verification, and no password-reset flow (a forgotten password needs a DB
+  edit). PBKDF2 hashing is real; the rest is out of scope for the demo.
 - **Curated reference data** — MSP, the crop calendar, and the storage/FPO
   directory are curated samples with real geography, not live registries.
 - **Crop calendar is Maharashtra-tuned** — sowing/harvest/peak windows outside
