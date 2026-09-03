@@ -1,10 +1,11 @@
 import secrets
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.price_cache import PriceCache
@@ -117,15 +118,20 @@ def _staple_rank(crop: str) -> int:
 def _fetch_series(db: Session, crop: str, market: str, days: int) -> list[PriceCache]:
     since = date.today() - timedelta(days=days)
 
-    def _query() -> list[PriceCache]:
+    def _query(ci: bool = False) -> list[PriceCache]:
+        crop_c = PriceCache.crop.ilike(crop.strip()) if ci else PriceCache.crop == crop
+        mkt_c = PriceCache.market.ilike(market.strip()) if ci else PriceCache.market == market
         stmt = (
             select(PriceCache)
-            .where(PriceCache.crop == crop, PriceCache.market == market, PriceCache.date >= since)
+            .where(crop_c, mkt_c, PriceCache.date >= since)
             .order_by(PriceCache.date.asc())
         )
         return list(db.execute(stmt).scalars().all())
 
-    rows = _query()
+    # exact match first (index-friendly, always hits in the picker-driven flow);
+    # fall back to a case-insensitive match for deep links / alerts / hand-built
+    # URLs where the casing may be slightly off.
+    rows = _query() or _query(ci=True)
     # The live AGMARKNET feed only carries the latest day. If this series is
     # too thin for a trend / signal, lazily synthesise history anchored to the
     # real latest price (cheap, single series, persisted).
@@ -174,12 +180,19 @@ def nearby_markets(
     limit: int = Query(8, ge=1, le=50),
     db: Session = Depends(get_db),
 ) -> list[NearestMarketComparison]:
-    latest_date_stmt = select(PriceCache.date).where(PriceCache.crop == crop).order_by(PriceCache.date.desc()).limit(1)
-    latest_date = db.execute(latest_date_stmt).scalar_one_or_none()
+    crop_c = PriceCache.crop == crop
+    latest_date = db.execute(
+        select(PriceCache.date).where(crop_c).order_by(PriceCache.date.desc()).limit(1)
+    ).scalar_one_or_none()
+    if latest_date is None:  # retry case-insensitively before giving up
+        crop_c = PriceCache.crop.ilike(crop.strip())
+        latest_date = db.execute(
+            select(PriceCache.date).where(crop_c).order_by(PriceCache.date.desc()).limit(1)
+        ).scalar_one_or_none()
     if latest_date is None:
         raise HTTPException(status_code=404, detail="No price data for this crop")
 
-    stmt = select(PriceCache).where(PriceCache.crop == crop, PriceCache.date == latest_date)
+    stmt = select(PriceCache).where(crop_c, PriceCache.date == latest_date)
     rows = list(db.execute(stmt).scalars().all())
 
     results = [
@@ -272,6 +285,7 @@ def sell_wait_signal(
 
 @router.post("/ingest/run", response_model=IngestionResultResponse)
 def trigger_ingestion(
+    request: Request,
     x_ingest_secret: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> IngestionResultResponse:
@@ -281,5 +295,10 @@ def trigger_ingestion(
     expected = settings.ingest_trigger_secret
     if not expected or not x_ingest_secret or not secrets.compare_digest(x_ingest_secret, expected):
         raise HTTPException(status_code=403, detail="Forbidden")
+    # a full ingestion is heavy — a safety valve against an accidental retry loop
+    # even for a caller holding the secret (legit use is one cron tick / interval).
+    client_ip = request.client.host if request.client else "unknown"
+    if not ratelimit.check(f"ingest_run:{client_ip}", limit=6, window_s=60):
+        raise HTTPException(status_code=429, detail="Ingestion already running too often; slow down.")
     result = ingestion.run_ingestion(db)
     return IngestionResultResponse(**result)

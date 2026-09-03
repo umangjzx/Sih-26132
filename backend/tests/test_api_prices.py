@@ -19,6 +19,13 @@ def test_trend_ok(client):
     assert resp.json()["points"]
 
 
+def test_trend_matches_crop_and_market_case_insensitively(client):
+    # a deep link / alert with slightly-off casing still resolves
+    resp = client.get("/api/prices/trend", params={"crop": "onion", "market": "pune", "days": 30})
+    assert resp.status_code == 200
+    assert resp.json()["points"]
+
+
 def test_signal_ok(client):
     resp = client.get("/api/prices/signal", params={"crop": "Onion", "market": "Pune"})
     assert resp.status_code == 200
@@ -58,3 +65,11 @@ def test_ingest_requires_secret(client, monkeypatch):
     ok = client.post("/api/ingest/run", headers={"X-Ingest-Secret": "topsecret"})
     assert ok.status_code == 200
     assert "source" in ok.json()
+
+
+def test_ingest_run_is_rate_limited(client, monkeypatch):
+    monkeypatch.setattr(prices.settings, "ingest_trigger_secret", "topsecret")
+    monkeypatch.setattr(prices.ingestion.settings, "data_gov_in_api_key", "")
+    hdr = {"X-Ingest-Secret": "topsecret"}
+    codes = [client.post("/api/ingest/run", headers=hdr).status_code for _ in range(8)]
+    assert codes.count(200) == 6 and codes[-1] == 429
