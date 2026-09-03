@@ -155,6 +155,19 @@ def test_public_overview_state_filter(db):
         pb = client.get("/api/public/overview", params={"state": "Punjab"}).json()
         assert [c["crop"] for c in pb["crops"]] == ["Wheat"]
         assert pb["activity"]["state"] == "Punjab"
+        # case-insensitive + trims
+        pb2 = client.get("/api/public/overview", params={"state": " punjab "}).json()
+        assert [c["crop"] for c in pb2["crops"]] == ["Wheat"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_public_overview_is_rate_limited(db):
+    _seed(db, "Maharashtra", "Pune", "Onion")
+    client = _client(db)
+    try:
+        codes = [client.get("/api/public/overview").status_code for _ in range(63)]
+        assert codes.count(200) == 60 and codes[-1] == 429
     finally:
         app.dependency_overrides.clear()
 

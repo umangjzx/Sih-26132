@@ -7,10 +7,11 @@ movers, the modal-price trend across all crops, and headline platform activity.
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.models.deal import Deal
 from app.models.demand import Demand
@@ -20,11 +21,23 @@ from app.models.price_cache import PriceCache
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
+_OVERVIEW_LIMIT, _OVERVIEW_WINDOW_S = 60, 60
+
 
 @router.get("/overview")
-def public_overview(state: str | None = None, db: Session = Depends(get_db)) -> dict:
+def public_overview(
+    request: Request,
+    state: str | None = Query(None, max_length=80),
+    db: Session = Depends(get_db),
+) -> dict:
+    ip = request.client.host if request.client else "unknown"
+    if not ratelimit.check(f"public_overview:{ip}", limit=_OVERVIEW_LIMIT, window_s=_OVERVIEW_WINDOW_S):
+        raise HTTPException(status_code=429, detail="Too many requests — please slow down.")
+
+    state = (state or "").strip() or None
+
     def scoped(stmt):
-        return stmt.where(PriceCache.state == state) if state else stmt
+        return stmt.where(PriceCache.state.ilike(state)) if state else stmt
 
     latest_date = db.execute(
         scoped(select(func.max(PriceCache.date)))
