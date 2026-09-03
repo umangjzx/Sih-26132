@@ -106,6 +106,17 @@ def test_realization_no_price_data_leaves_benchmark_none(db, farmer_user):
     assert d["vs_mandi_pct"] is None
 
 
+def test_realization_matches_crop_case_insensitively(db, farmer_user):
+    # AGMARKNET stores "Onion"; the farmer typed the lot crop lowercase
+    _seed_prices(db, "Onion", modal=1800)
+    _make_deal(db, farmer_user.id, crop="onion", agreed_price=1980, qty_kg=1000)
+
+    out = farmer_realization(db, farmer_user.id)
+    d = out["deals"][0]
+    assert d["mandi_benchmark_per_qtl"] == 1800
+    assert d["vs_mandi_pct"] == 10.0
+
+
 def test_realization_endpoint_farmer(farmer_client, db, farmer_user):
     _seed_prices(db, "Onion", modal=1800)
     _make_deal(db, farmer_user.id, crop="Onion", agreed_price=1980, qty_kg=1000)

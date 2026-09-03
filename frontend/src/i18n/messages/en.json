@@ -382,7 +382,8 @@
     "colDeal": "Deal",
     "colYouGot": "You got",
     "colMandi": "Mandi",
-    "colGap": "Gap"
+    "colGap": "Gap",
+    "loadError": "Could not load your price realisation. Please try again."
   },
   "admin": {
     "title": "Admin Dashboard",

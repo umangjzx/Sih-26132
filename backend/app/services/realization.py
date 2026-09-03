@@ -32,27 +32,45 @@ _WIDE_DAYS = 30
 
 
 def _mandi_benchmark(
-    db: Session, crop: str, on_date, state: str | None
+    db: Session,
+    crop: str,
+    on_date,
+    state: str | None,
+    _memo: dict | None = None,
 ) -> tuple[float | None, str]:
     """Average modal price for ``crop`` within a window around ``on_date``.
     Prefers the farmer's state, widens the date window before dropping the
-    state filter. Returns (price, basis-label)."""
+    state filter. Returns (price, basis-label).
+
+    Crop and state are matched case-insensitively so a lot typed 'onion' still
+    benchmarks against AGMARKNET's 'Onion' rows. ``_memo`` (optional) caches the
+    result per (crop, date, state) across the many deals in one report."""
+    key = (crop.strip().lower(), on_date, (state or "").strip().lower())
+    if _memo is not None and key in _memo:
+        return _memo[key]
+
+    crop_norm = crop.strip()
+    result: tuple[float | None, str] = (None, "no data")
     for days, scope in ((_NEAR_DAYS, "state"), (_WIDE_DAYS, "state"),
                         (_NEAR_DAYS, "all"), (_WIDE_DAYS, "all")):
         stmt = select(func.avg(PriceCache.modal_price)).where(
-            PriceCache.crop == crop,
+            PriceCache.crop.ilike(crop_norm),
             PriceCache.date >= on_date - timedelta(days=days),
             PriceCache.date <= on_date + timedelta(days=days),
         )
         if scope == "state" and state:
-            stmt = stmt.where(PriceCache.state == state)
+            stmt = stmt.where(PriceCache.state.ilike(state.strip()))
         elif scope == "state":
             continue  # no state to filter on — skip to the "all" passes
         val = db.execute(stmt).scalar_one_or_none()
         if val is not None:
             label = f"±{days}d" + (f", {state}" if scope == "state" and state else ", all-India")
-            return round(float(val), 0), label
-    return None, "no data"
+            result = (round(float(val), 0), label)
+            break
+
+    if _memo is not None:
+        _memo[key] = result
+    return result
 
 
 def farmer_realization(db: Session, farmer_id: int) -> dict:
@@ -73,6 +91,7 @@ def farmer_realization(db: Session, farmer_id: int) -> dict:
     tot_qty = tot_value = 0.0
     w_realized_num = w_mandi_num = w_mandi_qty = 0.0
     below_msp_count = 0
+    bench_memo: dict = {}
 
     for deal, lot in rows:
         on_date = deal.created_at.date()
@@ -81,7 +100,7 @@ def farmer_realization(db: Session, farmer_id: int) -> dict:
         value = round(realized * qty_kg / 100.0, 0)
         completed = deal.pipeline_status in _COMPLETED
 
-        mandi, basis = _mandi_benchmark(db, lot.crop, on_date, state)
+        mandi, basis = _mandi_benchmark(db, lot.crop, on_date, state, bench_memo)
         msp_entry = ref.msp_for(lot.crop)
         msp = float(msp_entry["price"]) if msp_entry else None
 

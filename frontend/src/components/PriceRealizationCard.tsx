@@ -25,13 +25,16 @@ export function PriceRealizationCard({ token }: { token: string }) {
   const t = useTranslations("realization");
   const [report, setReport] = useState<RealizationReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setErr(false);
     try {
       setReport(await fetchRealization(token));
     } catch {
       setReport(null);
+      setErr(true);
     } finally {
       setLoading(false);
     }
@@ -47,6 +50,17 @@ export function PriceRealizationCard({ token }: { token: string }) {
         <SectionHeader icon="coins" title={t("title")} />
         <Skeleton className="h-16 w-full" />
         <Skeleton className="mt-3 h-52 w-full" />
+      </Card>
+    );
+  }
+
+  if (err) {
+    return (
+      <Card>
+        <SectionHeader icon="coins" title={t("title")} />
+        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--red-700)]">
+          <Icon name="close" size={14} /> {t("loadError")}
+        </p>
       </Card>
     );
   }
