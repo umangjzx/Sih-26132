@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, DM_Sans, Noto_Sans_Devanagari } from "next/font/google";
+import { Poppins, Noto_Sans_Devanagari } from "next/font/google";
 
 import { AuthProvider } from "@/components/AuthProvider";
 import { ClientAppShell } from "@/components/ClientAppShell";
@@ -7,22 +7,20 @@ import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { LocationProvider } from "@/lib/useLocation";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-heading",
+// Poppins — single family for both headings and body, matching the AgriLink
+// design reference exactly. Weights 400/500/600/700 cover all type sizes.
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const dmSans = DM_Sans({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 const notoSansDevanagari = Noto_Sans_Devanagari({
   variable: "--font-devanagari",
   subsets: ["devanagari"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -35,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${dmSans.variable} ${notoSansDevanagari.variable} h-full`}
+      className={`${poppins.variable} ${notoSansDevanagari.variable} h-full`}
     >
       <body className="flex min-h-full flex-col text-[var(--ink)] antialiased">
         <LocaleProvider>

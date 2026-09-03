@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * AgriLink authenticated sidebar.
+ *
+ * Three states:
+ *   expanded  — 18rem wide, icons + labels                    (desktop)
+ *   collapsed — 4.75rem wide, icons only + tooltips           (desktop)
+ *   drawer    — full sidebar slides in from the left          (mobile)
+ *
+ * Colours come exclusively from --sidebar-* CSS tokens.
+ * Collapse animation uses CSS transition on `width`; no JS layout thrash.
+ */
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -8,133 +20,296 @@ import { useAuth } from "./AuthProvider";
 import { Logo } from "./Logo";
 import { Icon } from "./ui";
 
-type NavLink = { href: string; label: string; icon: string };
+type NavItem = { href: string; labelKey: string; icon: string };
 
-export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+/* ── Helpers ────────────────────────────────────────────────────────────── */
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "?").toUpperCase() + (parts[1]?.[0] ?? "").toUpperCase();
+}
+
+/* ── SidebarLink ─────────────────────────────────────────────────────────── */
+
+function SidebarLink({
+  item,
+  collapsed,
+  onClose,
+}: {
+  item: NavItem;
+  collapsed: boolean;
+  onClose: () => void;
+}) {
   const pathname = usePathname();
+  const t        = useTranslations("nav");
+  const active   =
+    pathname === item.href ||
+    (item.href !== "/" && pathname.startsWith(item.href));
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onClose}
+      aria-current={active ? "page" : undefined}
+      title={collapsed ? t(item.labelKey as "home") : undefined}
+      className={`
+        group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium
+        transition-colors duration-150 outline-none
+        focus-visible:ring-2 focus-visible:ring-[var(--green-400)]
+        ${collapsed ? "lg:justify-center lg:px-0" : ""}
+        ${active
+          ? "bg-[var(--sidebar-active)] text-white shadow-sm"
+          : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-white"
+        }
+      `}
+    >
+      <Icon
+        name={item.icon}
+        size={20}
+        className={`shrink-0 ${active ? "opacity-100" : "opacity-75 group-hover:opacity-100"}`}
+      />
+      <span
+        className={`
+          truncate transition-all duration-300 overflow-hidden whitespace-nowrap
+          ${collapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"}
+        `}
+      >
+        {t(item.labelKey as "home")}
+      </span>
+    </Link>
+  );
+}
+
+/* ── Section label ─────────────────────────────────────────────────────── */
+
+function SectionLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
+  return (
+    <div
+      className={`
+        px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.12em]
+        text-[var(--sidebar-muted)] transition-all duration-300 overflow-hidden whitespace-nowrap
+        ${collapsed ? "lg:opacity-0 lg:max-h-0 lg:py-0" : "opacity-100 max-h-12"}
+      `}
+    >
+      {label}
+    </div>
+  );
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+
+export function Sidebar({
+  isOpen,
+  collapsed,
+  onClose,
+  onToggleCollapsed,
+}: {
+  isOpen: boolean;
+  collapsed: boolean;
+  onClose: () => void;
+  onToggleCollapsed: () => void;
+}) {
+  const t      = useTranslations("nav");
   const router = useRouter();
-  const t = useTranslations("nav");
   const { user, isAuthenticated, logout } = useAuth();
 
-  // Logged out: a minimal public nav — the landing page is the overview, and
-  // everything else opens up after login. Logged in: the full set.
-  const publicLinks: NavLink[] = isAuthenticated
-    ? [
-        { href: "/", label: t("home"), icon: "house" },
-        { href: "/prices", label: t("prices"), icon: "chart" },
-        { href: "/advisor", label: t("advisor"), icon: "spark" },
-        { href: "/directory", label: t("directory"), icon: "warehouse" },
-        { href: "/explore", label: t("explore"), icon: "globe" },
-      ]
-    : [
-        { href: "/", label: t("home"), icon: "house" },
-        { href: "/explore", label: t("explore"), icon: "globe" },
-        { href: "/#how", label: t("howItWorks"), icon: "spark" },
-      ];
+  /* ── Nav groups ── */
+  const discoveryLinks: NavItem[] = [
+    { href: "/",         labelKey: "home",          icon: "house"     },
+    { href: "/prices",   labelKey: "prices",        icon: "chart"     },
+    { href: "/advisor",  labelKey: "advisor",       icon: "spark"     },
+    { href: "/explore",  labelKey: "explore",       icon: "globe"     },
+    { href: "/directory",labelKey: "directory",     icon: "warehouse" },
+  ];
 
-  const tradeLinks: NavLink[] = [];
-  if (user?.role === "farmer") tradeLinks.push({ href: "/farmer", label: t("myLots"), icon: "leaf" });
-  if (user?.role === "buyer") tradeLinks.push({ href: "/buyer", label: t("myDemands"), icon: "handshake" });
-  if (user?.role === "farmer" || user?.role === "buyer") {
-    tradeLinks.push({ href: "/browse", label: t("browse"), icon: "globe" });
+  const tradeLinks: NavItem[] = [];
+  if (user?.role === "farmer") {
+    tradeLinks.push({ href: "/farmer",  labelKey: "myLots",    icon: "leaf"       });
+    tradeLinks.push({ href: "/browse",  labelKey: "browse",    icon: "globe"      });
+    tradeLinks.push({ href: "/pools",   labelKey: "pools",     icon: "coins"      });
+    tradeLinks.push({ href: "/forward", labelKey: "forward",   icon: "calendar"   });
   }
-  if (user?.role === "farmer") tradeLinks.push({ href: "/pools", label: t("pools"), icon: "coins" });
-  if (user?.role === "farmer" || user?.role === "buyer") {
-    tradeLinks.push({ href: "/forward", label: t("forward"), icon: "calendar" });
-    tradeLinks.push({ href: "/matches", label: t("matches"), icon: "connection" });
-    tradeLinks.push({ href: "/history", label: t("history"), icon: "clock" });
-    tradeLinks.push({ href: "/alerts", label: t("alerts"), icon: "bell" });
+  if (user?.role === "buyer") {
+    tradeLinks.push({ href: "/buyer",   labelKey: "myDemands", icon: "handshake"  });
+    tradeLinks.push({ href: "/browse",  labelKey: "browse",    icon: "globe"      });
+    tradeLinks.push({ href: "/forward", labelKey: "forward",   icon: "calendar"   });
   }
-  if (isAuthenticated) tradeLinks.push({ href: "/profile", label: t("profile"), icon: "users" });
+  if (user?.role === "farmer" || user?.role === "buyer") {
+    tradeLinks.push({ href: "/matches", labelKey: "matches",   icon: "connection" });
+    tradeLinks.push({ href: "/history", labelKey: "history",   icon: "clock"      });
+    tradeLinks.push({ href: "/alerts",  labelKey: "alerts",    icon: "bell"       });
+  }
+  if (isAuthenticated) {
+    tradeLinks.push({ href: "/profile", labelKey: "profile",   icon: "users"      });
+  }
 
-  const renderLink = (link: NavLink) => {
-    const active =
-      pathname === link.href ||
-      (link.href !== "/" && pathname.startsWith(link.href));
-    return (
-      <Link
-        key={link.href}
-        href={link.href}
-        onClick={onClose}
-        aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
-          active
-            ? "bg-[var(--green-600)] text-white shadow-md shadow-black/10"
-            : "text-[var(--green-50)] hover:bg-white/10 hover:text-white"
-        }`}
-      >
-        <Icon name={link.icon} size={20} className={active ? "opacity-100" : "opacity-80"} />
-        {link.label}
-      </Link>
-    );
+  const adminLinks: NavItem[] = [
+    { href: "/admin",       labelKey: "administration", icon: "shield" },
+    { href: "/admin/users", labelKey: "users",          icon: "users"  },
+  ];
+
+  const handleLogout = () => {
+    onClose();
+    logout();
+    router.replace("/login");
   };
 
-  const sidebarClasses = `fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-[#122c1d] text-white shadow-2xl transition-transform duration-300 lg:translate-x-0 ${
-    isOpen ? "translate-x-0" : "-translate-x-full"
-  }`;
+  /* ── Class builders ── */
+  const sidebarWidth = collapsed ? "lg:w-[4.75rem]" : "lg:w-72";
 
   return (
     <>
+      {/* Mobile backdrop */}
       {isOpen && (
         <div
+          aria-hidden="true"
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
 
-      <aside className={sidebarClasses}>
-        <div className="flex h-16 shrink-0 items-center px-6">
-          <Link href="/" onClick={onClose}>
-            <Logo size={40} variant="sidebar" />
+      <aside
+        role="navigation"
+        aria-label="App navigation"
+        className={`
+          fixed inset-y-0 left-0 z-50 flex flex-col
+          bg-[var(--sidebar-bg)] text-white
+          shadow-[var(--shadow-xl)]
+          transition-[transform,width] duration-300 ease-in-out
+          /* mobile: full-width drawer */
+          w-72
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          /* desktop: always visible, animate width */
+          lg:translate-x-0
+          ${sidebarWidth}
+        `}
+      >
+
+        {/* ── Logo row ── */}
+        <div
+          className={`
+            flex h-[4.25rem] shrink-0 items-center border-b border-[var(--sidebar-border)] px-4
+            ${collapsed ? "lg:justify-center lg:px-0" : "gap-2"}
+          `}
+        >
+          {/* Full logo (visible when expanded or on mobile drawer) */}
+          <Link
+            href="/"
+            onClick={onClose}
+            className={`outline-none focus-visible:ring-2 focus-visible:ring-[var(--green-400)] rounded-lg ${collapsed ? "lg:hidden" : ""}`}
+          >
+            <Logo size={36} variant="sidebar" />
           </Link>
+          {/* Icon-only logo (collapsed desktop) */}
+          <Link
+            href="/"
+            onClick={onClose}
+            className={`outline-none focus-visible:ring-2 focus-visible:ring-[var(--green-400)] rounded-lg ${collapsed ? "hidden lg:block" : "hidden"}`}
+          >
+            <Logo size={28} variant="icon" />
+          </Link>
+
+          {/* Collapse / expand toggle — desktop only */}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? t("expand") : t("collapse")}
+            title={collapsed ? t("expand") : t("collapse")}
+            className="
+              ml-auto hidden rounded-lg p-1.5 text-[var(--sidebar-muted)]
+              transition-colors hover:bg-[var(--sidebar-hover-bg)] hover:text-white lg:flex
+            "
+          >
+            <Icon
+              name="chevronLeft"
+              size={17}
+              className={`transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`}
+            />
+          </button>
         </div>
 
-        <nav className="custom-scrollbar flex flex-1 flex-col gap-8 overflow-y-auto p-4">
-          <div className="flex flex-col gap-1.5">{publicLinks.map(renderLink)}</div>
+        {/* ── Nav scroll area ── */}
+        <nav
+          aria-label="Primary navigation"
+          className="custom-scrollbar flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-3"
+        >
+          {/* Discovery */}
+          <div className="flex flex-col gap-0.5">
+            {discoveryLinks.map((item) => (
+              <SidebarLink key={item.href} item={item} collapsed={collapsed} onClose={onClose} />
+            ))}
+          </div>
 
+          {/* Trade & Logistics */}
           {tradeLinks.length > 0 && (
-            <div>
-              <div className="mb-3 px-4 text-xs font-bold uppercase tracking-widest text-[var(--green-200)]/70">
-                {t("tradeSection")}
-              </div>
-              <div className="flex flex-col gap-1.5">{tradeLinks.map(renderLink)}</div>
+            <div className="mt-3 flex flex-col gap-0.5">
+              <SectionLabel label={t("tradeSection")} collapsed={collapsed} />
+              {tradeLinks.map((item) => (
+                <SidebarLink key={item.href} item={item} collapsed={collapsed} onClose={onClose} />
+              ))}
+            </div>
+          )}
+
+          {/* Administration */}
+          {user?.role === "admin" && (
+            <div className="mt-3 flex flex-col gap-0.5">
+              <SectionLabel label={t("administration")} collapsed={collapsed} />
+              {adminLinks.map((item) => (
+                <SidebarLink key={item.href} item={item} collapsed={collapsed} onClose={onClose} />
+              ))}
             </div>
           )}
         </nav>
 
-        {user?.role === "admin" && (
-          <div className="flex flex-col gap-1.5 border-t border-white/10 p-4">
-            {renderLink({ href: "/admin", label: t("administration"), icon: "shield" })}
-            {renderLink({ href: "/admin/users", label: t("users"), icon: "users" })}
-          </div>
-        )}
-
-        {isAuthenticated && user ? (
-          <div className="border-t border-white/10 p-4">
-            <div className="mb-2 flex items-center gap-2 px-2 text-sm text-[var(--green-50)]">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-bold">
-                {(user.name.trim()[0] ?? "?").toUpperCase()}
+        {/* ── User footer ── */}
+        {isAuthenticated && user && (
+          <div className="shrink-0 border-t border-[var(--sidebar-border)] px-2 py-3">
+            {/* Avatar + name */}
+            <div
+              className={`
+                mb-2 flex items-center gap-2.5 rounded-xl px-3 py-2
+                text-[var(--sidebar-text)]
+                ${collapsed ? "lg:justify-center lg:px-0" : ""}
+              `}
+            >
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold"
+                aria-hidden="true"
+              >
+                {initials(user.name)}
               </span>
-              <span className="truncate">{user.name}</span>
+              <div
+                className={`
+                  min-w-0 overflow-hidden transition-all duration-300
+                  ${collapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"}
+                `}
+              >
+                <p className="truncate text-sm font-semibold leading-tight">{user.name}</p>
+                <p className="truncate text-[10px] text-[var(--sidebar-muted)] capitalize">{user.role}</p>
+              </div>
             </div>
+            {/* Logout */}
             <button
               type="button"
-              onClick={() => { onClose(); logout(); router.replace("/login"); }}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--green-50)] hover:bg-white/10 hover:text-white"
+              onClick={handleLogout}
+              title={collapsed ? t("logout") : undefined}
+              className={`
+                flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium
+                text-[var(--sidebar-text)] transition-colors
+                hover:bg-[var(--sidebar-hover-bg)] hover:text-white
+                ${collapsed ? "lg:justify-center lg:px-0" : ""}
+              `}
             >
-              <Icon name="close" size={18} className="opacity-80" />
-              {t("logout")}
+              <Icon name="close" size={18} className="shrink-0 opacity-75" />
+              <span
+                className={`
+                  truncate transition-all duration-300 overflow-hidden whitespace-nowrap
+                  ${collapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"}
+                `}
+              >
+                {t("logout")}
+              </span>
             </button>
-          </div>
-        ) : (
-          <div className="border-t border-white/10 p-4">
-            <Link
-              href="/login"
-              onClick={onClose}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[var(--green-600)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--green-500)]"
-            >
-              {t("login")}
-            </Link>
           </div>
         )}
       </aside>

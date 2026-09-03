@@ -32,7 +32,13 @@
     "browse": "Browse",
     "forward": "Forward deals",
     "more": "More",
-    "howItWorks": "How it works"
+    "howItWorks": "How it works",
+    "features": "Features",
+    "marketInsights": "Market insights",
+    "about": "About",
+    "getStarted": "Get started",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar"
   },
   "dashboard": {
     "title": "Mandi Price Discovery",
@@ -1006,7 +1012,7 @@
     "badge": "SIH 2026 · Govt. of Maharashtra / MSInS",
     "heroLine1": "Real prices.",
     "heroLine2": "Fair deals.",
-    "heroSubtitle": "AgriLink turns government mandi data into a clear sell-now-or-wait call, connects you with verified buyers, and tracks the deal end to end — in English, Hindi or Marathi.",
+    "heroSubtitle": "Government mandi data becomes a clear sell-now-or-wait call, the best market after transport, and verified buyers — one deal, tracked from offer to payment, in English, Hindi or Marathi.",
     "ctaGetStarted": "Get started",
     "ctaSeePrices": "See live mandi prices",
     "heroFoot": "Free to use · works offline-safe · built Maharashtra-first, location-aware across India.",
@@ -1024,7 +1030,7 @@
     "b2Title": "Verified buyers and a full deal pipeline",
     "b2Body": "Scored matches, an offer thread with price-referenced counter-offers, logistics, instalment payments, an audit trail and a dispute workflow.",
     "b3Title": "A market-intelligence layer",
-    "b3Body": "Weather, MSP gap, crop-calendar timing, a diesel-indexed best-market ranking and one ranked Decision Brief that fuses them all.",
+    "b3Body": "A 30-day price trend, the live mandi rate, 7-day weather, the MSP gap and the best market after diesel-costed transport — fused into one ranked Decision Brief.",
     "b4Title": "Collective strength",
     "b4Body": "Pool produce with nearby farmers for bargaining power, lock a price before harvest with forward contracts, and see your realised price vs the mandi after every deal.",
     "howHeading": "How it works",
@@ -1038,6 +1044,11 @@
     "howNote": "No internet? Prices fall back to a committed snapshot; every external call degrades to a neutral result. Nothing blocks the app.",
     "ctaHeading": "Start with your crop's price",
     "ctaSub": "Create a free phone account to list produce, post demands and track deals. Or browse the public price dashboard first — no login needed.",
-    "ctaBrowse": "Browse public prices"
+    "ctaBrowse": "Browse public prices",
+    "chipTrend": "30-day price trend",
+    "chipBestMarket": "Best market after transport",
+    "chipWeather": "7-day weather + MSP",
+    "chipVerified": "Verified buyers",
+    "tagline": "Markets · Insights · Better futures"
   }
 }
