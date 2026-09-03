@@ -7,7 +7,20 @@
  */
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const LAST_PICK_KEY = "agrilink.cropMarket";
+
+function readLastPick(): { crop: string; market: string } | null {
+  try {
+    const raw = window.localStorage.getItem(LAST_PICK_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    return p && typeof p.crop === "string" && typeof p.market === "string" ? p : null;
+  } catch {
+    return null;
+  }
+}
 
 import { fetchOptions, type CropMarketOption } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
@@ -49,6 +62,7 @@ export function useCropMarket(): CropMarketState {
   const [options, setOptions] = useState<CropMarketOption[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
+  const hydratedFromStorage = useRef(false);
 
   const loadOptions = useCallback(async () => {
     setError(false);
@@ -125,6 +139,31 @@ export function useCropMarket(): CropMarketState {
     [options, write],
   );
   const setMarket = useCallback((m: string) => write({ market: m }), [write]);
+
+  // Remember the active crop/market so a return visit restores it.
+  useEffect(() => {
+    if (!ready || !crop || !market) return;
+    try {
+      window.localStorage.setItem(LAST_PICK_KEY, JSON.stringify({ crop, market }));
+    } catch {
+      /* storage unavailable — non-fatal */
+    }
+  }, [ready, crop, market]);
+
+  // First visit with a bare URL (no ?crop=): restore the viewer's last pick so
+  // they land straight on their crop instead of re-selecting it every time.
+  useEffect(() => {
+    if (hydratedFromStorage.current || !ready || options.length === 0) return;
+    hydratedFromStorage.current = true;
+    if (urlCrop || urlMarket) return;
+    const saved = readLastPick();
+    if (!saved || !crops.includes(saved.crop)) return;
+    const savedMarkets = options.filter((o) => o.crop === saved.crop).map((o) => o.market);
+    write({
+      crop: saved.crop,
+      market: savedMarkets.includes(saved.market) ? saved.market : savedMarkets[0],
+    });
+  }, [ready, options, urlCrop, urlMarket, crops, write]);
 
   return {
     options,

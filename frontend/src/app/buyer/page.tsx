@@ -16,6 +16,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCards, type Stat } from "@/components/StatCards";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { QuickActions } from "@/components/QuickActions";
 import { Icon } from "@/components/ui";
 import {
   ApiError,
@@ -82,6 +83,7 @@ export default function BuyerPage() {
   const tm = useTranslations("matching");
   const tdash = useTranslations("dash");
   const tc = useTranslations("common");
+  const tq = useTranslations("quick");
 
   const [form, setForm] = useState<DemandCreate>(EMPTY_DEMAND);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -115,6 +117,7 @@ export default function BuyerPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const openDemands = demands.filter((d) => d.status === "open");
+  const openMatchCount = matches.filter((m) => m.status === "proposed" || m.status === "offered").length;
   const totalKg = openDemands.reduce((s, d) => s + d.quantity_kg, 0);
   const estSpend = openDemands.reduce(
     (s, d) => s + (d.quantity_kg / 100) * ((d.price_band_min + d.price_band_max) / 2),
@@ -217,6 +220,21 @@ export default function BuyerPage() {
         hasLocation={!!user?.district}
         hasListing={demands.length > 0}
         hasMatch={matches.length > 0}
+      />
+
+      <QuickActions
+        actions={[
+          { label: tq("postDemand"), icon: "handshake", href: "#create-demand", accent: true },
+          {
+            label: tq("viewMatches"),
+            icon: "connection",
+            href: "/matches",
+            badge: openMatchCount,
+            accent: openMatchCount > 0,
+          },
+          { label: tq("browseLots"), icon: "leaf", href: "/browse" },
+          { label: tq("checkPrices"), icon: "chart", href: "/prices" },
+        ]}
       />
 
       <StatCards stats={stats} />

@@ -30,7 +30,8 @@
     "profile": "Profile",
     "users": "Users",
     "browse": "Browse",
-    "forward": "Forward deals"
+    "forward": "Forward deals",
+    "more": "More"
   },
   "dashboard": {
     "title": "Mandi Price Discovery",
@@ -978,5 +979,13 @@
     "step_listLot": "List your first produce lot",
     "step_postDemand": "Post your first buying demand",
     "step_matches": "Review your matches and make an offer"
+  },
+  "quick": {
+    "listProduce": "List produce",
+    "postDemand": "Post a demand",
+    "viewMatches": "Matches",
+    "checkPrices": "Prices",
+    "openPools": "Pools",
+    "browseLots": "Browse lots"
   }
 }

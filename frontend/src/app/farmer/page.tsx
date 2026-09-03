@@ -17,6 +17,7 @@ import { NearbyResources } from "@/components/NearbyResources";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCards, type Stat } from "@/components/StatCards";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { QuickActions } from "@/components/QuickActions";
 import { Icon } from "@/components/ui";
 import {
   ApiError,
@@ -81,6 +82,7 @@ export default function FarmerPage() {
   const t = useTranslations("lots");
   const tdash = useTranslations("dash");
   const tc = useTranslations("common");
+  const tq = useTranslations("quick");
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -145,6 +147,7 @@ export default function FarmerPage() {
   useEffect(() => { loadLots(); }, [loadLots]);
 
   const openLots = lots.filter((l) => l.status === "open");
+  const openMatchCount = matches.filter((m) => m.status === "proposed" || m.status === "offered").length;
   const totalKg = openLots.reduce((s, l) => s + l.quantity_kg, 0);
   const estValue = openLots.reduce((s, l) => s + (l.quantity_kg / 100) * l.expected_price, 0);
   const strongMatches = matches.filter((m) => matchTier(m) === "strong").length;
@@ -339,6 +342,21 @@ export default function FarmerPage() {
         hasLocation={!!user?.district}
         hasListing={lots.length > 0}
         hasMatch={matches.length > 0}
+      />
+
+      <QuickActions
+        actions={[
+          { label: tq("listProduce"), icon: "leaf", href: "#create-lot", accent: true },
+          {
+            label: tq("viewMatches"),
+            icon: "connection",
+            href: "/matches",
+            badge: openMatchCount,
+            accent: openMatchCount > 0,
+          },
+          { label: tq("checkPrices"), icon: "chart", href: "/prices" },
+          { label: tq("openPools"), icon: "coins", href: "/pools" },
+        ]}
       />
 
       <StatCards stats={stats} />

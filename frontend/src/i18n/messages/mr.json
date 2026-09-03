@@ -30,7 +30,8 @@
     "profile": "प्रोफाइल",
     "users": "वापरकर्ते",
     "browse": "ब्राउझ करा",
-    "forward": "फॉरवर्ड व्यवहार"
+    "forward": "फॉरवर्ड व्यवहार",
+    "more": "आणखी"
   },
   "dashboard": {
     "title": "बाजार भाव माहिती",
@@ -978,5 +979,13 @@
     "step_listLot": "तुमचा पहिला उत्पादन लॉट नोंदवा",
     "step_postDemand": "तुमची पहिली खरेदी मागणी पोस्ट करा",
     "step_matches": "तुमच्या जुळण्या पहा आणि ऑफर द्या"
+  },
+  "quick": {
+    "listProduce": "उत्पादन टाका",
+    "postDemand": "मागणी टाका",
+    "viewMatches": "जुळण्या",
+    "checkPrices": "भाव",
+    "openPools": "पूल",
+    "browseLots": "लॉट्स पहा"
   }
 }

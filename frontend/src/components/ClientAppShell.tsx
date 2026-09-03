@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { AskAgriLink } from "./AskAgriLink";
+import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 
@@ -13,7 +14,7 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col transition-all duration-300 lg:pl-72">
         <TopHeader onOpenSidebar={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">
           <div className="mx-auto w-full min-w-0 max-w-7xl">
             {children}
           </div>
@@ -35,6 +36,7 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <AskAgriLink />
       </Suspense>
+      <BottomNav onOpenMore={() => setSidebarOpen(true)} />
     </div>
   );
 }

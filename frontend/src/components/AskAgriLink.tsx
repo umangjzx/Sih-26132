@@ -67,13 +67,13 @@ export function AskAgriLink() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={t("title")}
-        className="fixed bottom-4 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--green-700)] text-white shadow-lg shadow-green-900/30 transition-transform hover:scale-105 sm:bottom-6 sm:right-6"
+        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--green-700)] text-white shadow-lg shadow-green-900/30 transition-transform hover:scale-105 sm:right-6 lg:bottom-6"
       >
         <Icon name={open ? "close" : "spark"} size={24} />
       </button>
 
       {open && (
-        <div className="fixed bottom-20 right-4 z-40 flex h-[28rem] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl sm:bottom-24 sm:right-6">
+        <div className="fixed bottom-36 right-4 z-40 flex h-[26rem] max-h-[70vh] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl sm:right-6 lg:bottom-24">
           <div className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--green-700)] px-4 py-3 text-white">
             <Icon name="spark" size={16} />
             <span className="font-heading text-sm font-bold">{t("title")}</span>
