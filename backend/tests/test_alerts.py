@@ -51,6 +51,62 @@ def test_alert_validation(db, farmer_user):
         _as(farmer_user)
         assert client.post("/api/alerts", json={"crop": "Onion", "market": "Pune", "direction": "sideways", "threshold": 5}).status_code == 422
         assert client.post("/api/alerts", json={"crop": "Onion", "market": "Pune", "direction": "above", "threshold": -1}).status_code == 422
+        assert client.post("/api/alerts", json={"crop": "Onion", "market": "Pune", "direction": "above", "threshold": 9_999_999_999}).status_code == 422
+        assert client.post("/api/alerts", json={"crop": "  ", "market": "Pune", "direction": "above", "threshold": 5}).status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_duplicate_alert_is_rejected(db, farmer_user):
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        body = {"crop": "Onion", "market": "Pune", "direction": "above", "threshold": 2000}
+        assert client.post("/api/alerts", json=body).status_code == 201
+        assert client.post("/api/alerts", json=body).status_code == 409
+        # case-only difference is still a duplicate
+        assert client.post("/api/alerts", json={**body, "crop": "onion"}).status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_alert_count_is_capped(db, farmer_user):
+    from app.api.alerts import _MAX_ALERTS_PER_USER
+
+    for i in range(_MAX_ALERTS_PER_USER):
+        db.add(PriceAlert(user_id=farmer_user.id, crop=f"Crop{i}", market="Pune",
+                          direction="above", threshold=100 + i, active=True))
+    db.commit()
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        r = client.post("/api/alerts", json={"crop": "Onion", "market": "Pune",
+                                             "direction": "above", "threshold": 2000})
+        assert r.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_evaluate_alerts_matches_case_insensitively(db, farmer_user):
+    db.add(PriceAlert(user_id=farmer_user.id, crop="onion", market="pune",
+                      direction="above", threshold=1500, active=True))
+    db.add(PriceCache(crop="Onion", variety="", market="Pune", district="Pune",
+                      state="Maharashtra", date=date(2026, 9, 1),
+                      min_price=1800, max_price=2100, modal_price=2000, arrival_volume=None))
+    db.commit()
+    assert evaluate_alerts(db) == 1
+
+
+def test_notifications_respect_limit(db, farmer_user):
+    from app.models.notification import Notification
+
+    for i in range(10):
+        db.add(Notification(user_id=farmer_user.id, kind="system", title=f"n{i}", body=""))
+    db.commit()
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        assert len(client.get("/api/notifications", params={"limit": 4}).json()) == 4
     finally:
         app.dependency_overrides.clear()
 

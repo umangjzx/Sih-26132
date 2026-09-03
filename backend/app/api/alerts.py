@@ -1,7 +1,7 @@
 """Price alerts + in-app notifications (v1.1). All routes require a logged-in user."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -16,6 +16,8 @@ from app.schemas.alert import (
 
 router = APIRouter(prefix="/api", tags=["alerts"])
 
+_MAX_ALERTS_PER_USER = 50
+
 
 # ---- price alerts -------------------------------------------------------- #
 
@@ -25,10 +27,34 @@ def create_alert(
     current_user: CurrentUser,
     db: Session = Depends(get_db),
 ) -> PriceAlert:
+    crop, market = body.crop.strip(), body.market.strip()
+
+    count = db.execute(
+        select(func.count()).select_from(PriceAlert)
+        .where(PriceAlert.user_id == current_user.id)
+    ).scalar_one()
+    if count >= _MAX_ALERTS_PER_USER:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"You already have {_MAX_ALERTS_PER_USER} alerts — delete one first.",
+        )
+
+    dup = db.execute(
+        select(PriceAlert).where(
+            PriceAlert.user_id == current_user.id,
+            PriceAlert.crop.ilike(crop),
+            PriceAlert.market.ilike(market),
+            PriceAlert.direction == body.direction,
+            PriceAlert.threshold == body.threshold,
+        )
+    ).scalars().first()
+    if dup is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "You already have this exact alert.")
+
     alert = PriceAlert(
         user_id=current_user.id,
-        crop=body.crop.strip(),
-        market=body.market.strip(),
+        crop=crop,
+        market=market,
         direction=body.direction,
         threshold=body.threshold,
         active=True,
@@ -83,19 +109,21 @@ def delete_alert(
 def my_notifications(
     current_user: CurrentUser,
     unread_only: bool = False,
+    limit: int = Query(60, ge=1, le=200),
     db: Session = Depends(get_db),
 ) -> list[Notification]:
     stmt = select(Notification).where(Notification.user_id == current_user.id)
     if unread_only:
         stmt = stmt.where(Notification.read.is_(False))
-    stmt = stmt.order_by(Notification.read.asc(), Notification.created_at.desc(), Notification.id.desc())
+    stmt = (
+        stmt.order_by(Notification.read.asc(), Notification.created_at.desc(), Notification.id.desc())
+        .limit(limit)
+    )
     return list(db.execute(stmt).scalars().all())
 
 
 @router.get("/notifications/unread-count")
 def unread_count(current_user: CurrentUser, db: Session = Depends(get_db)) -> dict:
-    from sqlalchemy import func
-
     n = db.execute(
         select(func.count())
         .select_from(Notification)
@@ -119,11 +147,9 @@ def mark_read(
 
 @router.post("/notifications/read-all", status_code=204)
 def mark_all_read(current_user: CurrentUser, db: Session = Depends(get_db)) -> None:
-    rows = db.execute(
-        select(Notification).where(
-            Notification.user_id == current_user.id, Notification.read.is_(False)
-        )
-    ).scalars().all()
-    for n in rows:
-        n.read = True
+    db.execute(
+        update(Notification)
+        .where(Notification.user_id == current_user.id, Notification.read.is_(False))
+        .values(read=True)
+    )
     db.commit()

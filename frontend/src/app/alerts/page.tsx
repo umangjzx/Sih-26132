@@ -13,6 +13,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import {
+  ApiError,
   createAlert,
   deleteAlert,
   listAlerts,
@@ -33,15 +34,17 @@ export default function AlertsPage() {
   const [threshold, setThreshold] = useState("");
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     try {
       setAlerts(await listAlerts(token));
+      setError(null);
     } catch {
-      /* ignore */
+      setError(tc("error"));
     }
-  }, [token]);
+  }, [token, tc]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -71,6 +74,7 @@ export default function AlertsPage() {
     e.preventDefault();
     if (!token || !crop.trim() || !market.trim() || !threshold) return;
     setBusy(true);
+    setError(null);
     try {
       await createAlert(
         { crop: crop.trim(), market: market.trim(), direction, threshold: Number(threshold) },
@@ -82,8 +86,20 @@ export default function AlertsPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : tc("error"));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function runAlertAction(fn: Promise<unknown>) {
+    setError(null);
+    try {
+      await fn;
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : tc("error"));
     }
   }
 
@@ -100,6 +116,13 @@ export default function AlertsPage() {
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-semibold text-[var(--green-700)]">
           <Icon name="check" size={18} />
           {t("createdSuccess")}
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
+          <Icon name="close" size={18} />
+          {error}
         </div>
       )}
 
@@ -143,6 +166,7 @@ export default function AlertsPage() {
               <input
                 type="number"
                 min="1"
+                max="5000000"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
                 required
@@ -224,14 +248,14 @@ export default function AlertsPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => token && toggleAlert(al.id, token).then(load)}
+                    onClick={() => token && runAlertAction(toggleAlert(al.id, token))}
                     className="rounded-xl border border-[var(--line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--paper)] transition-colors"
                   >
                     {al.active ? t("pause") : t("resume")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => token && deleteAlert(al.id, token).then(load)}
+                    onClick={() => token && runAlertAction(deleteAlert(al.id, token))}
                     className="rounded-xl border border-[var(--red-500)]/30 bg-[var(--red-100)] px-3 py-1.5 text-xs font-semibold text-[var(--red-700)] hover:bg-[var(--red-100)] transition-colors"
                   >
                     {t("delete")}

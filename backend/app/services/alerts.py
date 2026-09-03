@@ -18,18 +18,37 @@ _DEBOUNCE = timedelta(hours=20)
 
 
 def _latest_modal(db: Session, crop: str, market: str) -> float | None:
-    return db.execute(
-        select(PriceCache.modal_price)
-        .where(PriceCache.crop == crop, PriceCache.market == market)
-        .order_by(PriceCache.date.desc())
-        .limit(1)
-    ).scalar_one_or_none()
+    """Latest modal price for a crop+market. Exact match first (index-friendly),
+    then a case-insensitive retry so an alert typed 'onion'/'pune' still fires."""
+    def _q(ci: bool):
+        crop_c = PriceCache.crop.ilike(crop.strip()) if ci else PriceCache.crop == crop
+        mkt_c = PriceCache.market.ilike(market.strip()) if ci else PriceCache.market == market
+        return db.execute(
+            select(PriceCache.modal_price)
+            .where(crop_c, mkt_c)
+            .order_by(PriceCache.date.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+    v = _q(False)
+    return v if v is not None else _q(True)
 
 
 def evaluate_alerts(db: Session) -> int:
     """Returns the number of notifications created."""
     now = datetime.now(timezone.utc)
     alerts = db.execute(select(PriceAlert).where(PriceAlert.active.is_(True))).scalars().all()
+
+    # many users watch the same crop+market — resolve each pair's latest modal
+    # once, not once per alert.
+    modal_cache: dict[tuple[str, str], float | None] = {}
+
+    def latest(crop: str, market: str) -> float | None:
+        key = (crop.strip().lower(), market.strip().lower())
+        if key not in modal_cache:
+            modal_cache[key] = _latest_modal(db, crop, market)
+        return modal_cache[key]
+
     created = 0
     for a in alerts:
         if a.last_triggered_at is not None:
@@ -38,7 +57,7 @@ def evaluate_alerts(db: Session) -> int:
                 last = last.replace(tzinfo=timezone.utc)
             if now - last < _DEBOUNCE:
                 continue
-        modal = _latest_modal(db, a.crop, a.market)
+        modal = latest(a.crop, a.market)
         if modal is None:
             continue
         fired = (a.direction == "above" and modal >= a.threshold) or (

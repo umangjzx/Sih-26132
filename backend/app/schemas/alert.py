@@ -2,14 +2,24 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+_MAX_THRESHOLD = 5_000_000  # ₹/quintal — same ceiling used elsewhere
 
 
 class PriceAlertCreate(BaseModel):
-    crop: str
-    market: str
+    crop: str = Field(min_length=1, max_length=120)
+    market: str = Field(min_length=1, max_length=120)
     direction: str = "above"
     threshold: float
+
+    @field_validator("crop", "market")
+    @classmethod
+    def _strip_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must not be empty")
+        return v
 
     @field_validator("direction")
     @classmethod
@@ -24,7 +34,9 @@ class PriceAlertCreate(BaseModel):
     def _pos(cls, v: float) -> float:
         if v <= 0:
             raise ValueError("threshold must be greater than 0")
-        return v
+        if v > _MAX_THRESHOLD:
+            raise ValueError(f"threshold must be at most {_MAX_THRESHOLD:,}")
+        return round(float(v), 2)
 
 
 class PriceAlertResponse(BaseModel):
