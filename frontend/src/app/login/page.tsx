@@ -17,13 +17,30 @@ import { login as loginRequest, register as registerRequest } from "@/lib/api";
 
 type Mode = "signin" | "register";
 
-const DEMO_ACCOUNTS: { role: "farmer" | "buyer" | "admin"; name: string; phone: string; password: string }[] = [
-  { role: "farmer", name: "Ravi Patil", phone: "+919000000001", password: "farmer123" },
-  { role: "farmer", name: "Sita Deshmukh", phone: "+919000000002", password: "farmer123" },
-  { role: "buyer", name: "Anita Traders", phone: "+919000000003", password: "buyer123" },
-  { role: "buyer", name: "Mega Foods Pvt", phone: "+919000000004", password: "buyer123" },
-  { role: "admin", name: "Platform Admin", phone: "+919000000009", password: "admin123" },
+type DemoAccount = {
+  role: "farmer" | "buyer" | "admin";
+  name: string;
+  phone: string;
+  password: string;
+  region: string;
+};
+
+// Mirrors backend/scripts/seed_demo_users.py — keep in sync when the seed changes.
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  { role: "farmer", name: "Ravi Patil", phone: "+919000000001", password: "farmer123", region: "Maharashtra" },
+  { role: "farmer", name: "Sita Deshmukh", phone: "+919000000002", password: "farmer123", region: "Maharashtra" },
+  { role: "buyer", name: "Anita Traders", phone: "+919000000003", password: "buyer123", region: "Maharashtra" },
+  { role: "buyer", name: "Mega Foods Pvt", phone: "+919000000004", password: "buyer123", region: "Maharashtra" },
+  { role: "admin", name: "Platform Admin", phone: "+919000000009", password: "admin123", region: "Maharashtra" },
+  { role: "farmer", name: "Murugan Selvam", phone: "+919000000011", password: "farmer123", region: "Tamil Nadu" },
+  { role: "farmer", name: "Lakshmi Farms (FPO)", phone: "+919000000012", password: "farmer123", region: "Tamil Nadu" },
+  { role: "buyer", name: "Kovai Traders", phone: "+919000000013", password: "buyer123", region: "Tamil Nadu" },
+  { role: "buyer", name: "TN Agro Buyers", phone: "+919000000014", password: "buyer123", region: "Tamil Nadu" },
+  { role: "buyer", name: "Chennai Exports Co", phone: "+919000000015", password: "buyer123", region: "Tamil Nadu" },
+  { role: "buyer", name: "Salem Fresh Mart", phone: "+919000000016", password: "buyer123", region: "Tamil Nadu" },
 ];
+
+const DEMO_REGIONS: string[] = [...new Set(DEMO_ACCOUNTS.map((a) => a.region))];
 
 function destFor(role: string): string {
   if (role === "farmer") return "/farmer";
@@ -211,28 +228,33 @@ export default function LoginPage() {
           {t("demoTitle")}
         </p>
         <p className="mt-0.5 mb-3 text-xs opacity-60">{t("demoNote")}</p>
-        <ul className="flex flex-col gap-1.5">
-          {DEMO_ACCOUNTS.map((acc) => (
-            <li key={acc.phone}>
-              <button
-                type="button"
-                onClick={() => useDemo(acc)}
-                disabled={loading}
-                className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-left text-sm transition-colors hover:border-[var(--color-brand)] disabled:opacity-60"
-              >
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate font-semibold">{acc.name}</span>
-                  <span className="text-xs opacity-60">
-                    {acc.phone} · {acc.password}
-                  </span>
-                </span>
-                <span className="shrink-0 rounded-full bg-[var(--color-brand)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-brand)]">
-                  {acc.role === "farmer" ? t("roleFarmer") : acc.role === "buyer" ? t("roleBuyer") : t("roleAdmin")}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {DEMO_REGIONS.map((region) => (
+          <div key={region} className="mb-3 last:mb-0">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide opacity-45">{region}</p>
+            <ul className="flex flex-col gap-1.5">
+              {DEMO_ACCOUNTS.filter((a) => a.region === region).map((acc) => (
+                <li key={acc.phone}>
+                  <button
+                    type="button"
+                    onClick={() => useDemo(acc)}
+                    disabled={loading}
+                    className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-left text-sm transition-colors hover:border-[var(--color-brand)] disabled:opacity-60"
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate font-semibold">{acc.name}</span>
+                      <span className="text-xs opacity-60">
+                        {acc.phone} · {acc.password}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-[var(--color-brand)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-brand)]">
+                      {acc.role === "farmer" ? t("roleFarmer") : acc.role === "buyer" ? t("roleBuyer") : t("roleAdmin")}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
     </div>
   );
