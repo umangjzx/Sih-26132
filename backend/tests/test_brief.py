@@ -38,6 +38,13 @@ def test_brief_unknown_crop_raises(seeded_db):
         build_brief(seeded_db, crop="Dragonfruit", market="Pune")
 
 
+def test_brief_matches_crop_and_market_case_insensitively(seeded_db):
+    b = build_brief(seeded_db, crop="onion", market="pune")
+    assert b["crop"] == "onion"
+    assert b["reference_market"] == "pune"
+    assert b["price"]["latest_per_qtl"] > 0
+
+
 def test_brief_freight_block_is_diesel_indexed(seeded_db):
     b = build_brief(seeded_db, crop="Onion", market="Pune")
     fr = b["best_market"]["freight"]
@@ -56,3 +63,10 @@ def test_brief_endpoint_ok(client):
 def test_brief_endpoint_404_for_thin_history(client):
     resp = client.get("/api/brief", params={"crop": "Onion", "market": "Nowhere APMC"})
     assert resp.status_code == 404
+
+
+def test_brief_endpoint_is_rate_limited(client):
+    params = {"crop": "Onion", "market": "Pune"}
+    codes = [client.get("/api/brief", params=params).status_code for _ in range(33)]
+    assert codes.count(200) == 30
+    assert codes[-1] == 429

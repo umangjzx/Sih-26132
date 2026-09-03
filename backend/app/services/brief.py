@@ -42,17 +42,19 @@ _BUYER_RADIUS_KM = 200.0
 
 def _series(db: Session, crop: str, market: str, days: int = 90) -> list[PriceCache]:
     since = date.today() - timedelta(days=days)
-    return list(
-        db.execute(
-            select(PriceCache)
-            .where(
-                PriceCache.crop == crop,
-                PriceCache.market == market,
-                PriceCache.date >= since,
-            )
-            .order_by(PriceCache.date.asc())
-        ).scalars().all()
-    )
+
+    def _q(ci: bool) -> list[PriceCache]:
+        crop_c = PriceCache.crop.ilike(crop.strip()) if ci else PriceCache.crop == crop
+        mkt_c = PriceCache.market.ilike(market.strip()) if ci else PriceCache.market == market
+        return list(
+            db.execute(
+                select(PriceCache)
+                .where(crop_c, mkt_c, PriceCache.date >= since)
+                .order_by(PriceCache.date.asc())
+            ).scalars().all()
+        )
+
+    return _q(False) or _q(True)
 
 
 def _nearest_market_with_data(
@@ -61,16 +63,20 @@ def _nearest_market_with_data(
     """The closest market with at least ``min_days`` of price history for
     ``crop`` — used as the reference market when the caller didn't name one."""
     since = date.today() - timedelta(days=90)
-    rows = db.execute(
-        select(
-            PriceCache.market,
-            func.max(PriceCache.district),
-            func.count(func.distinct(PriceCache.date)).label("n"),
-        )
-        .where(PriceCache.crop == crop, PriceCache.date >= since)
-        .group_by(PriceCache.market)
-        .having(func.count(func.distinct(PriceCache.date)) >= min_days)
-    ).all()
+
+    def _rows_for(crop_c):
+        return db.execute(
+            select(
+                PriceCache.market,
+                func.max(PriceCache.district),
+                func.count(func.distinct(PriceCache.date)).label("n"),
+            )
+            .where(crop_c, PriceCache.date >= since)
+            .group_by(PriceCache.market)
+            .having(func.count(func.distinct(PriceCache.date)) >= min_days)
+        ).all()
+
+    rows = _rows_for(PriceCache.crop == crop) or _rows_for(PriceCache.crop.ilike(crop.strip()))
     best: tuple[float, str] | None = None
     for market, district, _n in rows:
         c = market_coords(market) or _district_coord(district or "")

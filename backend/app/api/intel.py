@@ -7,12 +7,27 @@ whole platform is built around.
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.models.price_cache import PriceCache
+
+# public compute-heavy endpoints (/brief orchestrates ~10 queries + an LLM call;
+# /markets/best runs OSRM routing) — a per-IP valve against scripted hammering.
+_HEAVY_LIMIT, _HEAVY_WINDOW_S = 30, 60
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _heavy_guard(request: Request, name: str) -> None:
+    if not ratelimit.check(f"intel:{name}:{_client_ip(request)}",
+                           limit=_HEAVY_LIMIT, window_s=_HEAVY_WINDOW_S):
+        raise HTTPException(status_code=429, detail="Too many requests — please slow down.")
 from app.services import holidays as holidays_svc
 from app.services import reference as ref
 from app.services import weather as weather_svc
@@ -46,7 +61,7 @@ def _resolve_point(
     if db is not None and market:
         row = db.execute(
             select(PriceCache.district)
-            .where(PriceCache.market == market, PriceCache.district != "")
+            .where(PriceCache.market.ilike(market.strip()), PriceCache.district != "")
             .order_by(PriceCache.date.desc())
             .limit(1)
         ).scalar_one_or_none()
@@ -104,7 +119,7 @@ def msp(crop: str, market: str | None = None, db: Session = Depends(get_db)) -> 
     if market:
         latest_modal = db.execute(
             select(PriceCache.modal_price)
-            .where(PriceCache.crop == crop, PriceCache.market == market)
+            .where(PriceCache.crop.ilike(crop.strip()), PriceCache.market.ilike(market.strip()))
             .order_by(PriceCache.date.desc())
             .limit(1)
         ).scalar_one_or_none()
@@ -186,6 +201,7 @@ def fpo_nearby(
 
 @router.get("/markets/best")
 def markets_best(
+    request: Request,
     crop: str,
     market: str | None = None,
     district: str | None = None,
@@ -196,6 +212,7 @@ def markets_best(
     fast: bool = Query(False, description="skip OSRM routing, use straight-line distance"),
     db: Session = Depends(get_db),
 ) -> dict:
+    _heavy_guard(request, "best")
     origin = _resolve_point(market, district, lat, lon, db)
     if not state:
         from app.services.geo import nearest_state
@@ -249,6 +266,7 @@ def quality_grades() -> dict:
 
 @router.get("/brief")
 def decision_brief(
+    request: Request,
     crop: str,
     market: str | None = None,
     district: str | None = None,
@@ -261,6 +279,7 @@ def decision_brief(
     """One orchestrated, prioritised action plan for a crop — the sell/wait
     signal, forecast, diesel-costed best market, MSP gap, weather, crop
     calendar, mandi holidays and nearby verified buyers, ranked by urgency."""
+    _heavy_guard(request, "brief")
     from app.services.brief import build_brief
 
     try:
