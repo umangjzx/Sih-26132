@@ -44,6 +44,19 @@ def test_arrival_volume_always_none():
     assert out and all(r["arrival_volume"] is None for r in out)
 
 
+def test_parses_comma_and_whitespace_prices():
+    out = normalize_rows([_raw(min_price=" 1,200 ", max_price="1,800", modal_price="1,500")])
+    assert len(out) == 1
+    assert out[0]["min_price"] == 1200.0
+    assert out[0]["max_price"] == 1800.0
+    assert out[0]["modal_price"] == 1500.0
+
+
+def test_dash_price_is_treated_as_missing():
+    # modal '-' means no usable price -> row dropped
+    assert normalize_rows([_raw(modal_price="-")]) == []
+
+
 def test_merge_arrivals_fills_matching_row():
     price_rows = [
         {"market": "Pune", "crop": "Onion", "date": date(2026, 8, 15), "arrival_volume": None},

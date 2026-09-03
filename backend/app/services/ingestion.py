@@ -43,6 +43,9 @@ logger = logging.getLogger(__name__)
 RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
 BASE_URL = f"https://api.data.gov.in/resource/{RESOURCE_ID}"
 PAGE_SIZE = 1000
+# hard ceiling for the unbounded scheduled pull — the national feed is ~10-15
+# pages; this only trips on a malformed `total` that would otherwise loop.
+_MAX_PAGES_HARD = 60
 
 # The historical archive of the same AGMARKNET feed (~81M rows, back to ~2023).
 # Same shape, capitalised field names. Used to backfill real trend history for a
@@ -67,9 +70,15 @@ def _parse_date(value: str) -> date | None:
 
 
 def _parse_float(value: str | None) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip().replace(",", "")  # AGMARKNET occasionally sends "1,200"
+        if value in ("", "NA", "-"):
+            return None
     try:
-        return float(value) if value not in (None, "", "NA") else None
-    except ValueError:
+        return float(value)
+    except (ValueError, TypeError):
         return None
 
 
@@ -110,6 +119,10 @@ def _fetch_state(
         if offset >= total or len(records) < PAGE_SIZE:
             break
         if max_pages is not None and pages >= max_pages:
+            break
+        if pages >= _MAX_PAGES_HARD:
+            logger.warning("AGMARKNET pull hit the %d-page hard ceiling at offset %d "
+                           "(total reported: %s)", _MAX_PAGES_HARD, offset, total)
             break
     return rows
 

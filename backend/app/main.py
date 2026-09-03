@@ -44,6 +44,8 @@ def _run_ingestion_job() -> None:
     try:
         result = ingestion.run_ingestion(db)
         logger.info("Ingestion job finished: %s", result)
+    except Exception:  # noqa: BLE001 — a failed cycle must not bubble out of the scheduler
+        logger.exception("Scheduled ingestion job failed; will retry next interval")
     finally:
         db.close()
 
@@ -78,13 +80,16 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
-    scheduler.add_job(_run_ingestion_job, "interval", hours=6, id="price_ingestion")
+    scheduler.add_job(
+        _run_ingestion_job, "interval", hours=6,
+        id="price_ingestion", replace_existing=True, max_instances=1, coalesce=True,
+    )
     # Always refresh shortly after boot too, so a restart pulls the latest day
     # (and today's rows accumulate into history via the upsert key).
     scheduler.add_job(
         _run_ingestion_job, "date",
         run_date=datetime.now() + timedelta(seconds=20),
-        id="price_ingestion_boot",
+        id="price_ingestion_boot", replace_existing=True,
     )
     scheduler.start()
 
