@@ -85,3 +85,34 @@ def test_ask_passes_context_and_question(db, monkeypatch):
         assert "latest_price_per_qtl: 1500" in seen["u"]
     finally:
         app.dependency_overrides.clear()
+
+
+def test_ask_is_rate_limited(db, monkeypatch):
+    _seed(db)
+    monkeypatch.setattr(llm.settings, "openrouter_api_key", "x")
+    monkeypatch.setattr(llm, "chat", lambda s, u, **kw: "ok")
+    client = _client(db)
+    try:
+        codes = [
+            client.post("/api/assistant/ask", json={"question": f"q{i}?"}).status_code
+            for i in range(17)
+        ]
+        assert codes.count(200) == 15
+        assert codes[-1] == 429
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_ask_case_insensitive_context(db, monkeypatch):
+    _seed(db, crop="Onion", market="Pune", modal=2100)
+    seen = {}
+    monkeypatch.setattr(llm.settings, "openrouter_api_key", "x")
+    monkeypatch.setattr(llm, "chat", lambda s, u, **kw: seen.update(u=u) or "ok")
+    client = _client(db)
+    try:
+        client.post("/api/assistant/ask", json={
+            "question": "price?", "crop": "onion", "market": "pune",
+        })
+        assert "latest_price_per_qtl: 2100" in seen["u"]
+    finally:
+        app.dependency_overrides.clear()

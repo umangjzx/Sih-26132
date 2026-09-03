@@ -80,3 +80,14 @@ def test_vision_none_degrades(farmer_client, monkeypatch):
     r = farmer_client.post("/api/ocr/lot-slip", files=_upload())
     assert r.status_code == 200
     assert r.json()["available"] is False
+
+
+def test_ocr_is_rate_limited(farmer_client, monkeypatch):
+    monkeypatch.setattr(ocr.llm, "available", lambda: True)
+    monkeypatch.setattr(ocr.llm, "vision", lambda *a, **k: None)
+    codes = [
+        farmer_client.post("/api/ocr/lot-slip", files=_upload()).status_code
+        for _ in range(14)
+    ]
+    assert codes.count(200) == 12
+    assert codes[-1] == 429

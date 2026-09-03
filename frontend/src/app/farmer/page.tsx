@@ -203,9 +203,10 @@ export default function FarmerPage() {
           : filledAll ? t("scanFilled") : t("scanPartial"),
       );
       setTimeout(() => setToast(null), 5000);
-    } catch {
-      setToast(t("scanFailed"));
-      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      // surface the real reason (too big / wrong type / rate limited) when we have one
+      setToast(err instanceof ApiError ? err.message : t("scanFailed"));
+      setTimeout(() => setToast(null), 4500);
     } finally {
       setScanning(false);
     }

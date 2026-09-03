@@ -635,7 +635,7 @@ export async function scanLotSlip(file: File, token: string): Promise<OcrLotDraf
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
   });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  if (!res.ok) throw new ApiError(res.status, await readError(res));
   return res.json() as Promise<OcrLotDraft>;
 }
 

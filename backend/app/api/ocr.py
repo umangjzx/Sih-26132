@@ -15,13 +15,17 @@ from typing import Annotated
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from app.core import ratelimit
 from app.core.security import require_role
+from app.models.user import User
 from app.services import llm
 
 router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
 _MAX_BYTES = 6 * 1024 * 1024
 _OK_TYPES = {"image/jpeg", "image/png", "image/webp"}
+_GRADES = {"A", "B", "C", "FAQ"}
+_OCR_LIMIT, _OCR_WINDOW_S = 12, 300  # vision calls per user / 5 min (uncached, ~45s each)
 
 _SYS = (
     "You read a single photo of an Indian agricultural mandi slip, sale receipt, "
@@ -81,10 +85,13 @@ def _parse(raw: str) -> dict:
 @router.post("/lot-slip", response_model=OcrLotDraft)
 async def read_lot_slip(
     file: UploadFile = File(...),
-    _role: Annotated[None, require_role("farmer")] = None,
+    user: Annotated[User, require_role("farmer")] = None,  # type: ignore[assignment]
 ) -> OcrLotDraft:
     if not llm.available():
         return OcrLotDraft(available=False, note="OCR assist is not configured on this server.")
+
+    if not ratelimit.check(f"ocr:{user.id}", limit=_OCR_LIMIT, window_s=_OCR_WINDOW_S):
+        raise HTTPException(429, "Too many scans — please wait a few minutes.")
 
     if file.content_type not in _OK_TYPES:
         raise HTTPException(415, "Upload a JPEG, PNG, or WebP photo.")
@@ -107,7 +114,7 @@ async def read_lot_slip(
     grade = obj.get("grade")
     if isinstance(grade, str):
         g = grade.strip().upper()
-        grade = g if g in {"A", "B", "C", "D", "FAQ"} else None
+        grade = g if g in _GRADES else None
     else:
         grade = None
 

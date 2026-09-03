@@ -6,11 +6,12 @@ the context it is given, and every route degrades gracefully without a key.
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.models.price_cache import PriceCache
 from app.services import llm
@@ -22,16 +23,33 @@ from app.services.signal import compute_signal
 
 router = APIRouter(prefix="/api", tags=["assistant"])
 
+# LLM-backed public endpoints — a per-IP valve so a script can't run up the
+# OpenRouter bill (/assistant/ask is deliberately uncached).
+_ASK_LIMIT, _ASK_WINDOW_S = 15, 60
+_SUMMARY_LIMIT, _SUMMARY_WINDOW_S = 40, 60
+
+
+def _guard(request: Request, name: str, limit: int, window_s: int) -> None:
+    ip = request.client.host if request.client else "unknown"
+    if not ratelimit.check(f"assistant:{name}:{ip}", limit=limit, window_s=window_s):
+        raise HTTPException(status_code=429, detail="Too many requests — please wait a moment.")
+
 
 def _series(db: Session, crop: str, market: str, days: int = 60) -> list[PriceCache]:
     since = date.today() - timedelta(days=days)
-    return list(
-        db.execute(
-            select(PriceCache)
-            .where(PriceCache.crop == crop, PriceCache.market == market, PriceCache.date >= since)
-            .order_by(PriceCache.date.asc())
-        ).scalars().all()
-    )
+
+    def _q(ci: bool) -> list[PriceCache]:
+        crop_c = PriceCache.crop.ilike(crop.strip()) if ci else PriceCache.crop == crop
+        mkt_c = PriceCache.market.ilike(market.strip()) if ci else PriceCache.market == market
+        return list(
+            db.execute(
+                select(PriceCache)
+                .where(crop_c, mkt_c, PriceCache.date >= since)
+                .order_by(PriceCache.date.asc())
+            ).scalars().all()
+        )
+
+    return _q(False) or _q(True)
 
 
 def _context(db: Session, crop: str, market: str) -> dict:
@@ -109,10 +127,12 @@ _SYS_ASSISTANT = (
 
 @router.get("/advisor/summary")
 def advisor_summary(
+    request: Request,
     crop: str, market: str, lang: str = "en", db: Session = Depends(get_db)
 ) -> dict:
     if not llm.available():
         return {"available": False, "summary": None}
+    _guard(request, "summary", _SUMMARY_LIMIT, _SUMMARY_WINDOW_S)
     ctx = _context(db, crop, market)
     text = llm.chat(
         _SYS_SUMMARY.format(lang=llm.lang_name(lang)),
@@ -124,15 +144,16 @@ def advisor_summary(
 
 class AskBody(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    crop: str | None = None
-    market: str | None = None
-    lang: str = "en"
+    crop: str | None = Field(default=None, max_length=120)
+    market: str | None = Field(default=None, max_length=120)
+    lang: str = Field(default="en", max_length=8)
 
 
 @router.post("/assistant/ask")
-def assistant_ask(body: AskBody, db: Session = Depends(get_db)) -> dict:
+def assistant_ask(body: AskBody, request: Request, db: Session = Depends(get_db)) -> dict:
     from app.services import knowledge
 
+    _guard(request, "ask", _ASK_LIMIT, _ASK_WINDOW_S)
     hits = knowledge.search(body.question, k=4)
     sources = [{"title": h.doc.title, "topic": h.doc.topic, "score": h.score} for h in hits]
 
