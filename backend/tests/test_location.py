@@ -194,6 +194,28 @@ def test_location_resolve_needs_input(db):
         app.dependency_overrides.clear()
 
 
+def test_location_resolve_rejects_out_of_range_coords(db):
+    client = _client(db)
+    try:
+        assert client.get("/api/location/resolve", params={"lat": 999, "lon": 10}).status_code == 422
+        assert client.get("/api/location/resolve", params={"lat": 10, "lon": -999}).status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_location_resolve_is_rate_limited(db):
+    client = _client(db)
+    try:
+        codes = [
+            client.get("/api/location/resolve",
+                       params={"place": "Pune", "ensure_prices": False}).status_code
+            for _ in range(23)
+        ]
+        assert codes.count(200) == 20 and codes[-1] == 429
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_storage_fpo_state_scoped(db):
     """v1.2: the directory now covers the major producing states, not just MH.
     Each response is scoped to the requested state."""
