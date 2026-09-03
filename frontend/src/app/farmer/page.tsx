@@ -80,6 +80,7 @@ export default function FarmerPage() {
   const router = useRouter();
   const t = useTranslations("lots");
   const tdash = useTranslations("dash");
+  const tc = useTranslations("common");
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -96,6 +97,7 @@ export default function FarmerPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [queueCount, setQueueCount] = useState(0);
   const [scanning, setScanning] = useState(false);
+  const [loadErr, setLoadErr] = useState(false);
   const slipInputRef = useRef<HTMLInputElement>(null);
 
   // Guard
@@ -129,13 +131,15 @@ export default function FarmerPage() {
 
   const loadLots = useCallback(async () => {
     if (!token) return;
+    let ok = true;
     try {
       const data = await listMyLots(token);
       setLots(data);
-    } catch { /* non-fatal */ }
+    } catch { ok = false; }
     try {
       setMatches(await listMyMatches(token));
-    } catch { /* non-fatal */ }
+    } catch { ok = false; }
+    setLoadErr(!ok);
   }, [token]);
 
   useEffect(() => { loadLots(); }, [loadLots]);
@@ -340,6 +344,14 @@ export default function FarmerPage() {
       <StatCards stats={stats} />
 
       {/* Status Banners */}
+      {loadErr && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] px-5 py-3 text-sm font-semibold text-[var(--red-700)]">
+          <span className="flex items-center gap-2"><Icon name="close" size={16} /> {tc("error")}</span>
+          <button type="button" onClick={() => loadLots()} className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold">
+            {tc("retry")}
+          </button>
+        </div>
+      )}
       {!isOnline && (
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--amber-500)]/30 bg-[var(--amber-100)] px-5 py-4 text-sm font-semibold text-[var(--amber-700)]">
           <Icon name="wind" size={18} />

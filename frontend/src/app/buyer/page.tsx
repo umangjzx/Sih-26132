@@ -81,6 +81,7 @@ export default function BuyerPage() {
   const td = useTranslations("demands");
   const tm = useTranslations("matching");
   const tdash = useTranslations("dash");
+  const tc = useTranslations("common");
 
   const [form, setForm] = useState<DemandCreate>(EMPTY_DEMAND);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -89,6 +90,7 @@ export default function BuyerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [toastErr, setToastErr] = useState(false);
+  const [loadErr, setLoadErr] = useState(false);
   const flash = useCallback((msg: string, isErr = false) => {
     setToast(msg);
     setToastErr(isErr);
@@ -107,6 +109,7 @@ export default function BuyerPage() {
     ]);
     if (d.status === "fulfilled") setDemands(d.value);
     if (m.status === "fulfilled") setMatches(m.value);
+    setLoadErr(d.status === "rejected" || m.status === "rejected");
   }, [token]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -217,6 +220,15 @@ export default function BuyerPage() {
       />
 
       <StatCards stats={stats} />
+
+      {loadErr && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] px-5 py-3 text-sm font-semibold text-[var(--red-700)]">
+          <span className="flex items-center gap-2"><Icon name="close" size={16} /> {tc("error")}</span>
+          <button type="button" onClick={() => loadData()} className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold">
+            {tc("retry")}
+          </button>
+        </div>
+      )}
 
       {toast && (
         <div

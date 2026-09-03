@@ -86,10 +86,12 @@ export default function PoolsPage() {
   const { isAuthenticated, ready, user, token } = useAuth();
   const router = useRouter();
   const t = useTranslations("pools");
+  const tc = useTranslations("common");
 
   const [open, setOpen] = useState<PoolSummary[]>([]);
   const [mine, setMine] = useState<PoolSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
   const [form, setForm] = useState<PoolForm>(EMPTY);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -104,6 +106,7 @@ export default function PoolsPage() {
 
   const load = useCallback(async () => {
     if (!token) return;
+    setLoadErr(false);
     try {
       const [o, m] = await Promise.all([
         listPools(token, {
@@ -116,7 +119,7 @@ export default function PoolsPage() {
       setOpen(o);
       setMine(m);
     } catch {
-      /* non-fatal */
+      setLoadErr(true);
     } finally {
       setLoading(false);
     }
@@ -249,6 +252,18 @@ export default function PoolsPage() {
       {loading ? (
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map((i) => <div key={i} className="h-36 w-full animate-pulse rounded-2xl bg-white/50" />)}
+        </div>
+      ) : loadErr ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
+          <Icon name="close" size={26} className="text-[var(--red-600)]" />
+          <p className="text-sm font-semibold text-[var(--red-700)]">{tc("error")}</p>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); load(); }}
+            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+          >
+            {tc("retry")}
+          </button>
         </div>
       ) : (
         <>

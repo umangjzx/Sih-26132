@@ -70,9 +70,11 @@ export default function MatchesPage() {
   const router = useRouter();
   const tm = useTranslations("matching");
   const tdash = useTranslations("dash");
+  const tc = useTranslations("common");
 
   const [matches, setMatches] = useState<MatchResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
@@ -82,11 +84,12 @@ export default function MatchesPage() {
 
   const loadData = useCallback(async () => {
     if (!token) return;
+    setLoadErr(false);
     try {
       const m = await listMyMatches(token);
       setMatches(m);
     } catch {
-      // error handling
+      setLoadErr(true);
     } finally {
       setLoading(false);
     }
@@ -109,6 +112,18 @@ export default function MatchesPage() {
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-32 w-full animate-pulse rounded-2xl bg-white/50" />
           ))}
+        </div>
+      ) : loadErr ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
+          <Icon name="close" size={26} className="text-[var(--red-600)]" />
+          <p className="text-sm font-semibold text-[var(--red-700)]">{tc("error")}</p>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); loadData(); }}
+            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+          >
+            {tc("retry")}
+          </button>
         </div>
       ) : matches.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--paper)] py-12 text-center shadow-sm">
