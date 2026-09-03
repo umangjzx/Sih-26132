@@ -35,10 +35,13 @@ export function BottomNav({ onOpenMore }: { onOpenMore: () => void }) {
     tabs.push({ href: "/admin", label: t("admin"), icon: "shield" });
     tabs.push({ href: "/explore", label: t("explore"), icon: "globe" });
   } else {
-    tabs.push({ href: "/prices", label: t("prices"), icon: "chart" });
-    tabs.push({ href: "/advisor", label: t("advisor"), icon: "spark" });
+    // logged out: minimal public nav, matching the sidebar
     tabs.push({ href: "/explore", label: t("explore"), icon: "globe" });
+    tabs.push({ href: "/#how", label: t("howItWorks"), icon: "spark" });
+    tabs.push({ href: "/login", label: t("login"), icon: "leaf" });
   }
+
+  const showMore = isAuthenticated;
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -64,14 +67,16 @@ export function BottomNav({ onOpenMore }: { onOpenMore: () => void }) {
           </Link>
         );
       })}
-      <button
-        type="button"
-        onClick={onOpenMore}
-        className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-[var(--ink-soft)]"
-      >
-        <Icon name="menu" size={22} className="opacity-70" />
-        <span>{t("more")}</span>
-      </button>
+      {showMore && (
+        <button
+          type="button"
+          onClick={onOpenMore}
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-[var(--ink-soft)]"
+        >
+          <Icon name="menu" size={22} className="opacity-70" />
+          <span>{t("more")}</span>
+        </button>
+      )}
     </nav>
   );
 }

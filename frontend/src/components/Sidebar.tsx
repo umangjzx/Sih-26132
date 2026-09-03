@@ -16,13 +16,21 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const t = useTranslations("nav");
   const { user, isAuthenticated, logout } = useAuth();
 
-  const publicLinks: NavLink[] = [
-    { href: "/", label: t("home"), icon: "house" },
-    { href: "/prices", label: t("prices"), icon: "chart" },
-    { href: "/advisor", label: t("advisor"), icon: "spark" },
-    { href: "/directory", label: t("directory"), icon: "warehouse" },
-    { href: "/explore", label: t("explore"), icon: "globe" },
-  ];
+  // Logged out: a minimal public nav — the landing page is the overview, and
+  // everything else opens up after login. Logged in: the full set.
+  const publicLinks: NavLink[] = isAuthenticated
+    ? [
+        { href: "/", label: t("home"), icon: "house" },
+        { href: "/prices", label: t("prices"), icon: "chart" },
+        { href: "/advisor", label: t("advisor"), icon: "spark" },
+        { href: "/directory", label: t("directory"), icon: "warehouse" },
+        { href: "/explore", label: t("explore"), icon: "globe" },
+      ]
+    : [
+        { href: "/", label: t("home"), icon: "house" },
+        { href: "/explore", label: t("explore"), icon: "globe" },
+        { href: "/#how", label: t("howItWorks"), icon: "spark" },
+      ];
 
   const tradeLinks: NavLink[] = [];
   if (user?.role === "farmer") tradeLinks.push({ href: "/farmer", label: t("myLots"), icon: "leaf" });

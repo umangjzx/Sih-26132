@@ -31,7 +31,8 @@
     "users": "Users",
     "browse": "Browse",
     "forward": "Forward deals",
-    "more": "More"
+    "more": "More",
+    "howItWorks": "How it works"
   },
   "dashboard": {
     "title": "Mandi Price Discovery",
@@ -1000,5 +1001,43 @@
     "denied": "Camera permission was denied. Allow camera access in your browser, or upload a photo instead.",
     "noCamera": "No camera was found on this device. Upload a photo instead.",
     "unavailable": "Camera isn't available here. Upload a photo instead."
+  },
+  "landing": {
+    "badge": "SIH 2026 · Govt. of Maharashtra / MSInS",
+    "heroLine1": "Real prices.",
+    "heroLine2": "Fair deals.",
+    "heroSubtitle": "AgriLink turns government mandi data into a clear sell-now-or-wait call, connects you with verified buyers, and tracks the deal end to end — in English, Hindi or Marathi.",
+    "ctaGetStarted": "Get started",
+    "ctaSeePrices": "See live mandi prices",
+    "heroFoot": "Free to use · works offline-safe · built Maharashtra-first, location-aware across India.",
+    "liveTitle": "Live now · {area}",
+    "liveMore": "Open the public dashboard",
+    "liveMarkets": "Markets reporting",
+    "liveCrops": "Crops tracked",
+    "liveLots": "Open lots",
+    "liveDemands": "Open demands",
+    "liveAsOf": "As of",
+    "benefitsHeading": "What you get",
+    "benefitsSub": "Every recommendation shows the numbers behind it — nothing is a black box.",
+    "b1Title": "An explainable sell / wait signal",
+    "b1Body": "Today's modal price against its 7- and 30-day averages, arrivals, weather and a short forecast — the weighted score and every factor are on screen.",
+    "b2Title": "Verified buyers and a full deal pipeline",
+    "b2Body": "Scored matches, an offer thread with price-referenced counter-offers, logistics, instalment payments, an audit trail and a dispute workflow.",
+    "b3Title": "A market-intelligence layer",
+    "b3Body": "Weather, MSP gap, crop-calendar timing, a diesel-indexed best-market ranking and one ranked Decision Brief that fuses them all.",
+    "b4Title": "Collective strength",
+    "b4Body": "Pool produce with nearby farmers for bargaining power, lock a price before harvest with forward contracts, and see your realised price vs the mandi after every deal.",
+    "howHeading": "How it works",
+    "howSub": "Three steps from checking a price to getting paid.",
+    "s1Title": "Check your crop's price",
+    "s1Body": "Pick a crop and market and see the trend, the sell/wait call and the best net market after transport.",
+    "s2Title": "List produce or post a demand",
+    "s2Body": "Farmers list a lot (photograph a mandi slip to auto-fill it); buyers post what they need. The matcher scores every pairing.",
+    "s3Title": "Deal, deliver, get paid",
+    "s3Body": "Accept an offer, arrange logistics, record payment against the agreed value — every step in an append-only ledger.",
+    "howNote": "No internet? Prices fall back to a committed snapshot; every external call degrades to a neutral result. Nothing blocks the app.",
+    "ctaHeading": "Start with your crop's price",
+    "ctaSub": "Create a free phone account to list produce, post demands and track deals. Or browse the public price dashboard first — no login needed.",
+    "ctaBrowse": "Browse public prices"
   }
 }

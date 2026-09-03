@@ -6,7 +6,9 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { useAppLocale } from "@/i18n/LocaleProvider";
 
+import { useAuth } from "@/components/AuthProvider";
 import { CropMarketPicker } from "@/components/CropMarketPicker";
+import { Landing } from "@/components/Landing";
 import { StateDataNotice } from "@/components/StateDataNotice";
 import { PriceTrendChart } from "@/components/PriceTrendChart";
 import { SignalGaugeChart } from "@/components/SignalGaugeChart";
@@ -517,6 +519,13 @@ function HomeInner() {
 }
 
 export default function HomePage() {
+  const { ready, isAuthenticated } = useAuth();
+
+  // Logged-out visitors get the marketing landing page; the full price
+  // dashboard (and the rest of the modules) live behind login.
+  if (!ready) return <div className="al-skeleton h-40" />;
+  if (!isAuthenticated) return <Landing />;
+
   return (
     <Suspense fallback={<div className="al-skeleton h-40" />}>
       <HomeInner />
