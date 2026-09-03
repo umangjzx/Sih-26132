@@ -38,7 +38,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.4 · Payments & audit ledger | deal instalment payments, transporter directory, append-only `transaction_events` timeline, structured quality grading | ✅ |
 | v1.5 · Intelligence orchestration | diesel-indexed freight, **Decision Brief** (`/api/brief`), grounded knowledge retrieval (RAG) for Ask AgriLink | ✅ |
 | v1.6 · Market linkage | price-realisation tracker, price-referenced counter-offers, **forward contracts** (pre-harvest) | ✅ |
-| 4 · Cordova Android wrap | (planned — every route is already a client component) | ⏳ |
+| 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
 
@@ -100,6 +100,25 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 A **location chip** in the header (browser geolocation · place search · all-India
 state picker) sets the active location, persisted in `localStorage`.
 
+### Marketing site (no login)
+
+A public-facing site around the product, served by `PublicHeader` (transparent
+over the home hero, solid frosted-glass elsewhere) and a shared `Landing`
+component with a fixed, translucent parallax backdrop.
+
+| Route | What it shows |
+|---|---|
+| `/` | Landing page — hero, live activity stats, a feature preview grid, a 3-step "how it works" summary, and cross-links into the pages below. |
+| `/features` | Bento-grid deep dive into every capability (live prices, AI sell/wait signal, best-market routing, verified buyer linkage, deal tracking), then alternating sections on market intelligence, the decision engine, logistics, and pools/forward contracts. |
+| `/how-it-works` | Role-tabbed walkthrough (Farmer / Buyer / FPO) — a step timeline per role, plus a trust-signals panel (verification, open data sources, the append-only ledger, offline-safety). |
+| `/market-insights` | Showcases the data-intelligence layer — live activity counters, six analytics capabilities, the open-data-source list, and a preview card linking to `/explore`. |
+| `/about` | Mission/vision, live impact numbers, core values, the SIH problem-statement context, and a technology-highlights grid. |
+
+These four are trilingual (en/hi/mr) like the rest of the app, and each ships as
+a thin Server Component `page.tsx` (for a per-page `<title>`/description) that
+renders a `"use client"` `*PageClient.tsx` — the only routes in the app that
+aren't a client component top-to-bottom; see [Architecture](#architecture).
+
 ### Accounts & trade (phone login)
 
 | Route | Role | What you do |
@@ -123,8 +142,8 @@ state picker) sets the active location, persisted in `localStorage`.
 
 ```mermaid
 flowchart LR
-    subgraph Client["Frontend — Next.js 16 (all client components)"]
-      UI["Routes: /, /prices, /advisor, /directory,\n/explore, /alerts, /login, /farmer, /buyer,\n/matches, /browse, /pools, /forward, /profile,\n/history, /deals, /admin"]
+    subgraph Client["Frontend — Next.js 16 (client components + 4 thin metadata wrappers)"]
+      UI["Routes: /, /features, /how-it-works,\n/market-insights, /about, /prices, /advisor,\n/directory, /explore, /alerts, /login, /farmer,\n/buyer, /matches, /browse, /pools, /forward,\n/profile, /history, /deals, /admin"]
       Providers["LocaleProvider · AuthProvider · LocationProvider"]
     end
 
@@ -154,9 +173,14 @@ flowchart LR
     Services -.-> AGMARKNET & OM & OWM & POWER & OSRM & BDC & NAGER & OR
 ```
 
-- **Frontend** is a client-rendered SPA — every route is `"use client"`, calls
-  the REST API directly, and uses no Next.js server actions or server-only
-  features, so it can wrap unchanged in Apache Cordova later.
+- **Frontend** is a client-rendered SPA — nearly every route is `"use client"`
+  top-to-bottom, calls the REST API directly, and uses no Next.js server actions
+  or server-only data fetching, so it can wrap unchanged in Apache Cordova later.
+  The four marketing pages (`/features`, `/how-it-works`, `/market-insights`,
+  `/about`) are the one exception: a thin Server Component `page.tsx` supplies a
+  per-page `<title>`/description, then renders a `"use client"` component that
+  does the actual work — still no server actions or dynamic server data, so the
+  static-export path is unaffected.
 - **Backend** runs Alembic migrations on startup, seeds `price_cache` if empty,
   and starts a background scheduler that re-ingests prices every 6 hours and
   evaluates price alerts.
@@ -232,11 +256,15 @@ agrilink/
 ├── frontend/
 │   └── src/
 │       ├── app/                App Router routes + layout.tsx + globals.css
-│       │   Routes: / · /prices · /advisor · /directory · /explore · /alerts
+│       │   Routes: / · /features · /how-it-works · /market-insights · /about
+│       │           /prices · /advisor · /directory · /explore · /alerts
 │       │           /login · /farmer · /buyer · /matches/[id]
 │       │           /browse · /pools · /pools/[id] · /forward · /profile
 │       │           /history · /deals/[id] · /admin
-│       ├── components/         PriceDetail, AdvisorDetail, DecisionBrief, SellWaitSignalCard,
+│       │           (the 4 marketing routes pair a server page.tsx with a
+│       │            client *PageClient.tsx — everything else is one file)
+│       ├── components/         Landing, PublicHeader, BottomNav, Logo, SiteFooter,
+│       │                       PriceDetail, AdvisorDetail, DecisionBrief, SellWaitSignalCard,
 │       │                       SignalGaugeChart, PriceTrendChart, MarketComparisonChart,
 │       │                       PriceRealizationCard, DealLogisticsCard, DealTransactionPanel,
 │       │                       DataProvenance, OnboardingChecklist, AskAgriLink, intel.tsx,

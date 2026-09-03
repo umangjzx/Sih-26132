@@ -94,6 +94,8 @@ it("a demo-account button signs in with that account's credentials", async () =>
   vi.mocked(api.login).mockResolvedValue(AUTH);
   renderWithIntl(<LoginPage />);
 
+  // Demo accounts live behind a collapsed disclosure — open it first.
+  await userEvent.click(screen.getByRole("button", { name: /demo accounts/i }));
   await userEvent.click(screen.getByRole("button", { name: /Anita Traders/i }));
 
   expect(api.login).toHaveBeenCalledWith("+919000000003", "buyer123");

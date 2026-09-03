@@ -37,7 +37,7 @@ export function BottomNav({ onOpenMore }: { onOpenMore: () => void }) {
   } else {
     // logged out: minimal public nav, matching the sidebar
     tabs.push({ href: "/explore", label: t("explore"), icon: "globe" });
-    tabs.push({ href: "/#how", label: t("howItWorks"), icon: "spark" });
+    tabs.push({ href: "/how-it-works", label: t("howItWorks"), icon: "spark" });
     tabs.push({ href: "/login", label: t("login"), icon: "leaf" });
   }
 

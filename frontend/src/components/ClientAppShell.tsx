@@ -73,7 +73,15 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col overflow-x-hidden bg-[var(--paper)]">
         <PublicHeader />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        {/*
+          PublicHeader is `fixed`, not `sticky` — it overlays content instead
+          of reserving flow space, which is what lets it go transparent over
+          the home page's Hero photo. Every other public page needs that
+          space back, so pt-[5.75rem] = header height (4.25rem) + the
+          original py-6 top gap (1.5rem). Landing.tsx's Hero cancels this
+          same amount with -mt-[5.75rem] to tuck itself back under the header.
+        */}
+        <main className="flex-1 px-4 pt-[5.75rem] pb-6 sm:px-6 lg:px-8">
           {/* max-w-screen-xl centres content on ultra-wide displays */}
           <div className="mx-auto w-full min-w-0 max-w-screen-xl al-fade-up">
             {children}

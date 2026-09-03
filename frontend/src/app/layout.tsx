@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   title: "AgriLink — mandi prices & market linkage for Maharashtra",
   description:
     "Live mandi prices, an explainable sell-now-or-wait call, weather & MSP context, and verified buyers for Maharashtra farmers and FPOs.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

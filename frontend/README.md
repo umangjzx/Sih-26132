@@ -2,14 +2,21 @@
 
 Next.js 16 (App Router, Turbopack) + React 19 + TypeScript, `next-intl` for i18n,
 `recharts` for charts, Tailwind v4. Mobile-first, built to wrap unchanged in Apache
-Cordova later — every route is a client component (`"use client"`) that calls the REST
-API, with no Next.js server actions or server-only features.
+Cordova later — nearly every route is a client component (`"use client"`) that calls
+the REST API, with no Next.js server actions or server-only data fetching. The
+four marketing routes below are the one exception: a thin Server Component
+`page.tsx` supplies a per-page `<title>`/description and renders a `"use client"`
+`*PageClient.tsx` that does the actual work.
 
 ## Routes
 
 | Route | Purpose |
 |---|---|
-| `/` | Home — hero, crop/market picker, price + signal snapshot, statewide snapshot |
+| `/` | Landing page — hero, live activity stats, feature preview grid, 3-step overview, cross-links into the marketing pages below |
+| `/features` | Bento-grid deep dive into every platform capability |
+| `/how-it-works` | Role-tabbed walkthrough (Farmer / Buyer / FPO) with a step timeline + trust signals |
+| `/market-insights` | The data-intelligence layer showcased — live stats, analytics capabilities, open data sources |
+| `/about` | Mission, vision, live impact numbers, values, and the SIH problem-statement context |
 | `/prices` | Trend area chart, min/modal/max, nearby-market comparison bars |
 | `/advisor` | **Decision Brief** (one ranked action plan) + the full sell / wait / hold gauge with weather · MSP · calendar · holiday context |
 | `/directory` | Cold storage / FPOs near a location |
@@ -17,6 +24,10 @@ API, with no Next.js server actions or server-only features.
 | `/alerts` | Price alerts + notifications |
 | `/forward` | Forward contracts — buyers post pre-harvest bids, farmers commit at a locked price |
 | `/login` · `/farmer` · `/buyer` · `/browse` · `/pools` · `/history` · `/deals/[id]` · `/matches/[id]` · `/admin` | Auth + trade workflow. `/history` carries the farmer price-realisation scorecard; `/matches/[id]` has price-referenced counter-offers; `/deals/[id]` has payments + the audit timeline + receipt |
+
+`PublicHeader` serves every logged-out route: transparent over the `/` hero,
+solid frosted-glass everywhere else. `Landing` (used by `/`) and the four
+marketing pages share a fixed, translucent parallax photo backdrop.
 
 A header **location chip** (`useLocation` / `LocationProvider`) detects or picks a place,
 persists it to `localStorage['agrilink.location']`, and re-scopes prices to that state.

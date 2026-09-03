@@ -1,19 +1,21 @@
 "use client";
 
 /**
- * Login page — phone + password.
+ * Login / Register page — premium split-screen design.
  *
- * Two modes on one screen: "sign in" (phone + password) and "create account"
- * (phone + name + role + password). On success, login() stores the tokens and
- * we redirect to the role dashboard. Redirects immediately if already authed.
+ * Left panel: branded hero with value props (hidden on mobile).
+ * Right panel: sign-in / register form + demo accounts.
  */
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+
 import { useAuth } from "@/components/AuthProvider";
 import { useLocation } from "@/lib/useLocation";
 import { login as loginRequest, register as registerRequest } from "@/lib/api";
+import { Icon } from "@/components/ui";
 
 type Mode = "signin" | "register";
 
@@ -48,6 +50,12 @@ function destFor(role: string): string {
   return "/buyer";
 }
 
+const ROLE_COLORS: Record<string, string> = {
+  farmer: "bg-[var(--green-100)] text-[var(--green-700)]",
+  buyer:  "bg-blue-50 text-blue-600",
+  admin:  "bg-[var(--amber-100)] text-[var(--amber-700)]",
+};
+
 export default function LoginPage() {
   const { isAuthenticated, user, login } = useAuth();
   const { location } = useLocation();
@@ -61,6 +69,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoOpen, setDemoOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -125,137 +134,314 @@ export default function LoginPage() {
     }
   }
 
-  const inputClass =
-    "rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]";
-
   return (
-    <div className="mx-auto max-w-sm py-12">
-      <h1 className="mb-2 text-2xl font-bold text-[var(--color-brand)]">{t("title")}</h1>
+    <div className="-mx-4 -mt-6 flex min-h-[calc(100vh-80px)] sm:-mx-6 lg:-mx-8">
+      {/* ── LEFT PANEL: Branding (hidden on mobile) ── */}
+      <div
+        className="relative hidden w-[45%] overflow-hidden lg:flex lg:flex-col lg:justify-between"
+        style={{
+          background: "linear-gradient(155deg, #071a0f 0%, #0e3421 40%, #1a4a2e 70%, #2E7D32 100%)",
+        }}
+      >
+        {/* Background image */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: "url('/bg-image.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.06,
+          }}
+        />
+        <div className="al-grid-overlay pointer-events-none absolute inset-0" />
+        {/* Ambient orbs */}
+        <div
+          className="pointer-events-none absolute -right-20 top-1/4 h-80 w-80 rounded-full blur-[100px]"
+          style={{ background: "rgba(244, 164, 0, 0.08)" }}
+        />
+        <div
+          className="pointer-events-none absolute -left-20 bottom-1/4 h-64 w-64 rounded-full blur-[80px]"
+          style={{ background: "rgba(129, 199, 132, 0.1)" }}
+        />
 
-      <div className="mb-6 flex gap-1 rounded-lg bg-[var(--color-border)]/40 p-1 text-sm font-semibold">
-        <button
-          type="button"
-          onClick={() => switchMode("signin")}
-          className={`flex-1 rounded-md px-3 py-1.5 transition-colors ${
-            mode === "signin" ? "bg-[var(--color-surface)] text-[var(--color-brand)] shadow-sm" : "opacity-60"
-          }`}
+        <div className="relative z-10 flex flex-1 flex-col justify-center px-12 py-16 xl:px-16">
+          <Link href="/" className="mb-12 inline-flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--amber-500)] shadow-lg shadow-amber-900/30">
+              <Icon name="leaf" size={22} className="text-white" />
+            </div>
+            <span className="font-heading text-2xl font-extrabold text-white">AgriLink</span>
+          </Link>
+
+          <h2 className="font-heading text-3xl font-extrabold leading-snug text-white xl:text-4xl">
+            Real prices.{" "}
+            <span className="bg-gradient-to-r from-[var(--amber-400)] to-[var(--amber-500)] bg-clip-text text-transparent">
+              Fair deals.
+            </span>
+          </h2>
+
+          <p className="mt-5 max-w-md text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
+            Government mandi data becomes a clear sell-now-or-wait call, the best
+            market after transport, and verified buyers — all tracked from offer
+            to payment.
+          </p>
+
+          <div className="mt-10 flex flex-col gap-4">
+            {[
+              { icon: "chart", text: "Live mandi prices from AGMARKNET" },
+              { icon: "spark", text: "Explainable AI sell/wait signals" },
+              { icon: "handshake", text: "Verified buyer-seller marketplace" },
+              { icon: "shield", text: "End-to-end deal tracking" },
+            ].map((item) => (
+              <div key={item.text} className="flex items-center gap-3">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.08)" }}
+                >
+                  <Icon name={item.icon} size={16} className="text-[var(--amber-400)]" />
+                </div>
+                <span className="text-sm font-medium text-white/80">{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom trust bar */}
+        <div
+          className="relative z-10 border-t px-12 py-5 xl:px-16"
+          style={{ borderColor: "rgba(255,255,255,0.1)" }}
         >
-          {t("signInTab")}
-        </button>
-        <button
-          type="button"
-          onClick={() => switchMode("register")}
-          className={`flex-1 rounded-md px-3 py-1.5 transition-colors ${
-            mode === "register" ? "bg-[var(--color-surface)] text-[var(--color-brand)] shadow-sm" : "opacity-60"
-          }`}
-        >
-          {t("registerTab")}
-        </button>
+          <p className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>
+            Smart India Hackathon 2026 · PS-26132 · Govt. of Maharashtra / MSInS
+          </p>
+          <p className="mt-1 text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+            100% free · English, Hindi, Marathi · Works offline
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("phoneLabel")}
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder={t("phonePlaceholder")}
-            required
-            autoComplete="username"
-            className={inputClass}
-          />
-        </label>
+      {/* ── RIGHT PANEL: Form ── */}
+      <div className="flex flex-1 flex-col overflow-y-auto bg-[var(--paper)]">
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-10 sm:px-8">
+          {/* Mobile logo */}
+          <Link href="/" className="mb-8 inline-flex items-center gap-2 lg:hidden">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--green-700)] shadow-md">
+              <Icon name="leaf" size={18} className="text-white" />
+            </div>
+            <span className="font-heading text-xl font-extrabold text-[var(--green-700)]">AgriLink</span>
+          </Link>
 
-        {mode === "register" && (
-          <>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              {t("nameLabel")}
+          <h1 className="font-heading text-2xl font-extrabold text-[var(--ink)] sm:text-3xl">
+            {t("title")}
+          </h1>
+          <p className="mt-1.5 text-sm text-[var(--ink-soft)]">
+            {mode === "signin"
+              ? "Sign in to access your dashboard"
+              : "Create a free account in seconds"}
+          </p>
+
+          {/* Mode tabs */}
+          <div className="mt-6 flex rounded-xl border border-[var(--line)] bg-[var(--paper)] p-1">
+            <button
+              type="button"
+              onClick={() => switchMode("signin")}
+              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-200 ${
+                mode === "signin"
+                  ? "bg-[var(--green-700)] text-white shadow-md shadow-green-900/15"
+                  : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+              }`}
+            >
+              {t("signInTab")}
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("register")}
+              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-200 ${
+                mode === "register"
+                  ? "bg-[var(--green-700)] text-white shadow-md shadow-green-900/15"
+                  : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+              }`}
+            >
+              {t("registerTab")}
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+            <label className="flex flex-col gap-1.5">
+              <span className="al-label">{t("phoneLabel")}</span>
               <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("namePlaceholder")}
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t("phonePlaceholder")}
                 required
-                className={inputClass}
+                autoComplete="username"
+                className="al-input"
               />
             </label>
 
-            <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-medium">{t("roleLabel")}</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name="role" value="farmer" checked={role === "farmer"} onChange={() => setRole("farmer")} />
-                {t("roleFarmer")}
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name="role" value="buyer" checked={role === "buyer"} onChange={() => setRole("buyer")} />
-                {t("roleBuyer")}
-              </label>
-            </fieldset>
-          </>
-        )}
+            {mode === "register" && (
+              <>
+                <label className="flex flex-col gap-1.5">
+                  <span className="al-label">{t("nameLabel")}</span>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("namePlaceholder")}
+                    required
+                    className="al-input"
+                  />
+                </label>
 
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("passwordLabel")}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t("passwordPlaceholder")}
-            required
-            minLength={mode === "register" ? 6 : undefined}
-            autoComplete={mode === "register" ? "new-password" : "current-password"}
-            className={inputClass}
-          />
-          {mode === "register" && (
-            <span className="text-xs opacity-60">{t("passwordHint")}</span>
-          )}
-        </label>
+                <fieldset className="flex flex-col gap-2.5">
+                  <legend className="al-label">{t("roleLabel")}</legend>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["farmer", "buyer"] as const).map((r) => (
+                      <label
+                        key={r}
+                        className={`flex cursor-pointer items-center gap-2.5 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all duration-200 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--green-400)] ${
+                          role === r
+                            ? "border-[var(--green-600)] bg-[var(--green-50)] text-[var(--green-700)]"
+                            : "border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--green-400)]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="role"
+                          value={r}
+                          checked={role === r}
+                          onChange={() => setRole(r)}
+                          className="sr-only"
+                        />
+                        <Icon name={r === "farmer" ? "leaf" : "users"} size={18} />
+                        {r === "farmer" ? t("roleFarmer") : t("roleBuyer")}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
+            )}
 
-        {error && <p className="text-sm text-[var(--color-wait)]">{error}</p>}
+            <label className="flex flex-col gap-1.5">
+              <span className="al-label">{t("passwordLabel")}</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t("passwordPlaceholder")}
+                required
+                minLength={mode === "register" ? 6 : undefined}
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
+                className="al-input"
+              />
+              {mode === "register" && (
+                <span className="text-xs text-[var(--ink-mute)]">{t("passwordHint")}</span>
+              )}
+            </label>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-md bg-[var(--color-brand)] px-4 py-3 font-semibold text-white hover:bg-[var(--color-brand-dark)] disabled:opacity-60 transition-colors"
-        >
-          {loading ? t("loggingIn") : t("continueBtn")}
-        </button>
-      </form>
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--red-300)]/40 bg-[var(--red-50)] px-4 py-3 text-sm font-medium text-[var(--red-500)]">
+                <Icon name="alert" size={16} />
+                {error}
+              </div>
+            )}
 
-      <section className="mt-8 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-        <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-brand)]">
-          {t("demoTitle")}
-        </p>
-        <p className="mt-0.5 mb-3 text-xs opacity-60">{t("demoNote")}</p>
-        {DEMO_REGIONS.map((region) => (
-          <div key={region} className="mb-3 last:mb-0">
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide opacity-45">{region}</p>
-            <ul className="flex flex-col gap-1.5">
-              {DEMO_ACCOUNTS.filter((a) => a.region === region).map((acc) => (
-                <li key={acc.phone}>
-                  <button
-                    type="button"
-                    onClick={() => useDemo(acc)}
-                    disabled={loading}
-                    className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-left text-sm transition-colors hover:border-[var(--color-brand)] disabled:opacity-60"
-                  >
-                    <span className="flex min-w-0 flex-col">
-                      <span className="truncate font-semibold">{acc.name}</span>
-                      <span className="text-xs opacity-60">
-                        {acc.phone} · {acc.password}
-                      </span>
-                    </span>
-                    <span className="shrink-0 rounded-full bg-[var(--color-brand)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-brand)]">
-                      {acc.role === "farmer" ? t("roleFarmer") : acc.role === "buyer" ? t("roleBuyer") : t("roleAdmin")}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <button
+              type="submit"
+              disabled={loading}
+              className="al-btn-primary w-full py-3.5 text-base disabled:opacity-60"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="60" strokeDashoffset="20" strokeLinecap="round" />
+                  </svg>
+                  {t("loggingIn")}
+                </span>
+              ) : (
+                t("continueBtn")
+              )}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="mt-8 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[var(--line)]" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-[var(--ink-mute)]">
+              or try a demo
+            </span>
+            <div className="h-px flex-1 bg-[var(--line)]" />
           </div>
-        ))}
-      </section>
+
+          {/* Demo Accounts */}
+          <div className="mt-6">
+            <button
+              type="button"
+              aria-expanded={demoOpen}
+              aria-controls="demo-accounts-panel"
+              onClick={() => setDemoOpen(!demoOpen)}
+              className="flex w-full items-center justify-between rounded-xl border border-dashed border-[var(--green-600)]/30 bg-[var(--green-50)]/50 px-4 py-3 text-left transition-colors hover:bg-[var(--green-50)]"
+            >
+              <div className="flex items-center gap-2.5">
+                <Icon name="spark" size={16} className="text-[var(--green-600)]" />
+                <div>
+                  <p className="text-sm font-bold text-[var(--green-700)]">{t("demoTitle")}</p>
+                  <p className="text-xs text-[var(--ink-soft)]">{t("demoNote")}</p>
+                </div>
+              </div>
+              <Icon
+                name="arrowDown"
+                size={14}
+                className={`text-[var(--green-600)] transition-transform duration-200 ${demoOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {demoOpen && (
+              <div id="demo-accounts-panel" className="mt-3 max-h-72 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+                {DEMO_REGIONS.map((region) => (
+                  <div key={region} className="mb-3 last:mb-0">
+                    <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-[var(--ink-mute)]">
+                      {region}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {DEMO_ACCOUNTS.filter((a) => a.region === region).map((acc) => (
+                        <button
+                          key={acc.phone}
+                          type="button"
+                          onClick={() => useDemo(acc)}
+                          disabled={loading}
+                          className="flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--paper)] px-3 py-2.5 text-left transition-all duration-200 hover:border-[var(--green-600)]/40 hover:shadow-sm disabled:opacity-50"
+                        >
+                          <div className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-[var(--ink)]">
+                              {acc.name}
+                            </span>
+                            <span className="block text-xs text-[var(--ink-soft)]">
+                              {acc.phone} · {acc.password}
+                            </span>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                              ROLE_COLORS[acc.role] || ""
+                            }`}
+                          >
+                            {acc.role === "farmer"
+                              ? t("roleFarmer")
+                              : acc.role === "buyer"
+                                ? t("roleBuyer")
+                                : t("roleAdmin")}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

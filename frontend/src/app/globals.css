@@ -109,6 +109,11 @@
 }
 
 /* ── 3. Base resets ─────────────────────────────────────────────────────── */
+/* Layered so Tailwind utilities (incl. responsive variants like lg:hidden)
+   always win when combined with these classes on the same element — an
+   unlayered rule here would otherwise beat every Tailwind utility regardless
+   of specificity or breakpoint. */
+@layer base {
 html {
   background: var(--paper);
   scroll-behavior: smooth;
@@ -148,8 +153,10 @@ a[role="button"] {
   outline-offset: 2px;
   border-radius: 4px;
 }
+}
 
 /* ── 6. Shared surface utilities ────────────────────────────────────────── */
+@layer components {
 
 /* Primary content card — frosted glass effect */
 .al-card {
@@ -411,8 +418,11 @@ a[role="button"] {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* No fill mode: a retained keyframe transform would make this element the
+   containing block for position:fixed descendants forever, silently breaking
+   every fixed overlay rendered inside page content. */
 .al-fade-up {
-  animation: al-fade-up 0.35s ease both;
+  animation: al-fade-up 0.35s ease;
 }
 
 /* ── 14. Decorative grid overlay (used in hero sections) ────────────────── */
@@ -420,4 +430,5 @@ a[role="button"] {
   background-image:
     repeating-linear-gradient(0deg,   rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 44px),
     repeating-linear-gradient(90deg,  rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 44px);
+}
 }
