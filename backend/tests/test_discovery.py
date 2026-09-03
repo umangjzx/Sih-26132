@@ -105,6 +105,24 @@ def test_express_interest_opens_a_match(db):
         app.dependency_overrides.clear()
 
 
+def test_browse_hides_a_lot_the_buyer_already_matched(db):
+    farmer, buyer = _cbe_farmer(db), _cbe_buyer(db)
+    lot = _onion_lot(db, farmer)
+    db.add(Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=1000, quality_spec="Grade A",
+                  price_band_min=2200, price_band_max=2700, delivery_window="Within 7 days",
+                  delivery_district="Coimbatore", latitude=11.0168, longitude=76.9558, status="open"))
+    db.commit()
+    client = _client(db)
+    try:
+        _as(buyer)
+        assert len(client.get("/api/lots/browse").json()) == 1
+        # after expressing interest the lot is no longer "new" on the board
+        assert client.post(f"/api/lots/{lot.id}/express-interest").status_code == 200
+        assert client.get("/api/lots/browse").json() == []
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_express_interest_without_a_demand_409s(db):
     farmer, buyer = _cbe_farmer(db), _cbe_buyer(db)
     lot = _onion_lot(db, farmer)

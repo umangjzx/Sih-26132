@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import { NEARBY_RADIUS_KM } from "@/lib/useCropMarket";
 import {
+  ApiError,
   browseDemands,
   browseLots,
   expressInterestInDemand,
@@ -50,6 +51,7 @@ export default function BrowsePage() {
   const [lots, setLots] = useState<BrowseLot[]>([]);
   const [demands, setDemands] = useState<BrowseDemand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
   const [note, setNote] = useState<{ id: number; msg: string; ok: boolean; matchId?: number | null } | null>(null);
 
@@ -62,12 +64,13 @@ export default function BrowsePage() {
   const load = useCallback(async () => {
     if (!token || !user || user.role === "admin") return;
     setLoading(true);
+    setLoadErr(false);
     const opts = { crop: crop.trim() || undefined, radiusKm: wide ? null : NEARBY_RADIUS_KM };
     try {
       if (user.role === "buyer") setLots(await browseLots(token, opts));
       else setDemands(await browseDemands(token, opts));
     } catch {
-      /* ignore */
+      setLoadErr(true);
     } finally {
       setLoading(false);
     }
@@ -90,8 +93,13 @@ export default function BrowsePage() {
         matchId: r.match_id,
       });
     } catch (e) {
-      const m = e instanceof Error ? e.message : "";
-      setNote({ id, ok: false, msg: m.includes("409") ? (isBuyer ? t("needDemand") : t("needLot")) : t("error") });
+      // The backend already returns a plain-language 409 ("Post an open demand
+      // for X first…"); show it verbatim, fall back to a generic string.
+      let msg = t("error");
+      if (e instanceof ApiError) {
+        msg = e.status === 409 ? e.message || (isBuyer ? t("needDemand") : t("needLot")) : e.message || msg;
+      }
+      setNote({ id, ok: false, msg });
     } finally {
       setBusy(null);
     }
@@ -135,6 +143,12 @@ export default function BrowsePage() {
           {wide ? t("allIndia") : t("within", { km: NEARBY_RADIUS_KM })}
         </button>
       </div>
+
+      {loadErr && !loading && (
+        <div className="flex items-center gap-2 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
+          <Icon name="close" size={16} /> {t("error")}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-3">

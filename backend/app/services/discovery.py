@@ -10,8 +10,35 @@ from sqlalchemy.orm import Session
 
 from app.models.demand import Demand
 from app.models.lot import Lot
+from app.models.match import Match
 from app.models.user import User
 from app.services.geo import _district_coord, haversine_km
+
+# a match in one of these states already links the two parties — the listing
+# shouldn't show up on the other side's discovery board as "new".
+_LIVE_MATCH = ("proposed", "offered", "accepted")
+
+
+def _lots_already_engaged_with(db: Session, buyer_id: int) -> set[int]:
+    """lot_ids the buyer already has a live match on (via any of their demands)."""
+    return set(
+        db.execute(
+            select(Match.lot_id)
+            .join(Demand, Match.demand_id == Demand.id)
+            .where(Demand.buyer_id == buyer_id, Match.status.in_(_LIVE_MATCH))
+        ).scalars().all()
+    )
+
+
+def _demands_already_engaged_with(db: Session, farmer_id: int) -> set[int]:
+    """demand_ids the farmer already has a live match on (via any of their lots)."""
+    return set(
+        db.execute(
+            select(Match.demand_id)
+            .join(Lot, Match.lot_id == Lot.id)
+            .where(Lot.farmer_id == farmer_id, Match.status.in_(_LIVE_MATCH))
+        ).scalars().all()
+    )
 
 
 def _origin(user: User, lat: float | None, lon: float | None) -> tuple[float, float] | None:
@@ -48,10 +75,11 @@ def browse_lots(
     if crop:
         stmt = stmt.where(Lot.crop.ilike(crop))
     rows = db.execute(stmt).all()
+    engaged = _lots_already_engaged_with(db, viewer.id)
 
     out: list[dict] = []
     for lot, farmer in rows:
-        if farmer.id == viewer.id:
+        if farmer.id == viewer.id or lot.id in engaged:
             continue
         coords = (
             (lot.latitude, lot.longitude)
@@ -98,10 +126,11 @@ def browse_demands(
     if crop:
         stmt = stmt.where(Demand.crop.ilike(crop))
     rows = db.execute(stmt).all()
+    engaged = _demands_already_engaged_with(db, viewer.id)
 
     out: list[dict] = []
     for dem, buyer in rows:
-        if buyer.id == viewer.id:
+        if buyer.id == viewer.id or dem.id in engaged:
             continue
         coords = (
             (dem.latitude, dem.longitude)

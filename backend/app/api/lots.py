@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/lots", tags=["lots"])
 logger = logging.getLogger(__name__)
 
 _CREATE_LIMIT, _CREATE_WINDOW_S = 40, 600  # 40 create/edit ops / 10 min per user
+_INTEREST_LIMIT, _INTEREST_WINDOW_S = 30, 300  # express-interest clicks / 5 min per user
 
 
 def _geocode_into(lot: Lot, location: str, db: Session) -> None:
@@ -184,6 +185,13 @@ def express_interest_in_lot(
 ) -> ExpressInterestResult:
     """Try to open a match between this lot and one of the buyer's open demands
     for the same crop (the closest-fit one). 409 if the buyer has no such demand."""
+    if not ratelimit.check(
+        f"interest:{current_user.id}", limit=_INTEREST_LIMIT, window_s=_INTEREST_WINDOW_S
+    ):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "You're expressing interest very quickly — please slow down a moment.",
+        )
     lot = db.get(Lot, lot_id)
     if lot is None or lot.status != "open":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lot not found or not open")

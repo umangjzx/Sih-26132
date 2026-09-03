@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/demands", tags=["demands"])
 logger = logging.getLogger(__name__)
 
 _WRITE_LIMIT, _WRITE_WINDOW_S = 40, 600
+_INTEREST_LIMIT, _INTEREST_WINDOW_S = 30, 300
 
 
 def _rematch(db: Session, demand: Demand) -> None:
@@ -195,6 +196,13 @@ def express_interest_in_demand(
 ) -> ExpressInterestResult:
     """Try to open a match between this demand and one of the farmer's open lots
     for the same crop. 409 if the farmer has no such lot."""
+    if not ratelimit.check(
+        f"interest:{current_user.id}", limit=_INTEREST_LIMIT, window_s=_INTEREST_WINDOW_S
+    ):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "You're expressing interest very quickly — please slow down a moment.",
+        )
     demand = db.get(Demand, demand_id)
     if demand is None or demand.status != "open":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Demand not found or not open")
