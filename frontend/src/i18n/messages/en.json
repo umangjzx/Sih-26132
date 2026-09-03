@@ -140,7 +140,8 @@
     "withdrawn": "Lot withdrawn.",
     "updated": "Lot updated.",
     "errorGeneric": "Something went wrong. Please check the values and try again.",
-    "cannotEditMatched": "This lot is in a deal — it can't be changed."
+    "cannotEditMatched": "This lot is in a deal — it can't be changed.",
+    "uploadPhoto": "Upload"
   },
   "demands": {
     "title": "My Demands",
@@ -987,5 +988,17 @@
     "checkPrices": "Prices",
     "openPools": "Pools",
     "browseLots": "Browse lots"
+  },
+  "camera": {
+    "title": "Scan a mandi slip",
+    "starting": "Starting camera…",
+    "capture": "Take photo",
+    "retake": "Retake",
+    "usePhoto": "Use photo",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "denied": "Camera permission was denied. Allow camera access in your browser, or upload a photo instead.",
+    "noCamera": "No camera was found on this device. Upload a photo instead.",
+    "unavailable": "Camera isn't available here. Upload a photo instead."
   }
 }

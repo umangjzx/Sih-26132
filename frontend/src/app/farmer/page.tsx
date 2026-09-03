@@ -16,6 +16,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { NearbyResources } from "@/components/NearbyResources";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCards, type Stat } from "@/components/StatCards";
+import { CameraCapture } from "@/components/CameraCapture";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { QuickActions } from "@/components/QuickActions";
 import { Icon } from "@/components/ui";
@@ -99,6 +100,7 @@ export default function FarmerPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [queueCount, setQueueCount] = useState(0);
   const [scanning, setScanning] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [loadErr, setLoadErr] = useState(false);
   const slipInputRef = useRef<HTMLInputElement>(null);
 
@@ -181,10 +183,14 @@ export default function FarmerPage() {
     if (editingId === null) localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
   }
 
-  async function handleSlip(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleSlip(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // let the same file be picked again
-    if (!file || !token) return;
+    if (file) void scanFile(file);
+  }
+
+  async function scanFile(file: File) {
+    if (!token) return;
     setScanning(true);
     try {
       const d = await scanLotSlip(file, token);
@@ -436,15 +442,25 @@ export default function FarmerPage() {
             onChange={handleSlip}
             className="hidden"
           />
-          <button
-            type="button"
-            onClick={() => slipInputRef.current?.click()}
-            disabled={scanning}
-            className="flex shrink-0 items-center gap-2 rounded-xl border border-[var(--green-600)] px-4 py-2 text-sm font-bold text-[var(--green-700)] transition hover:bg-[var(--green-100)] disabled:opacity-60"
-          >
-            <Icon name={scanning ? "clock" : "camera"} size={16} />
-            {scanning ? t("scanning") : t("scanSlip")}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCameraOpen(true)}
+              disabled={scanning}
+              className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white transition hover:bg-[var(--green-900)] disabled:opacity-60"
+            >
+              <Icon name={scanning ? "clock" : "camera"} size={16} />
+              {scanning ? t("scanning") : t("scanSlip")}
+            </button>
+            <button
+              type="button"
+              onClick={() => slipInputRef.current?.click()}
+              disabled={scanning}
+              className="rounded-xl border border-[var(--green-600)] px-3 py-2 text-sm font-bold text-[var(--green-700)] transition hover:bg-[var(--green-100)] disabled:opacity-60"
+            >
+              {t("uploadPhoto")}
+            </button>
+          </div>
         </div>
         <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("scanHint")}</p>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -588,6 +604,16 @@ export default function FarmerPage() {
         district={user?.district}
         crop={lots[0]?.crop ?? (form.crop || undefined)}
       />
+
+      {cameraOpen && (
+        <CameraCapture
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => {
+            setCameraOpen(false);
+            void scanFile(file);
+          }}
+        />
+      )}
     </div>
   );
 }
