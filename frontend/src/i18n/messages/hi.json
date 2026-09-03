@@ -900,7 +900,9 @@
     "verify": "सत्यापित करें",
     "reject": "अस्वीकार",
     "deactivate": "निष्क्रिय",
-    "activate": "सक्रिय"
+    "activate": "सक्रिय",
+    "loadError": "उपयोगकर्ता सूची लोड नहीं हो सकी।",
+    "actionError": "यह कार्रवाई पूरी नहीं हो सकी।"
   },
   "browse": {
     "titleBuyer": "Browse lots near you",

@@ -511,6 +511,7 @@ def admin_verify_user(
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
+    prev = user.verification_status
     user.verification_status = body.status
     user.verification_note = body.note
     # keep the legacy badge field in sync
@@ -521,6 +522,14 @@ def admin_verify_user(
     else:
         user.verified_at = None
         user.verified_by = None
+
+    from app.services.audit import log_event
+
+    log_event(
+        db, actor_id=current_user.id, entity_type="user", entity_id=user.id,
+        action="admin_verification_changed",
+        detail={"from": prev, "to": body.status, "has_note": bool(body.note)},
+    )
     db.commit()
     db.refresh(user)
     return AdminUserOut.model_validate(user)
@@ -540,6 +549,14 @@ def admin_set_user_active(
     if user.id == current_user.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You cannot deactivate your own account")
     user.is_active = body.is_active
+
+    from app.services.audit import log_event
+
+    log_event(
+        db, actor_id=current_user.id, entity_type="user", entity_id=user.id,
+        action="admin_user_activated" if body.is_active else "admin_user_deactivated",
+        detail={"is_active": body.is_active},
+    )
     db.commit()
     db.refresh(user)
     return AdminUserOut.model_validate(user)
@@ -595,15 +612,21 @@ def admin_events_csv(
         for u in db.execute(select(User).where(User.id.in_(actor_ids or {0}))).scalars().all()
     }
 
+    def _safe(v) -> object:
+        # neutralise spreadsheet formula injection — actor_name is user-set.
+        if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+            return "'" + v
+        return v
+
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["created_at", "entity_type", "entity_id", "action", "actor_id", "actor_name", "detail"])
     for r in rows:
-        w.writerow([
+        w.writerow([_safe(x) for x in (
             r["created_at"], r["entity_type"], r["entity_id"], r["action"],
             r["actor_id"] or "", names.get(r["actor_id"], "system"),
             _json.dumps(r["detail"], default=str) if r["detail"] else "",
-        ])
+        )])
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),

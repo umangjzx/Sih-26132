@@ -900,7 +900,9 @@
     "verify": "पडताळा",
     "reject": "नाकारा",
     "deactivate": "निष्क्रिय",
-    "activate": "सक्रिय"
+    "activate": "सक्रिय",
+    "loadError": "वापरकर्ता यादी लोड करता आली नाही.",
+    "actionError": "ही कृती पूर्ण करता आली नाही."
   },
   "browse": {
     "titleBuyer": "Browse lots near you",

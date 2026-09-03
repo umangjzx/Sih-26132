@@ -5,6 +5,7 @@ admin user management, and the distance veto in matching.
 from datetime import date
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -113,6 +114,47 @@ def test_admin_cannot_deactivate_self(db, admin_user):
         assert client.patch(f"/api/admin/users/{admin_user.id}/active", json={"is_active": False}).status_code == 400
     finally:
         app.dependency_overrides.clear()
+
+
+def test_admin_user_actions_are_audit_logged(db, admin_user, buyer_user):
+    from app.models.transaction_event import TransactionEvent
+
+    client = _client(db)
+    try:
+        _as(admin_user)
+        client.patch(f"/api/admin/users/{buyer_user.id}/verify", json={"status": "verified"})
+        client.patch(f"/api/admin/users/{buyer_user.id}/active", json={"is_active": False})
+    finally:
+        app.dependency_overrides.clear()
+
+    actions = {
+        e.action for e in db.execute(
+            select(TransactionEvent).where(
+                TransactionEvent.entity_type == "user",
+                TransactionEvent.entity_id == buyer_user.id,
+            )
+        ).scalars().all()
+    }
+    assert "admin_verification_changed" in actions
+    assert "admin_user_deactivated" in actions
+
+
+def test_admin_events_csv_neutralises_formula_injection(db, buyer_user):
+    # an admin whose display name is a spreadsheet formula acts on another user;
+    # their name lands in the CSV's actor_name column and must be neutralised.
+    evil_admin = User(role="admin", name='=HYPERLINK("http://evil")', phone="+91evilcsv",
+                      district="Pune", taluka="")
+    db.add(evil_admin); db.commit()
+    client = _client(db)
+    try:
+        _as(evil_admin)
+        client.patch(f"/api/admin/users/{buyer_user.id}/active", json={"is_active": False})
+        csv_text = client.get("/api/admin/events.csv").text
+    finally:
+        app.dependency_overrides.clear()
+    # the escaped form is present; the formula never starts a bare cell
+    assert "'=HYPERLINK" in csv_text
+    assert ",=HYPERLINK" not in csv_text
 
 
 # --------------------------------------------------------------------------- #

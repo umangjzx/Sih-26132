@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { Icon } from "@/components/ui";
-import { getAdminUsers, setUserActive, verifyUser, type AdminUser } from "@/lib/api";
+import { ApiError, getAdminUsers, setUserActive, verifyUser, type AdminUser } from "@/lib/api";
 
 const V_STYLE: Record<string, string> = {
   verified: "bg-[var(--green-100)] text-[var(--green-700)]",
@@ -28,6 +28,7 @@ export default function AdminUsersPage() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -37,14 +38,15 @@ export default function AdminUsersPage() {
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
+    setErr(null);
     try {
       setRows(await getAdminUsers(token, { role: roleF || undefined, verification: verF || undefined, q: q.trim() || undefined }));
-    } catch {
-      /* ignore */
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, [token, roleF, verF, q]);
+  }, [token, roleF, verF, q, t]);
 
   useEffect(() => {
     const id = setTimeout(load, 250);
@@ -62,9 +64,12 @@ export default function AdminUsersPage() {
 
   async function act(fn: () => Promise<AdminUser>, id: number) {
     setBusy(id);
+    setErr(null);
     try {
       const updated = await fn();
       setRows((rs) => rs.map((r) => (r.id === id ? updated : r)));
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("actionError"));
     } finally {
       setBusy(null);
     }
@@ -81,6 +86,12 @@ export default function AdminUsersPage() {
           {t("summary", { total: counts.total, pending: counts.pending, verified: counts.verified })}
         </span>
       </div>
+
+      {err && (
+        <div className="rounded-lg border border-[var(--color-wait)]/40 bg-[var(--color-wait)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--color-wait)]">
+          {err}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <input

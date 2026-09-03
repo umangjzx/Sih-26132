@@ -900,7 +900,9 @@
     "verify": "Verify",
     "reject": "Reject",
     "deactivate": "Deactivate",
-    "activate": "Activate"
+    "activate": "Activate",
+    "loadError": "Could not load the user list.",
+    "actionError": "That action could not be completed."
   },
   "browse": {
     "titleBuyer": "Browse lots near you",
