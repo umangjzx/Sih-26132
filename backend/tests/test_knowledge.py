@@ -48,6 +48,21 @@ def test_gibberish_returns_nothing():
     assert knowledge.search("zzzq xqwv plib", k=4) == []
 
 
+@pytest.mark.parametrize(
+    "paraphrase, expect_id",
+    [
+        # shares almost no literal vocabulary with the FPO doc's "aggregates" /
+        # "pooled" / "bulk" — a pure keyword/fuzzy match misses this without
+        # the synonym expansion in knowledge._SYNONYMS.
+        ("can I get a better price by combining my harvest with other farmers", "fpo"),
+        ("is a middleman taking a cut of my sale", "apmc-mandi"),
+    ],
+)
+def test_synonym_expansion_finds_paraphrased_queries(paraphrase, expect_id):
+    hits = knowledge.search(paraphrase, k=4)
+    assert hits and hits[0].doc.id == expect_id
+
+
 def test_context_block_formats_titles():
     block = knowledge.context_block("how does MSP procurement work", k=2)
     assert "[How MSP procurement works for a farmer]" in block

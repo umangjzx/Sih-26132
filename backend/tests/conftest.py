@@ -55,6 +55,17 @@ def _reset_ratelimit():
     ratelimit.reset()
 
 
+@pytest.fixture(autouse=True)
+def _reset_options_cache():
+    """GET /api/options caches its DB query in-process (see app/api/prices.py);
+    clear it between tests so one test's SQLite DB doesn't leak into the next."""
+    from app.api.prices import invalidate_options_cache
+
+    invalidate_options_cache()
+    yield
+    invalidate_options_cache()
+
+
 @pytest.fixture()
 def seeded_db(db):
     db.add_all(PriceCache(**row) for row in generate_fixture_rows(days=40))

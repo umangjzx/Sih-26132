@@ -55,3 +55,11 @@ class ForwardCommitment(Base):
     )
     deal_id: Mapped[int | None] = mapped_column(ForeignKey("deals.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # v1.8: set once, at accept time, to the later of the farmer's own expected-ready
+    # date and the buyer's delivery window close — the date by which this forward
+    # commitment's deal should have moved past 'matched'/'offer_accepted'. Used to
+    # flag an accepted commitment as overdue when nothing enforces on-time delivery.
+    settlement_due: Mapped[date | None] = mapped_column(Date, nullable=True)
+    settlement_reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

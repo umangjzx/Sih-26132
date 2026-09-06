@@ -416,8 +416,10 @@ def backfill_series(db: Session, crop: str, market: str, *,
     if span <= 1:
         return inserted
 
-    seed = int(hashlib.md5(f"{state}|{market}|{crop}|{variety}".encode()).hexdigest()[:8], 16)
-    rng = random.Random(seed)
+    # Deterministic synthetic-fixture seed, not a security use — usedforsecurity=False
+    # documents that to static analysis (bandit B324) without changing behavior.
+    seed = int(hashlib.md5(f"{state}|{market}|{crop}|{variety}".encode(), usedforsecurity=False).hexdigest()[:8], 16)
+    rng = random.Random(seed)  # nosec B311 - deterministic fixture generation, not cryptographic
     price = anchor
     new_rows: list[dict] = []
     for i in range(1, span + 1):  # walk BACKWARDS from the earliest real/archive point
@@ -445,6 +447,13 @@ def run_ingestion(db: Session, states: list[str] | None = "__default__") -> dict
     # Phase 1: dormant. Wire here when a non-OGD arrivals source lands (PRICE-07).
     count = upsert_price_rows(db, rows)
 
+    try:
+        from app.api.prices import invalidate_options_cache
+
+        invalidate_options_cache()
+    except Exception as exc:  # noqa: BLE001 - stale cache for one TTL beats a broken ingestion run
+        logger.warning("Options cache invalidation failed (%s)", exc)
+
     alerts_fired = 0
     try:
         from app.services.alerts import evaluate_alerts
@@ -452,6 +461,13 @@ def run_ingestion(db: Session, states: list[str] | None = "__default__") -> dict
         alerts_fired = evaluate_alerts(db)
     except Exception as exc:  # noqa: BLE001 - alert evaluation never blocks ingestion
         logger.warning("Alert evaluation failed (%s)", exc)
+
+    try:
+        from app.services.forward_settlement import check_settlement_risk
+
+        check_settlement_risk(db)
+    except Exception as exc:  # noqa: BLE001 - settlement check never blocks ingestion
+        logger.warning("Forward settlement check failed (%s)", exc)
 
     return {"source": source, "rows_upserted": count, "alerts_fired": alerts_fired}
 

@@ -38,6 +38,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.4 · Payments & audit ledger | deal instalment payments, transporter directory, append-only `transaction_events` timeline, structured quality grading | ✅ |
 | v1.5 · Intelligence orchestration | diesel-indexed freight, **Decision Brief** (`/api/brief`), grounded knowledge retrieval (RAG) for Ask AgriLink | ✅ |
 | v1.6 · Market linkage | price-realisation tracker, price-referenced counter-offers, **forward contracts** (pre-harvest) | ✅ |
+| v1.7 · Dispute resolution | structured dispute close with `{outcome, resolution, evidence_url?}`, `resolved_by`/`resolved_at`, and a `withdrawn` status alongside `open`/`resolved` | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -198,7 +199,7 @@ flowchart LR
 | Frontend | Next.js 16.3 (App Router, Turbopack) · React 19 · TypeScript · next-intl 4 · recharts 3 · Tailwind CSS v4 |
 | Tests | pytest 9 (SQLite in-memory) · Vitest 4 + Testing Library 16 |
 | LLM | OpenRouter API (optional) — any vision-capable model; used for plain-language advisor, Ask AgriLink, OCR slip-reading, live-string translation |
-| Fonts | Space Grotesk (headings) · DM Sans (body) · Noto Sans Devanagari (Hindi/Marathi) via `next/font/google` |
+| Fonts | Poppins (headings + body) · Noto Sans Devanagari (Hindi/Marathi) via `next/font/google` |
 
 ---
 
@@ -249,9 +250,9 @@ agrilink/
 │   │       ├── transporters.py curated transporter directory (seeded on boot)
 │   │       ├── alerts.py       evaluate price alerts → notifications
 │   │       └── llm.py          OpenRouter client: chat, vision, translate (all degrade gracefully)
-│   ├── alembic/versions/       11 revisions, 0001_initial → e5b3c8a2f1d0_v1_6_forward_contracts
+│   ├── alembic/versions/       12 revisions, 0001_initial → f6c9d2e4a1b8_v1_7_dispute_resolution
 │   │                           (see Database schema → Migrations for the full chain)
-│   ├── tests/                  pytest suite (SQLite in-memory) — 37 test files, 295 tests
+│   ├── tests/                  pytest suite (SQLite in-memory) — 37 test files, 355 tests
 │   └── .env.example
 ├── frontend/
 │   └── src/
@@ -320,6 +321,12 @@ follow [DEPLOYMENT.md](DEPLOYMENT.md) instead.
 ---
 
 ## Configuration
+
+**Rate limiting** — `app/core/ratelimit.py` is an in-process sliding-window limiter
+(deliberately not Redis-backed, since the deployment runs a single Uvicorn worker). It
+guards **19 call sites across 12 route files** — registration, login, lot/demand
+creation, forward bids/commitments, pool actions, location resolve, OCR, and the manual
+ingest trigger — not just the location-resolve case called out below.
 
 ### `backend/.env` (copy from `backend/.env.example` — **gitignored, never commit**)
 
@@ -432,6 +439,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 |---|---|---|
 | GET | `/location/resolve` | `lat`+`lon` \| `place`, `ensure_prices?` — returns `{state, district, display_name, latitude, longitude, source, has_prices, ingest_attempt}` |
 | GET | `/location/states` | — sorted list of all Indian states/UTs |
+| GET | `/location/districts` | `state?` — districts for a state, or all districts when omitted |
 
 ### Auth
 
@@ -463,6 +471,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | POST | `/pools/{id}/join` | `{quantity_kg, expected_price, lot_id?}` | Commit to a pool (or update your existing commitment). |
 | POST | `/pools/{id}/withdraw` | — | Withdraw from a pool. |
 | POST | `/pools/{id}/status` | `{status}` | Organizer advances pool status (open → locked → matched → closed). |
+| POST | `/pools/{id}/accept-demand` | `{demand_id}` | Organizer accepts a scored buyer demand — materialises the pool into a real Lot + Match + Offer + Deal. |
 
 ### Forward contracts — v1.6 (**Auth**)
 
@@ -494,7 +503,8 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | GET | `/deals/{id}/receipt` | Printable HTML receipt — parties, agreed terms, transporter, route, confirmed payment reference |
 | GET | `/transporters/nearby` | Curated transporter directory near a point |
 | POST / GET | `/deals/{id}/disputes` | raise / list disputes (one open dispute per deal) |
-| PATCH | `/disputes/{id}/close` | close a dispute |
+| PATCH | `/disputes/{id}/close` | resolve a dispute — v1.7 adds `{outcome, resolution, evidence_url?}`, sets `resolved_by`/`resolved_at`, status → `resolved` |
+| PATCH | `/disputes/{id}/withdraw` | raiser withdraws their own dispute — status → `withdrawn` |
 | GET | `/history` | caller's lots + demands + deals |
 | GET | `/history/realization` | **Auth** — per-deal realised price vs the AGMARKNET mandi average and MSP, with a volume-weighted uplift summary. Farmer sees own; admin may pass `farmer_id` |
 
@@ -577,7 +587,7 @@ erDiagram
 | `deal_payments` | `deal_id→deals`, `payer_id→users`, `amount_inr, method` (free text, default `UPI`), `reference?, note?, paid_at` | a deal is settled when `SUM(amount_inr) ≥ agreed_price × qty / 100` |
 | `transaction_events` | `entity_type, entity_id, actor_id→users?, action, detail` (JSON string), `created_at` — **append-only** | entity_type: `deal` \| `payment` \| `logistics` \| `match` \| `offer` \| `pool` \| `forward_bid` |
 | `transporters` | `name, phone?, base_district, latitude?, longitude?, vehicle_types, service_states, notes?` — curated, seeded on boot | — |
-| `disputes` | `deal_id→deals`, `raised_by→users`, `reason`, `created_at` | status: `open` \| `closed` |
+| `disputes` | `deal_id→deals`, `raised_by→users`, `reason`, `created_at`, `evidence_url?`, `outcome?`, `resolution?`, `resolved_by→users?`, `resolved_at?` (v1.7) | status: `open` \| `resolved` \| `withdrawn` |
 | `pools` | `organizer_id→users`, `crop, title, target_quantity_kg, floor_price, grade, delivery_window, location, latitude?, longitude?`, `status`, `matched_deal_id?`, `created_at` | status: `open` \| `locked` \| `matched` \| `closed` |
 | `pool_members` | `pool_id→pools`, `farmer_id→users`, `lot_id→lots?`, `quantity_kg, expected_price`, `status`, `created_at` | status: `committed` \| `withdrawn` |
 | `forward_bids` | `buyer_id→users`, `crop, quantity_kg, price_min, price_max, delivery_from, delivery_to, delivery_district, latitude?, longitude?, quality_grade_min?, notes?`, `status`, `created_at` | status: `open` \| `closed` \| `filled` \| `cancelled` |
@@ -587,7 +597,7 @@ erDiagram
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
 
 **Migrations** (linear chain, in order):
-`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) — **head**.
+`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) — **head**.
 
 ---
 
@@ -1019,7 +1029,7 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-**Backend** (37 test files, 295 tests): signal cases and MSP/weather factors;
+**Backend** (37 test files, 355 tests): signal cases and MSP/weather factors;
 price forecast (trend+seasonality, prediction band, short-history degradation);
 the **Decision Brief** (assembly, urgency ordering, reference-market inference,
 thin-history 404); **diesel-indexed freight** (breakdown sums, rate range,

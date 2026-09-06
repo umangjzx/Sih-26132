@@ -20,6 +20,7 @@ import { CameraCapture } from "@/components/CameraCapture";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { QuickActions } from "@/components/QuickActions";
 import { Icon } from "@/components/ui";
+import { compressImageToDataUrl } from "@/lib/image";
 import {
   ApiError,
   createLot,
@@ -192,6 +193,20 @@ export default function FarmerPage() {
   async function scanFile(file: File) {
     if (!token) return;
     setScanning(true);
+
+    // Attach the photo itself to the lot (downscaled client-side, so it never
+    // hits the backend's per-lot size cap) — independent of whether OCR can
+    // read any text off it. A buyer gets to see the produce either way.
+    let withPhoto = form;
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      withPhoto = { ...form, photo_url: dataUrl };
+      setForm(withPhoto);
+      if (editingId === null) localStorage.setItem(DRAFT_KEY, JSON.stringify(withPhoto));
+    } catch {
+      /* photo attachment is a nice-to-have — OCR below still runs */
+    }
+
     try {
       const d = await scanLotSlip(file, token);
       if (!d.available) {
@@ -200,15 +215,15 @@ export default function FarmerPage() {
         return;
       }
       const next: FormState = {
-        ...form,
-        crop: d.crop ?? form.crop,
-        quantity_kg: d.quantity_kg != null ? String(d.quantity_kg) : form.quantity_kg,
-        quality_grade: d.grade && d.grade !== "FAQ" ? d.grade : form.quality_grade,
-        expected_price: d.expected_price != null ? String(d.expected_price) : form.expected_price,
-        available_from: d.available_from ?? form.available_from,
+        ...withPhoto,
+        crop: d.crop ?? withPhoto.crop,
+        quantity_kg: d.quantity_kg != null ? String(d.quantity_kg) : withPhoto.quantity_kg,
+        quality_grade: d.grade && d.grade !== "FAQ" ? d.grade : withPhoto.quality_grade,
+        expected_price: d.expected_price != null ? String(d.expected_price) : withPhoto.expected_price,
+        available_from: d.available_from ?? withPhoto.available_from,
       };
       setForm(next);
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      if (editingId === null) localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
       const filledAll = d.crop && d.quantity_kg != null && d.expected_price != null;
       setToast(
         d.confidence != null && d.confidence < 0.5
@@ -223,6 +238,12 @@ export default function FarmerPage() {
     } finally {
       setScanning(false);
     }
+  }
+
+  function removePhoto() {
+    const next = { ...form, photo_url: "" };
+    setForm(next);
+    if (editingId === null) localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
   }
 
   async function flushQueue() {
@@ -463,6 +484,29 @@ export default function FarmerPage() {
           </div>
         </div>
         <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("scanHint")}</p>
+
+        {form.photo_url && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={form.photo_url}
+              alt={t("photoAttached")}
+              className="h-16 w-16 shrink-0 rounded-lg object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-[var(--ink)]">{t("photoAttached")}</p>
+              <p className="text-xs text-[var(--ink-soft)]">{t("photoAttachedHint")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={removePhoto}
+              className="shrink-0 rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink-soft)] transition hover:bg-white"
+            >
+              {t("photoRemove")}
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {[
             { key: "crop" as keyof FormState, label: t("cropLabel"), type: "text", placeholder: t("cropPlaceholder"), required: true, min: undefined as string | undefined, step: undefined as string | undefined, disabled: editingId !== null },
@@ -470,7 +514,6 @@ export default function FarmerPage() {
             { key: "expected_price" as keyof FormState, label: t("priceLabel"), type: "number", required: true, min: "1", step: "any" },
             { key: "available_from" as keyof FormState, label: t("dateLabel"), type: "date", required: true, min: TODAY_ISO },
             { key: "location" as keyof FormState, label: t("locationLabel"), type: "text", required: true },
-            { key: "photo_url" as keyof FormState, label: t("photoUrlLabel"), type: "url", required: false },
           ].map((field) => (
             <label key={field.key} className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {field.label}
@@ -556,9 +599,18 @@ export default function FarmerPage() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
-                    <Icon name="leaf" size={20} />
-                  </div>
+                  {lot.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={lot.photo_url}
+                      alt=""
+                      className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
+                      <Icon name="leaf" size={20} />
+                    </div>
+                  )}
                   <div>
                     <span className="font-bold text-[var(--ink)]">{lot.crop}</span>
                     <div className="mt-0.5 text-xs text-[var(--ink-soft)]">

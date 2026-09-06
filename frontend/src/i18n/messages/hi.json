@@ -108,7 +108,6 @@
     "priceLabel": "अपेक्षित मूल्य (₹/क्विंटल)",
     "dateLabel": "उपलब्धता की तारीख",
     "locationLabel": "स्थान (जिला)",
-    "photoUrlLabel": "फ़ोटो URL (वैकल्पिक)",
     "submit": "लॉट बनाएं",
     "submitting": "बनाया जा रहा है...",
     "success": "लॉट सफलतापूर्वक बनाया गया",
@@ -126,6 +125,9 @@
     "scanFailed": "यह फोटो पढ़ी नहीं जा सकी। विवरण हाथ से भरें।",
     "scanHint": "मंडी पर्ची या अपने नोट की फोटो — हम फ़ॉर्म भर देते हैं, आप पुष्टि करें।",
     "scanLowConfidence": "फोटो पढ़ना मुश्किल था — हर फ़ील्ड दोबारा जांचें।",
+    "photoAttached": "फ़ोटो जोड़ी गई",
+    "photoAttachedHint": "खरीदार आपकी लॉट के साथ यह फ़ोटो देखेंगे।",
+    "photoRemove": "हटाएं",
     "statOpenLots": "खुले लॉट",
     "statAllTime": "कुल",
     "statListed": "सूचीबद्ध",
@@ -161,7 +163,14 @@
     "priceMinLabel": "न्यूनतम मूल्य (₹/क्विंटल)",
     "priceMaxLabel": "अधिकतम मूल्य (₹/क्विंटल)",
     "deliveryWindowLabel": "डिलीवरी विंडो",
-    "deliveryWindowPlaceholder": "जैसे 7 दिनों के भीतर",
+    "deliveryWindowChoose": "डिलीवरी विंडो चुनें…",
+    "deliveryPreset3d": "3 दिनों के भीतर",
+    "deliveryPreset1w": "1 सप्ताह के भीतर",
+    "deliveryPreset2w": "2 सप्ताह के भीतर",
+    "deliveryPreset1m": "1 महीने के भीतर",
+    "deliveryPresetFlexible": "लचीला / बातचीत योग्य",
+    "deliveryWindowCustomOption": "अन्य — खुद लिखें",
+    "deliveryWindowPlaceholder": "जैसे दिवाली के तुरंत बाद",
     "submit": "मांग पोस्ट करें",
     "submitting": "पोस्ट हो रही है...",
     "success": "मांग सफलतापूर्वक पोस्ट की गई",
@@ -847,7 +856,9 @@
     "noOwnBids": "आपने अभी तक कोई फॉरवर्ड बोली पोस्ट नहीं की।",
     "noOpenBids": "अभी आपके पास कोई खुली फॉरवर्ड बोली नहीं।",
     "actionError": "कुछ गड़बड़ हो गई। कृपया फिर से प्रयास करें।",
-    "confirmAccept": "यह प्रतिबद्धता स्वीकार करें? इससे एक बाध्यकारी सौदा बनेगा जिसे पूर्ववत नहीं किया जा सकता।"
+    "confirmAccept": "यह प्रतिबद्धता स्वीकार करें? इससे एक बाध्यकारी सौदा बनेगा जिसे पूर्ववत नहीं किया जा सकता।",
+    "settlementOverdue": "विलंबित — तय निपटान तिथि निकल चुकी है",
+    "settlementOnTrack": "निपटान समय पर है"
   },
   "profile": {
     "title": "प्रोफ़ाइल और सत्यापन",
@@ -938,7 +949,8 @@
     "needDemand": "Post an open demand for this crop first.",
     "needLot": "List an open lot of this crop first.",
     "error": "Something went wrong — try again.",
-    "gradeMin": "≥ {grade}"
+    "gradeMin": "≥ {grade}",
+    "hasPhoto": "फ़ोटो"
   },
   "logistics": {
     "title": "लॉजिस्टिक्स योजना",

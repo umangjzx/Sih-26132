@@ -121,11 +121,16 @@ class ForwardCommitmentOut(BaseModel):
     status: str
     deal_id: int | None
     created_at: datetime
+    settlement_due: date | None = None
     # enriched
     farmer_name: str = ""
     farmer_district: str = ""
     farmer_verified: bool = False
     calendar_warning: str | None = None
+    # "settled" once the linked deal reaches delivered/paid/closed, "overdue" if
+    # settlement_due has passed and it hasn't, "on_track" otherwise, None if this
+    # commitment was never accepted (no settlement clock started).
+    settlement_status: str | None = None
 
 
 class ForwardBidOut(BaseModel):

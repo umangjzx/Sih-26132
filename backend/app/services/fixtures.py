@@ -53,7 +53,7 @@ def _series(
 
 
 def generate_fixture_rows(days: int = 90, seed: int = 26132) -> list[dict]:
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - deterministic demo-data generation, not cryptographic
     rows: list[dict] = []
     for market, district in MARKETS:
         rows.extend(_series(rng, market, district, "Maharashtra", CROPS, days))
@@ -139,7 +139,7 @@ def generate_state_fixture_rows(state: str, days: int = 90) -> list[dict]:
     if spec is None:
         return []
     markets, crops = spec
-    rng = random.Random(hash(state) & 0xFFFFFFFF)
+    rng = random.Random(hash(state) & 0xFFFFFFFF)  # nosec B311 - deterministic demo-data generation, not cryptographic
     rows: list[dict] = []
     for market, district in markets:
         rows.extend(_series(rng, market, district, state, crops, days))

@@ -105,7 +105,7 @@ def create_pool(
         if geo:
             pool.latitude = geo["latitude"]
             pool.longitude = geo["longitude"]
-    except Exception:  # noqa: BLE001 — geocoding never blocks pool creation
+    except Exception:  # noqa: BLE001 — geocoding never blocks pool creation  # nosec B110
         pass
 
     db.add(pool)

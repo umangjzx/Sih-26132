@@ -1,0 +1,122 @@
+"use client";
+
+import { Icon } from "@/components/ui";
+import { EvidenceBadge, JudgeSection } from "./shared";
+
+const METRICS = [
+  { metric: "API average response time", value: "39–81ms median across 5 read endpoints (trend/forecast/signal/nearby/options), single request, real seeded Postgres data", kind: "verified" as const },
+  { metric: "API latency under load", value: "200 requests / 20 concurrent workers per endpoint: p50 40–190ms, p99 74–457ms (scripts/perf_bench.py, run 2026-09-04)", kind: "verified" as const },
+  { metric: "Frontend page load time", value: "Not benchmarked", kind: "pending" as const },
+  { metric: "Database query performance", value: "Not profiled with EXPLAIN ANALYZE, but one real bottleneck was found and fixed this run (see below)", kind: "verified" as const },
+  { metric: "Concurrent users tested", value: "20 concurrent workers, 200 requests/endpoint, local benchmark — not a production-scale load test", kind: "verified" as const },
+  { metric: "Error rate", value: "0 failures across 398 automated test runs (not the same as a production error rate)", kind: "verified" as const },
+  { metric: "Uptime", value: "Not applicable — no long-running production deployment with an SLA yet", kind: "pending" as const },
+  { metric: "Backend test-suite runtime", value: "355 tests in 31.7s (in-memory SQLite, this run)", kind: "verified" as const },
+  { metric: "Frontend test-suite runtime", value: "43 tests in ~7s (this run)", kind: "verified" as const },
+  { metric: "Frontend production build", value: "Compiles cleanly, 25 routes prerendered/server-rendered correctly (this run)", kind: "verified" as const },
+];
+
+const FOUND_AND_FIXED = {
+  before: {
+    label: "Before — every request re-scanned the table",
+    rows: [
+      ["p50 latency", "4,426ms"],
+      ["p99 latency", "7,499ms"],
+      ["Throughput", "4.5 req/s"],
+    ],
+  },
+  after: {
+    label: "After — 15-minute in-process cache",
+    rows: [
+      ["p50 latency", "359ms (20ms uncontended, single request)"],
+      ["p99 latency", "457ms"],
+      ["Throughput", "53.5 req/s"],
+    ],
+  },
+};
+
+const DESIGN_CHOICES = [
+  "6-hourly scheduled ingestion, not per-request — the app never blocks a user's request on a slow external price feed",
+  "Every price read hits Postgres, not a live external call — external APIs only feed the cache, they're never on the request's critical path for prices",
+  "A single Uvicorn worker was a deliberate, documented choice for this deployment size (it's also why the rate limiter is in-process, not Redis-backed) — not an oversight",
+  "Offline-fallback chains (snapshot → fixtures) mean a cold-start demo never waits on a live external API to respond",
+];
+
+export function PerformanceSection() {
+  return (
+    <JudgeSection
+      id="performance"
+      eyebrow="Honest numbers only"
+      title="Performance metrics"
+      quickAnswer="A real local benchmark (scripts/perf_bench.py) was run against the live app on real seeded data on 2026-09-04. It surfaced one genuine bottleneck — GET /api/options was re-scanning the full price table and re-sorting 20,900+ rows on every call — which was fixed with a 15-minute in-process cache and re-measured. What still isn't measured (frontend load time, a dedicated DB profiler, production uptime) is labeled as such below, not filled in with an invented number."
+    >
+      <div className="al-card-plain mb-6 flex items-start gap-2.5 !bg-[var(--amber-50)] !border-[var(--amber-200)] p-4">
+        <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-[var(--amber-700)]" />
+        <p className="text-sm leading-relaxed text-[var(--amber-700)]">
+          Per the page&apos;s own rule: estimated data is never presented as real production
+          data. Every row below is labeled Verified or Data not yet available — there is no
+          third, in-between category here. &quot;Verified&quot; here means measured on a local
+          benchmark against real seeded data, not a production deployment under real user load.
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {METRICS.map((m) => (
+          <div key={m.metric} className="al-card-plain flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-sm font-bold text-[var(--ink)]">{m.metric}</p>
+              <p className="mt-0.5 text-xs text-[var(--ink-soft)]">{m.value}</p>
+            </div>
+            <EvidenceBadge kind={m.kind} />
+          </div>
+        ))}
+      </div>
+
+      <h3 className="mt-8 font-heading text-base font-bold text-[var(--ink)]">
+        Found and fixed during this benchmark: GET /api/options
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">
+        The crop/market picker endpoint ran an unindexed <code>SELECT DISTINCT</code> across
+        the whole price table (20,901 distinct crop/market/district/state combinations in the
+        seeded dataset) and re-sorted all of them in Python on every single call — with no
+        caching. At 20 concurrent callers this measured {FOUND_AND_FIXED.before.rows[0][1]} median
+        latency and {FOUND_AND_FIXED.before.rows[2][1]} throughput. Fixed with a 15-minute
+        in-process TTL cache (same single-process design as the existing rate limiter — no new
+        infrastructure), invalidated on every ingestion run. Re-measured after the fix:{" "}
+        {FOUND_AND_FIXED.after.rows[0][1]} median, {FOUND_AND_FIXED.after.rows[2][1]} throughput —
+        a ~12x improvement. The endpoint still returns an unpaginated 20k+ row list, which is why
+        concurrent latency doesn&apos;t drop to single-digit milliseconds even from cache — that
+        remaining cost is JSON serialization, not the database.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {[FOUND_AND_FIXED.before, FOUND_AND_FIXED.after].map((col) => (
+          <div key={col.label} className="al-card-plain p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-[var(--ink-soft)]">
+              {col.label}
+            </p>
+            <dl className="mt-2 flex flex-col gap-1.5">
+              {col.rows.map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-2 text-sm">
+                  <dt className="text-[var(--ink-soft)]">{k}</dt>
+                  <dd className="font-bold text-[var(--ink)]">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="mt-8 font-heading text-base font-bold text-[var(--ink)]">
+        Architectural choices made for performance (verifiable in code, not measured yet)
+      </h3>
+      <ul className="mt-3 flex flex-col gap-2 text-sm leading-relaxed text-[var(--ink-soft)]">
+        {DESIGN_CHOICES.map((d) => (
+          <li key={d} className="al-card-plain flex items-start gap-2.5 p-3.5">
+            <Icon name="spark" size={14} className="mt-0.5 shrink-0 text-[var(--green-600)]" />
+            {d}
+          </li>
+        ))}
+      </ul>
+    </JudgeSection>
+  );
+}

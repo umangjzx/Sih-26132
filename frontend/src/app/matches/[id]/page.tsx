@@ -164,13 +164,23 @@ export default function MatchThreadPage() {
       {/* Match header */}
       <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h1 className="font-heading text-lg font-bold text-[var(--ink)]">{match.lot.crop}</h1>
-            <p className="text-sm font-medium text-[var(--ink-soft)]">
-              <span className="text-[var(--green-700)]">{match.lot.quantity_kg} kg</span> · ₹{match.lot.expected_price}/quintal
-            </p>
+          <div className="flex items-center gap-4">
+            {match.lot.photo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={match.lot.photo_url}
+                alt=""
+                className="h-16 w-16 shrink-0 rounded-xl object-cover"
+              />
+            )}
+            <div className="flex flex-col gap-1">
+              <h1 className="font-heading text-lg font-bold text-[var(--ink)]">{match.lot.crop}</h1>
+              <p className="text-sm font-medium text-[var(--ink-soft)]">
+                <span className="text-[var(--green-700)]">{match.lot.quantity_kg} kg</span> · ₹{match.lot.expected_price}/quintal
+              </p>
+            </div>
           </div>
-          
+
           <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest ${
             match.status === "accepted"
               ? "bg-[var(--green-100)] text-[var(--green-700)]"

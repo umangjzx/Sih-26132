@@ -36,6 +36,8 @@ const EMPTY_DEMAND: DemandCreate = {
   price_band_min: 0, price_band_max: 0, delivery_window: "", delivery_district: "",
 };
 
+const CUSTOM_WINDOW = "__custom__";
+
 function tierOf(m: MatchResponse): string {
   try {
     const d = m.score_detail ? (JSON.parse(m.score_detail) as { tier?: string }) : null;
@@ -87,6 +89,17 @@ export default function BuyerPage() {
 
   const [form, setForm] = useState<DemandCreate>(EMPTY_DEMAND);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [customWindow, setCustomWindow] = useState(false);
+
+  // Common delivery windows as a quick-select — avoids the "what do I even
+  // type here?" blank-page problem a free-text field has for a first-time buyer.
+  const DELIVERY_PRESETS = [
+    td("deliveryPreset3d"),
+    td("deliveryPreset1w"),
+    td("deliveryPreset2w"),
+    td("deliveryPreset1m"),
+    td("deliveryPresetFlexible"),
+  ];
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [matches, setMatches] = useState<MatchResponse[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -150,6 +163,7 @@ export default function BuyerPage() {
   function resetForm() {
     setEditingId(null);
     setForm(EMPTY_DEMAND);
+    setCustomWindow(false);
   }
 
   function startEdit(d: DemandResponse) {
@@ -164,7 +178,21 @@ export default function BuyerPage() {
       delivery_window: d.delivery_window,
       delivery_district: d.delivery_district ?? "",
     });
+    // An existing value that isn't one of the presets (older data, or typed
+    // freely last time) opens straight into the free-text box so it's never
+    // silently dropped.
+    setCustomWindow(!DELIVERY_PRESETS.includes(d.delivery_window));
     document.getElementById("create-demand")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function selectWindow(v: string) {
+    if (v === CUSTOM_WINDOW) {
+      setCustomWindow(true);
+      setForm((f) => ({ ...f, delivery_window: "" }));
+    } else {
+      setCustomWindow(false);
+      setForm((f) => ({ ...f, delivery_window: v }));
+    }
   }
 
   async function handleWithdraw(d: DemandResponse) {
@@ -348,14 +376,27 @@ export default function BuyerPage() {
 
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
             {td("deliveryWindowLabel")}
-            <input
-              type="text"
-              value={form.delivery_window}
-              onChange={(e) => setForm({ ...form, delivery_window: e.target.value })}
-              placeholder={td("deliveryWindowPlaceholder")}
-              required
-              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
-            />
+            <select
+              value={customWindow ? CUSTOM_WINDOW : form.delivery_window}
+              onChange={(e) => selectWindow(e.target.value)}
+              required={!customWindow}
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
+            >
+              <option value="" disabled>{td("deliveryWindowChoose")}</option>
+              {DELIVERY_PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+              <option value={CUSTOM_WINDOW}>{td("deliveryWindowCustomOption")}</option>
+            </select>
+            {customWindow && (
+              <input
+                type="text"
+                value={form.delivery_window}
+                onChange={(e) => setForm({ ...form, delivery_window: e.target.value })}
+                placeholder={td("deliveryWindowPlaceholder")}
+                required
+                autoFocus
+                className="mt-1.5 rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+              />
+            )}
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
@@ -499,9 +540,18 @@ export default function BuyerPage() {
                   className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 flex flex-col gap-3">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
-                        <Icon name="leaf" size={20} />
-                      </div>
+                      {match.lot.photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={match.lot.photo_url}
+                          alt=""
+                          className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
+                          <Icon name="leaf" size={20} />
+                        </div>
+                      )}
                       <div>
                         <span className="font-bold text-[var(--ink)]">{match.lot.crop}</span>
                         <div className="mt-0.5 text-xs text-[var(--ink-soft)]">

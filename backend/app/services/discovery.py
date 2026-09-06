@@ -102,6 +102,7 @@ def browse_lots(
             "farmer_name": farmer.name,
             "farmer_district": farmer.district,
             "farmer_verified": farmer.verification_status == "verified",
+            "has_photo": bool(lot.photo_url),
         })
     out.sort(key=lambda r: (r["distance_km"] is None, r["distance_km"] or 0.0))
     return out[:limit]

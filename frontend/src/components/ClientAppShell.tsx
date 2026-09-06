@@ -13,6 +13,7 @@
  *   Smooth CSS transition on padding-left (no JS layout thrash).
  */
 
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "./AuthProvider";
@@ -27,7 +28,7 @@ const COLLAPSE_KEY = "agrilink.sidebarCollapsed";
 function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-[var(--line)] bg-[var(--paper)]">
-      <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between gap-3 px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-1 text-xs text-[var(--ink-soft)]">
           <span className="font-semibold text-[var(--green-700)]">
             AgriLink · Smart India Hackathon 2026 · PS 26132 (Govt. of Maharashtra / MSInS)
@@ -37,6 +38,12 @@ function SiteFooter() {
             Roads: OSRM · Holidays: Nager.Date — all open / free sources.
           </span>
         </div>
+        <Link
+          href="/judges"
+          className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-[var(--green-700)] transition-colors hover:bg-[var(--green-100)]"
+        >
+          For hackathon judges →
+        </Link>
       </div>
     </footer>
   );

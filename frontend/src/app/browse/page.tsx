@@ -171,6 +171,11 @@ export default function BrowsePage() {
                         <span className="rounded-md bg-[var(--paper)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--ink-soft)]">
                           {t("grade")} {l.quality_grade}
                         </span>
+                        {l.has_photo && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-[var(--green-50)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--green-700)]">
+                            <Icon name="camera" size={11} /> {t("hasPhoto")}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-1 text-sm font-medium text-[var(--ink-soft)]">
                         {Math.round(l.quantity_kg)} kg · ₹{Math.round(l.expected_price)}/qtl · {t("from")} {l.available_from}

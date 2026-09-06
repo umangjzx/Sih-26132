@@ -7,8 +7,8 @@ password. Both return a JWT access + refresh pair.
 
 import logging
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -60,7 +60,7 @@ def _tokens_for(user: User) -> AuthResponse:
     return AuthResponse(
         access_token=create_access_token(str(user.id), {"role": user.role}),
         refresh_token=create_refresh_token(str(user.id)),
-        token_type="bearer",
+        token_type="bearer",  # nosec B106 - OAuth2 token-type constant, not a credential
         user=UserResponse.model_validate(user),
     )
 
@@ -169,7 +169,7 @@ def refresh_tokens(
 
     try:
         payload = decode_token(body.refresh_token)
-    except JWTError:
+    except jwt.PyJWTError:
         raise _401
 
     if payload.get("type") != "refresh":

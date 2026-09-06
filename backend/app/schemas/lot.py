@@ -1,5 +1,6 @@
 """Pydantic v2 schemas for the lot endpoints."""
 
+import re
 from datetime import date, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -9,6 +10,13 @@ from app.services.grading import GRADE_CODES, normalize_grade
 _MAX_QTY_KG = 10_000_000
 _MAX_PRICE = 5_000_000
 
+# A farmer-captured photo (v1.9) is stored as a base64 data URL directly on the
+# row (no object storage yet) — capped well under Postgres's row-size comfort
+# zone. ~2M chars of base64 is ~1.5 MB of raw image, generous for a phone photo
+# the frontend has already downscaled before upload.
+_MAX_PHOTO_B64_LEN = 2_000_000
+_PHOTO_DATA_URL_RE = re.compile(r"^data:image/(jpeg|png|webp);base64,")
+
 
 def _valid_photo_url(v: str | None) -> str | None:
     if v is None:
@@ -16,9 +24,15 @@ def _valid_photo_url(v: str | None) -> str | None:
     v = v.strip()
     if not v:
         return None
+    if v.startswith("data:"):
+        if not _PHOTO_DATA_URL_RE.match(v):
+            raise ValueError("Unsupported photo format — use JPEG, PNG, or WebP")
+        if len(v) > _MAX_PHOTO_B64_LEN:
+            raise ValueError("Photo is too large — please retake it")
+        return v
     if len(v) > 500:
         raise ValueError("photo_url is too long")
-    # http(s) or a same-origin relative path only — no javascript:/data:/file:
+    # http(s) or a same-origin relative path only — no javascript:/file:
     if not (v.startswith("https://") or v.startswith("http://") or v.startswith("/")):
         raise ValueError("photo_url must be an http(s) URL or a relative path")
     return v
@@ -171,6 +185,10 @@ class BrowseLotOut(BaseModel):
     farmer_name: str
     farmer_district: str
     farmer_verified: bool = False
+    # A cheap flag, not the photo itself — a browse list can return up to 200
+    # rows and a data-URL photo can be ~1.5 MB; the actual photo is fetched
+    # per-lot (GET /api/lots/{id}) once a buyer is looking at one listing.
+    has_photo: bool = False
 
 
 class ExpressInterestResult(BaseModel):

@@ -107,6 +107,9 @@ def _calendar_warning(crop: str, ready: date, bid: ForwardBid) -> str | None:
     return entry
 
 
+_SETTLED_STAGES = {"delivered", "paid", "closed"}
+
+
 def _enrich_commitment(db: Session, c: ForwardCommitment, bid: ForwardBid) -> ForwardCommitmentOut:
     out = ForwardCommitmentOut.model_validate(c)
     farmer = db.get(User, c.farmer_id)
@@ -115,6 +118,15 @@ def _enrich_commitment(db: Session, c: ForwardCommitment, bid: ForwardBid) -> Fo
         out.farmer_district = farmer.district or ""
         out.farmer_verified = getattr(farmer, "verification_status", "") == "verified"
     out.calendar_warning = _calendar_warning(bid.crop, c.expected_ready, bid)
+
+    if c.deal_id is not None and c.settlement_due is not None:
+        deal = db.get(Deal, c.deal_id)
+        if deal is not None and deal.pipeline_status in _SETTLED_STAGES:
+            out.settlement_status = "settled"
+        elif date.today() > c.settlement_due:
+            out.settlement_status = "overdue"
+        else:
+            out.settlement_status = "on_track"
     return out
 
 
@@ -468,6 +480,10 @@ def accept_commitment(
 
     c.status = "accepted"
     c.deal_id = deal.id
+    # the settlement clock starts now: due by whichever the farmer/buyer agreed
+    # to later — the farmer's own expected-ready date, or the buyer's delivery
+    # window close, whichever gives more room (see check_settlement_risk).
+    c.settlement_due = max(c.expected_ready, bid.delivery_to)
     db.flush()
     _committed, accepted = _fill(db, bid.id)
     filled_now = accepted >= bid.quantity_kg - 1e-6

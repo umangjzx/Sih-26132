@@ -108,7 +108,6 @@
     "priceLabel": "Expected Price (₹/quintal)",
     "dateLabel": "Available From",
     "locationLabel": "Location (district)",
-    "photoUrlLabel": "Photo URL (optional)",
     "submit": "Create Lot",
     "submitting": "Creating...",
     "success": "Lot created successfully",
@@ -126,6 +125,9 @@
     "scanFailed": "Couldn't read that photo. Enter the details by hand.",
     "scanHint": "Photo of a mandi slip or your own note — we pre-fill the form, you confirm.",
     "scanLowConfidence": "The photo was hard to read — double-check each field.",
+    "photoAttached": "Photo attached",
+    "photoAttachedHint": "Buyers will see this photo with your lot.",
+    "photoRemove": "Remove",
     "statOpenLots": "Open lots",
     "statAllTime": "all-time",
     "statListed": "Listed",
@@ -161,7 +163,14 @@
     "priceMinLabel": "Min Price (₹/quintal)",
     "priceMaxLabel": "Max Price (₹/quintal)",
     "deliveryWindowLabel": "Delivery Window",
-    "deliveryWindowPlaceholder": "e.g. Within 7 days",
+    "deliveryWindowChoose": "Choose a delivery window…",
+    "deliveryPreset3d": "Within 3 days",
+    "deliveryPreset1w": "Within 1 week",
+    "deliveryPreset2w": "Within 2 weeks",
+    "deliveryPreset1m": "Within 1 month",
+    "deliveryPresetFlexible": "Flexible / negotiable",
+    "deliveryWindowCustomOption": "Other — type my own",
+    "deliveryWindowPlaceholder": "e.g. Right after Diwali",
     "submit": "Post Demand",
     "submitting": "Posting...",
     "success": "Demand posted successfully",
@@ -847,7 +856,9 @@
     "noOwnBids": "You have not posted any forward bids yet.",
     "noOpenBids": "No open forward bids near you right now.",
     "actionError": "Something went wrong. Please try again.",
-    "confirmAccept": "Accept this commitment? It creates a binding deal and can't be undone."
+    "confirmAccept": "Accept this commitment? It creates a binding deal and can't be undone.",
+    "settlementOverdue": "Overdue — past the agreed settlement date",
+    "settlementOnTrack": "On track for settlement"
   },
   "profile": {
     "title": "Profile & verification",
@@ -938,7 +949,8 @@
     "needDemand": "Post an open demand for this crop first.",
     "needLot": "List an open lot of this crop first.",
     "error": "Something went wrong — try again.",
-    "gradeMin": "≥ {grade}"
+    "gradeMin": "≥ {grade}",
+    "hasPhoto": "Photo"
   },
   "logistics": {
     "title": "Logistics plan",

@@ -14,6 +14,7 @@ class LotSummary(BaseModel):
     expected_price: float
     location: str
     status: str
+    photo_url: str | None = None
 
 
 class DemandSummary(BaseModel):

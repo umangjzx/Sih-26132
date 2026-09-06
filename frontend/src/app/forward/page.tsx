@@ -12,7 +12,7 @@ import { useTranslations } from "next-intl";
 
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, Icon, Skeleton } from "@/components/ui";
+import { Badge, Card, Icon, Skeleton } from "@/components/ui";
 import { useLocation } from "@/lib/useLocation";
 import {
   ApiError,
@@ -254,6 +254,11 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
             <div key={c.id} className="flex items-center justify-between rounded-lg bg-[var(--paper)] px-3 py-2 text-xs">
               <span>{c.farmer_name} · {(c.quantity_kg / 100).toFixed(0)} qtl @ ₹{c.price_per_qtl}</span>
               <span className="flex items-center gap-2">
+                {c.settlement_status === "overdue" && (
+                  <Badge tone="red">
+                    <Icon name="alert" size={10} className="mr-1 inline" /> {t("settlementOverdue")}
+                  </Badge>
+                )}
                 <StatusChip status={c.status} />
                 {c.deal_id && <a href={`/deals/${c.deal_id}`} className="font-bold text-[var(--green-700)] hover:underline">{t("viewDeal")}</a>}
               </span>
@@ -341,7 +346,10 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
             <span className="font-semibold">
               {t("yourCommitment")}: {(mine.quantity_kg / 100).toFixed(0)} qtl @ ₹{mine.price_per_qtl}
             </span>
-            <StatusChip status={mine.status} />
+            <span className="flex items-center gap-2">
+              {mine.settlement_status === "overdue" && <Badge tone="red">{t("settlementOverdue")}</Badge>}
+              <StatusChip status={mine.status} />
+            </span>
           </div>
           {mine.calendar_warning && (
             <p className="mt-1 flex items-start gap-1 text-xs text-[var(--amber-800)]">

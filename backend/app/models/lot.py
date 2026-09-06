@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, String
+from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -16,7 +16,9 @@ class Lot(Base):
     crop: Mapped[str] = mapped_column(String(120))
     quantity_kg: Mapped[float] = mapped_column(Float)
     quality_grade: Mapped[str] = mapped_column(String(50))
-    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # A short http(s) URL, or a `data:image/...;base64,...` photo (v1.9) — Text
+    # because a base64-encoded photo is far larger than any URL.
+    photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     expected_price: Mapped[float] = mapped_column(Float)
     available_from: Mapped[date] = mapped_column(Date)
     location: Mapped[str] = mapped_column(String(120))

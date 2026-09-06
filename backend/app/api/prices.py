@@ -1,4 +1,6 @@
 import secrets
+import threading
+import time
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -28,14 +30,36 @@ from app.services.signal import compute_signal
 router = APIRouter(prefix="/api", tags=["prices"])
 
 
-@router.get("/options", response_model=list[CropMarketOption])
-def list_options(
-    state: str | None = None,
-    lat: float | None = None,
-    lon: float | None = None,
-    radius_km: float | None = Query(None, gt=0, le=3000),
-    db: Session = Depends(get_db),
-) -> list[CropMarketOption]:
+# In-process cache for the distinct crop/market list behind GET /api/options.
+# The underlying PriceCache table only changes on a 6-hourly ingestion tick, but
+# the DISTINCT-over-4-columns query it powers scans the whole table on every
+# call — measured at ~4.4s p50 against the full seeded dataset (20k+ combos),
+# vs 50-90ms for the app's other endpoints (see scripts/perf_bench.py). A short
+# TTL cache, keyed by the `state` filter, avoids re-scanning on every request
+# without adding infrastructure — consistent with the existing in-process
+# rate limiter (app/core/ratelimit.py), which makes the same single-worker
+# trade-off. Invalidated eagerly at the end of a successful ingestion run.
+_OPTIONS_TTL_S = 900.0
+_options_lock = threading.Lock()
+_options_cache: dict[str | None, tuple[float, list[CropMarketOption]]] = {}
+
+
+_sorted_options_cache: dict[str | None, tuple[float, list[CropMarketOption]]] = {}
+
+
+def invalidate_options_cache() -> None:
+    with _options_lock:
+        _options_cache.clear()
+        _sorted_options_cache.clear()
+
+
+def _cached_base_options(db: Session, state: str | None) -> list[CropMarketOption]:
+    now = time.monotonic()
+    with _options_lock:
+        hit = _options_cache.get(state)
+        if hit is not None and now - hit[0] < _OPTIONS_TTL_S:
+            return hit[1]
+
     stmt = select(
         PriceCache.crop, PriceCache.market, PriceCache.district, PriceCache.state
     ).distinct()
@@ -46,6 +70,22 @@ def list_options(
         CropMarketOption(crop=r.crop, market=r.market, district=r.district, state=r.state or "")
         for r in rows
     ]
+
+    with _options_lock:
+        _options_cache[state] = (now, opts)
+    return opts
+
+
+@router.get("/options", response_model=list[CropMarketOption])
+def list_options(
+    state: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    radius_km: float | None = Query(None, gt=0, le=3000),
+    db: Session = Depends(get_db),
+) -> list[CropMarketOption]:
+    # copy: downstream code mutates via list.sort()/filtering, cache entry must not
+    opts = list(_cached_base_options(db, state))
 
     # When the caller shares a location, order markets nearest-first (and crops
     # by how close their nearest market is) so a big state's picker is usable.
@@ -91,13 +131,25 @@ def list_options(
             o.market,
         ))
     else:
-        # No location: same idea, ordered purely by staple then reach.
+        # No location: the sort has no per-request input (no lat/lon/radius), so
+        # its output is identical for every caller sharing this `state` filter
+        # until the base data changes — cache it too, same TTL/invalidation as
+        # the base query. Sorting is CPU-bound (a Python key fn over 20k+ rows),
+        # so this also avoids GIL contention piling up under concurrent requests.
+        now = time.monotonic()
+        with _options_lock:
+            hit = _sorted_options_cache.get(state)
+            if hit is not None and now - hit[0] < _OPTIONS_TTL_S:
+                return list(hit[1])
+
         markets_per_crop = {}
         for o in opts:
             markets_per_crop[o.crop] = markets_per_crop.get(o.crop, 0) + 1
         opts.sort(
             key=lambda o: (_staple_rank(o.crop), -markets_per_crop[o.crop], o.crop, o.market)
         )
+        with _options_lock:
+            _sorted_options_cache[state] = (now, opts)
     return opts
 
 
@@ -139,7 +191,7 @@ def _fetch_series(db: Session, crop: str, market: str, days: int) -> list[PriceC
         try:
             if ingestion.backfill_series(db, crop, market):
                 rows = _query()
-        except Exception:  # noqa: BLE001 - backfill is best-effort
+        except Exception:  # noqa: BLE001 - backfill is best-effort  # nosec B110
             pass
     return rows
 

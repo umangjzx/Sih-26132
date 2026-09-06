@@ -10,6 +10,8 @@ from app.core.security import get_current_user
 from app.main import app
 from app.models.deal import Deal
 from app.models.forward import ForwardBid, ForwardCommitment
+from app.models.notification import Notification
+from app.services.forward_settlement import check_settlement_risk
 
 
 def _client(db):
@@ -282,5 +284,93 @@ def test_commit_over_bid_quantity_blocked(db, farmer_user, buyer_user):
             "quantity_kg": 200, "price_per_qtl": 7200, "expected_ready": _FROM,
         })
         assert r.status_code == 409  # bid is filled
+    finally:
+        app.dependency_overrides.clear()
+
+
+# --------------------------------------------------------------------------- #
+# v1.8 settlement tracking
+# --------------------------------------------------------------------------- #
+
+def _accept_commitment(c, farmer_user, buyer_user, bid, **over):
+    _as(farmer_user)
+    body = {
+        "quantity_kg": 1000, "price_per_qtl": 7200,
+        "expected_ready": (date.today() + timedelta(days=55)).isoformat(),
+    }
+    body.update(over)
+    cm = c.post(f"/api/forward/bids/{bid['id']}/commitments", json=body).json()
+    _as(buyer_user)
+    r = c.post(f"/api/forward/commitments/{cm['id']}/accept")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_settlement_due_set_on_accept_and_status_on_track(db, farmer_user, buyer_user):
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user, quantity_kg=1000, delivery_to=_TO)
+        ready = (date.today() + timedelta(days=55)).isoformat()
+        result = _accept_commitment(c, farmer_user, buyer_user, bid, expected_ready=ready)
+
+        cm = db.get(ForwardCommitment, result["commitment_id"])
+        assert cm.settlement_due == max(date.fromisoformat(ready), date.fromisoformat(_TO))
+
+        _as(buyer_user)
+        detail = c.get(f"/api/forward/bids/{bid['id']}").json()
+        mine = detail["commitments"][0]
+        assert mine["settlement_status"] == "on_track"
+        assert mine["settlement_due"] == cm.settlement_due.isoformat()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_check_settlement_risk_flags_overdue_and_notifies_both_parties(db, farmer_user, buyer_user):
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user, quantity_kg=1000)
+        result = _accept_commitment(c, farmer_user, buyer_user, bid)
+
+        cm = db.get(ForwardCommitment, result["commitment_id"])
+        cm.settlement_due = date.today() - timedelta(days=10)
+        db.commit()
+
+        created = check_settlement_risk(db)
+        assert created == 2
+
+        notes = db.execute(
+            select(Notification).where(Notification.kind == "deal")
+        ).scalars().all()
+        recipients = {n.user_id for n in notes}
+        assert recipients == {farmer_user.id, buyer_user.id}
+        assert all(f"/deals/{result['deal_id']}" == n.link for n in notes)
+
+        # debounced: calling again immediately creates nothing new
+        assert check_settlement_risk(db) == 0
+
+        _as(buyer_user)
+        detail = c.get(f"/api/forward/bids/{bid['id']}").json()
+        assert detail["commitments"][0]["settlement_status"] == "overdue"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_check_settlement_risk_ignores_delivered_deals(db, farmer_user, buyer_user):
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user, quantity_kg=1000)
+        result = _accept_commitment(c, farmer_user, buyer_user, bid)
+
+        cm = db.get(ForwardCommitment, result["commitment_id"])
+        cm.settlement_due = date.today() - timedelta(days=10)
+        deal = db.get(Deal, result["deal_id"])
+        deal.pipeline_status = "delivered"
+        db.commit()
+
+        assert check_settlement_risk(db) == 0
+
+        _as(buyer_user)
+        detail = c.get(f"/api/forward/bids/{bid['id']}").json()
+        assert detail["commitments"][0]["settlement_status"] == "settled"
     finally:
         app.dependency_overrides.clear()

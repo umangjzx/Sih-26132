@@ -36,6 +36,46 @@ def _tokens(text: str) -> list[str]:
     return [w for w in _TOKEN_RE.findall(text.lower()) if w not in _STOP and len(w) > 1]
 
 
+# A farmer asking in their own words often shares no vocabulary with the
+# corpus at all ("combining my harvest with other farmers" vs the FPO doc's
+# "aggregates", "pooled produce", "bulk") — pure keyword/fuzzy overlap misses
+# that even though it's the obviously-relevant answer. This is a small,
+# hand-curated expansion of query terms to the corpus vocabulary they mean,
+# applied only to the query side (the corpus itself is untouched) and at a
+# discount versus a literal match, so it adds recall for real paraphrases
+# without letting a loosely-related synonym outrank an exact keyword hit.
+_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "combine": ("pool", "aggregate", "bulk", "fpo"),
+    "combining": ("pool", "aggregate", "bulk", "fpo"),
+    "join": ("pool", "aggregate", "fpo"),
+    "together": ("pool", "aggregate", "bulk"),
+    "group": ("pool", "aggregate", "fpo"),
+    "collective": ("pool", "aggregate", "fpo"),
+    "borrow": ("loan", "finance", "pledge"),
+    "borrowing": ("loan", "finance", "pledge"),
+    "middleman": ("arhtiya", "agent", "commission"),
+    "broker": ("arhtiya", "agent", "commission"),
+    "cash": ("payment", "paid"),
+    "damage": ("loss", "insurance"),
+    "protection": ("insurance", "pmfby"),
+    "pension": ("support", "instalment", "kisan"),
+    "company": ("processor", "exporter", "buyer"),
+}
+_SYNONYM_WEIGHT = 0.5
+
+
+def _expand_query(q_tokens: list[str]) -> dict[str, float]:
+    """Query token -> weight multiplier. Literal tokens get 1.0; a synonym
+    contributed only via _SYNONYMS (and not already a literal query token)
+    gets the discounted weight, and the highest weight wins if both apply."""
+    weights: dict[str, float] = {qt: 1.0 for qt in q_tokens}
+    for qt in q_tokens:
+        for syn in _SYNONYMS.get(qt, ()):
+            if weights.get(syn, 0.0) < _SYNONYM_WEIGHT:
+                weights[syn] = _SYNONYM_WEIGHT
+    return weights
+
+
 @dataclass
 class Doc:
     id: str
@@ -379,11 +419,12 @@ def search(query: str, k: int = 4, min_score: float = 3.0) -> list[Hit]:
     if not q_tokens:
         return []
     idf = _idf()
+    q_weights = _expand_query(q_tokens)
     hits: list[Hit] = []
     for d in _corpus():
         score = 0.0
-        for qt in set(q_tokens):
-            w = idf.get(qt, 1.0)
+        for qt, qw in q_weights.items():
+            w = idf.get(qt, 1.0) * qw
             if qt in d._tf:
                 score += w * (1.0 + 0.3 * min(d._tf[qt], 4))
             else:

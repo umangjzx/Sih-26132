@@ -25,6 +25,7 @@ def _lot_summary(lot: Lot) -> LotSummary:
         expected_price=lot.expected_price,
         location=lot.location,
         status=lot.status,
+        photo_url=lot.photo_url,
     )
 
 

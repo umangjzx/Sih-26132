@@ -163,6 +163,7 @@ export type LotSummary = {
   expected_price: number;
   location: string;
   status: string;
+  photo_url?: string | null;
 };
 
 export type DemandSummary = {
@@ -566,6 +567,7 @@ export type BrowseLot = {
   farmer_name: string;
   farmer_district: string;
   farmer_verified: boolean;
+  has_photo: boolean;
 };
 
 export type BrowseDemand = {
@@ -885,10 +887,12 @@ export type ForwardCommitment = {
   status: "pending" | "accepted" | "declined" | "withdrawn";
   deal_id: number | null;
   created_at: string;
+  settlement_due: string | null;
   farmer_name: string;
   farmer_district: string;
   farmer_verified: boolean;
   calendar_warning: string | null;
+  settlement_status: "on_track" | "overdue" | "settled" | null;
 };
 export type ForwardBid = {
   id: number;

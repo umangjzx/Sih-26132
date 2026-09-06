@@ -15,9 +15,9 @@ import secrets
 from datetime import datetime, timezone
 from typing import Annotated
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -131,7 +131,7 @@ def create_refresh_token(subject: str) -> str:
 # ---------------------------------------------------------------------------
 
 def decode_token(token: str) -> dict:
-    """Decode and validate a JWT.  Raises ``jose.JWTError`` on any failure."""
+    """Decode and validate a JWT.  Raises ``jwt.PyJWTError`` on any failure."""
     return jwt.decode(
         token,
         _signing_secret(),
@@ -162,7 +162,7 @@ def get_current_user(
 
     try:
         payload = decode_token(credentials.credentials)
-    except JWTError:
+    except jwt.PyJWTError:
         raise _401
 
     if payload.get("type") != "access":
