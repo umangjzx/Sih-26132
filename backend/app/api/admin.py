@@ -513,7 +513,11 @@ def admin_verify_user(
 
     prev = user.verification_status
     user.verification_status = body.status
-    user.verification_note = body.note
+    # The applicant's own note (submitted with their verification request) must
+    # survive an admin decision that doesn't supply one — only overwrite it when
+    # the admin actually gave a note (e.g. a rejection reason).
+    if body.note is not None:
+        user.verification_note = body.note
     # keep the legacy badge field in sync
     user.kyc_status = "verified" if body.status == "verified" else "unverified"
     if body.status == "verified":

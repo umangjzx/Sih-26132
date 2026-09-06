@@ -76,7 +76,10 @@ export default function HistoryPage() {
 
       {data && (
         <div className="flex flex-col gap-4">
-          {/* Lots */}
+          {/* Lots — farmers only; a buyer can never have one, so showing this
+              as a permanent "No lots yet" empty state reads as a missing
+              feature rather than "not applicable to your role". */}
+          {user?.role === "farmer" && (
           <details className="group rounded-2xl border border-[var(--line)] bg-white shadow-sm transition-all" open>
             <summary className="flex cursor-pointer list-none items-center justify-between p-5 font-heading text-base font-bold text-[var(--ink)]">
               <div className="flex items-center gap-3">
@@ -117,8 +120,10 @@ export default function HistoryPage() {
               )}
             </div>
           </details>
+          )}
 
-          {/* Demands */}
+          {/* Demands — buyers only; same reasoning as Lots above. */}
+          {user?.role === "buyer" && (
           <details className="group rounded-2xl border border-[var(--line)] bg-white shadow-sm transition-all" open>
             <summary className="flex cursor-pointer list-none items-center justify-between p-5 font-heading text-base font-bold text-[var(--ink)]">
               <div className="flex items-center gap-3">
@@ -158,6 +163,7 @@ export default function HistoryPage() {
               )}
             </div>
           </details>
+          )}
 
           {/* Deals */}
           <details className="group rounded-2xl border border-[var(--line)] bg-white shadow-sm transition-all" open>

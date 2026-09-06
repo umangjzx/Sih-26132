@@ -197,16 +197,41 @@ def test_pool_accept_demand_creates_a_deal(farmer_client, db):
     assert body["agreed_quantity_kg"] == 2000
     assert body["agreed_price"] == 2450  # weighted == effective here
 
-    # pool + demand are now matched, the deal exists
+    # pool is matched, the deal exists — but the pool (2000 kg) only covers part
+    # of the demand (5000 kg), so the demand stays open with the remainder, not
+    # silently closed with 3000 kg of the buyer's need lost.
     db.expire_all()
     pool = db.get(Pool, pid)
     assert pool.status == "matched" and pool.matched_deal_id == body["deal_id"]
-    assert db.get(Demand, dem.id).status == "matched"
+    dem_after = db.get(Demand, dem.id)
+    assert dem_after.status == "open" and dem_after.quantity_kg == 3000
     deal = db.get(Deal, body["deal_id"])
     assert deal.agreed_quantity == 2000 and deal.pipeline_status == "matched"
 
     # members can no longer withdraw
     assert farmer_client.post(f"/api/pools/{pid}/withdraw").status_code == 409
+
+
+def test_pool_accept_demand_full_coverage_closes_demand(farmer_client, db):
+    """When the pool covers the demand's *entire* remaining quantity, the demand
+    is fully closed (contrast with the partial case above)."""
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 5000,
+        "floor_price": 2000, "grade": "B", "location": "Pune",
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join", json={"quantity_kg": 2000, "expected_price": 2200})
+
+    buyer = User(role="buyer", name="ExactCo", phone="+91bulkexact", district="Pune", taluka="")
+    db.add(buyer); db.commit()
+    dem = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=2000, quality_spec="",
+                 price_band_min=2000, price_band_max=2600, delivery_window="", status="open")
+    db.add(dem); db.commit()
+
+    r = farmer_client.post(f"/api/pools/{pid}/accept-demand", json={"demand_id": dem.id})
+    assert r.status_code == 201, r.text
+    db.expire_all()
+    dem_after = db.get(Demand, dem.id)
+    assert dem_after.status == "matched" and dem_after.quantity_kg == 2000
 
 
 def test_pool_cannot_be_manually_moved_to_matched(farmer_client):

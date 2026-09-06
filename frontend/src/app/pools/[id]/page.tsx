@@ -173,6 +173,9 @@ export default function PoolDetailPage() {
 
   async function acceptDemand(demandId: number) {
     if (!token) return;
+    // Irreversible: locks the pool to 'matched' and members can no longer
+    // withdraw (see backend/app/api/pools.py accept_demand_for_pool docstring).
+    if (!window.confirm(t("confirmAcceptDemand"))) return;
     setBusy(true);
     try {
       const r = await acceptDemandForPool(poolId, { demand_id: demandId }, token);
@@ -200,6 +203,11 @@ export default function PoolDetailPage() {
   const agg = pool.aggregate;
   const isMember = pool.my_membership?.status === "committed";
   const canJoin = pool.status === "open";
+  // Matches the backend's own withdraw_from_pool guard (open/locked only,
+  // blocked once matched/closed) — a member changing their mind while the
+  // organizer has the pool locked for negotiation previously had no way to
+  // withdraw in the UI even though the API already allowed it.
+  const canWithdraw = isMember && (pool.status === "open" || pool.status === "locked");
 
   return (
     <div className="flex flex-col gap-6">
@@ -300,7 +308,7 @@ export default function PoolDetailPage() {
                   className="flex-1 rounded-xl bg-[var(--green-700)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
                   {isMember ? t("updateCommitment") : t("join")}
                 </button>
-                {isMember && (
+                {canWithdraw && (
                   <button type="button" disabled={busy} onClick={doWithdraw}
                     className="rounded-xl border border-[var(--line)] px-4 py-2.5 text-sm font-bold text-[var(--ink-soft)] disabled:opacity-60">
                     {t("withdraw")}
@@ -309,7 +317,15 @@ export default function PoolDetailPage() {
               </div>
             </form>
           ) : (
-            <p className="text-sm text-[var(--ink-soft)]">{t(`status_${pool.status}` as "status_open")}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-[var(--ink-soft)]">{t(`status_${pool.status}` as "status_open")}</p>
+              {canWithdraw && (
+                <button type="button" disabled={busy} onClick={doWithdraw}
+                  className="rounded-xl border border-[var(--line)] px-4 py-2.5 text-sm font-bold text-[var(--ink-soft)] disabled:opacity-60">
+                  {t("withdraw")}
+                </button>
+              )}
+            </div>
           )}
         </section>
       )}

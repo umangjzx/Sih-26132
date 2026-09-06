@@ -1208,12 +1208,27 @@ export function getAdminEvents(token: string, limit = 60): Promise<AdminEvent[]>
   return getJson(`/api/admin/events?limit=${limit}`, token);
 }
 
-/** Fetch the ledger CSV with auth and trigger a download. */
+/** Fetch the ledger CSV with auth and trigger a download.
+ *
+ * Uses a raw `fetch` (not the shared `request()` helper, which always parses
+ * the body as JSON) but mirrors its single-refresh-and-retry-on-401 behaviour
+ * — a long-open admin session (very plausible mid-demo) would otherwise hit
+ * this after its access token expired and fail with no visible error. */
 export async function downloadAdminEventsCsv(token: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/admin/events.csv`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  async function attempt(bearer: string, retried: boolean): Promise<Response> {
+    const res = await fetch(`${API_URL}/api/admin/events.csv`, {
+      headers: { Authorization: `Bearer ${bearer}` },
+    });
+    if (res.status === 401 && !retried && typeof window !== "undefined" && getRefreshToken()) {
+      const fresh = await refreshAccessToken();
+      if (fresh) return attempt(fresh, true);
+    }
+    return res;
+  }
+
+  const stored = typeof window !== "undefined" ? getToken() : null;
+  const res = await attempt(stored || token, false);
+  if (!res.ok) throw new ApiError(res.status, await readError(res));
   const url = URL.createObjectURL(await res.blob());
   const a = document.createElement("a");
   a.href = url;

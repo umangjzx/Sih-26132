@@ -282,6 +282,10 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
   const [err, setErr] = useState<string | null>(null);
 
   const mine = bid.my_commitment;
+  // `mine` is the farmer's *most recent* commitment regardless of status — once
+  // withdrawn or declined it used to permanently block re-committing to a still
+  // -open bid (only "pending"/"accepted" actually stand in the way).
+  const mineActive = mine && (mine.status === "pending" || mine.status === "accepted");
   const input = "rounded-xl border border-[var(--line)] px-3 py-2 text-sm focus:border-[var(--green-600)] focus:outline-none";
 
   async function commit(e: React.FormEvent) {
@@ -340,7 +344,7 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
         {pctBar(bid.fill_pct)}
       </div>
 
-      {mine ? (
+      {mineActive ? (
         <div className="mt-3 rounded-xl bg-[var(--green-50)] p-3 text-sm">
           <div className="flex items-center justify-between">
             <span className="font-semibold">
@@ -379,14 +383,22 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
             </a>
           )}
         </div>
-      ) : bid.status === "open" && !open ? (
-        <button
-          onClick={() => { setOpen(true); setF((s) => ({ ...s, price_per_qtl: String(Math.round((bid.price_min + bid.price_max) / 2)) })); }}
-          className="mt-3 w-full rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--green-900)]"
-        >
-          {t("commit")}
-        </button>
-      ) : open ? (
+      ) : (
+        <>
+          {mine && (
+            <p className="mt-2 flex items-center gap-2 text-xs text-[var(--ink-soft)]">
+              {t("previousCommitment")}: {(mine.quantity_kg / 100).toFixed(0)} qtl @ ₹{mine.price_per_qtl}
+              <StatusChip status={mine.status} />
+            </p>
+          )}
+          {bid.status === "open" && !open ? (
+            <button
+              onClick={() => { setOpen(true); setF((s) => ({ ...s, price_per_qtl: String(Math.round((bid.price_min + bid.price_max) / 2)) })); }}
+              className="mt-3 w-full rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--green-900)]"
+            >
+              {t("commit")}
+            </button>
+          ) : open ? (
         <form onSubmit={commit} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-semibold">
             {t("quantityKg")}
@@ -414,7 +426,9 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
             </button>
           </div>
         </form>
-      ) : null}
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }

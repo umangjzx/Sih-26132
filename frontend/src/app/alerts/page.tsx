@@ -255,7 +255,9 @@ export default function AlertsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => token && runAlertAction(deleteAlert(al.id, token))}
+                    onClick={() => {
+                      if (token && window.confirm(t("confirmDelete"))) runAlertAction(deleteAlert(al.id, token));
+                    }}
                     className="rounded-xl border border-[var(--red-500)]/30 bg-[var(--red-100)] px-3 py-1.5 text-xs font-semibold text-[var(--red-700)] hover:bg-[var(--red-100)] transition-colors"
                   >
                     {t("delete")}

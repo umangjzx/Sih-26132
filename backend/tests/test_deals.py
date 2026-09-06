@@ -15,9 +15,11 @@ from app.core.security import get_current_user
 from app.main import app
 from app.models.deal import Deal
 from app.models.demand import Demand
+from app.models.dispute import Dispute
 from app.models.lot import Lot
 from app.models.match import Match
 from app.models.offer import Offer
+from app.models.payment import DealPayment
 from app.models.user import User
 
 
@@ -238,6 +240,56 @@ def test_advance_to_paid_requires_buyer_and_reference(db, farmer_user, buyer_use
         db.expire_all()
         row = db.execute(select(Deal).where(Deal.id == deal.id)).scalar_one()
         assert row.payment_status == "paid" and row.payment_method == "UPI"
+
+        # the ledger backs up the "paid" status — previously advancing here left
+        # payment_status="paid" next to zero DealPayment rows (₹0 collected shown
+        # alongside "Paid" on the transaction panel).
+        payments = db.execute(select(DealPayment).where(DealPayment.deal_id == deal.id)).scalars().all()
+        assert len(payments) == 1
+        assert payments[0].amount_inr == deal.agreed_price * deal.agreed_quantity / 100.0
+        assert payments[0].reference == "UPI/2026/AX92"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_advance_to_paid_only_logs_the_outstanding_balance(db, farmer_user, buyer_user):
+    """A deal with a partial instalment already recorded should only have the
+    *remaining* balance auto-logged when advanced to 'paid' via a reference,
+    not the full agreed value on top of what's already there."""
+    deal = _seed_deal(db, farmer_user, buyer_user, pipeline_status="delivered")
+    agreed_value = deal.agreed_price * deal.agreed_quantity / 100.0
+    db.add(DealPayment(deal_id=deal.id, payer_id=buyer_user.id, amount_inr=5000, method="UPI"))
+    db.commit()
+
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        r = client.patch(
+            f"/api/deals/{deal.id}/advance",
+            json={"payment_method": "cash", "payment_reference": "handed-over-in-person"},
+        )
+        assert r.status_code == 200, r.text
+
+        total = db.execute(
+            select(DealPayment).where(DealPayment.deal_id == deal.id)
+        ).scalars().all()
+        assert len(total) == 2
+        assert sum(p.amount_inr for p in total) == agreed_value
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_advance_to_closed_blocked_by_open_dispute(db, farmer_user, buyer_user):
+    deal = _seed_deal(db, farmer_user, buyer_user, pipeline_status="paid", payment_status="paid")
+    db.add(Dispute(deal_id=deal.id, raised_by=buyer_user.id, reason="Quality mismatch", status="open"))
+    db.commit()
+
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        r = client.patch(f"/api/deals/{deal.id}/advance")
+        assert r.status_code == 409
+        assert "dispute" in r.json()["detail"].lower()
     finally:
         app.dependency_overrides.clear()
 

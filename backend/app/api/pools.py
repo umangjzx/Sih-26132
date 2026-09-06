@@ -401,7 +401,16 @@ def accept_demand_for_pool(
 
     pool.status = "matched"
     pool.matched_deal_id = deal.id
-    demand.status = "matched"
+    # Only fully close the demand when the pool covers its whole remaining
+    # quantity. A pool that's smaller than the demand (allowed above — only the
+    # reverse is blocked) used to close the demand outright regardless, silently
+    # orphaning whatever quantity the pool didn't cover: it can't be browsed or
+    # matched again because the demand is no longer 'open'. Instead, shrink the
+    # demand by what this deal now covers and leave the remainder open.
+    if qty >= demand.quantity_kg - 1e-6:
+        demand.status = "matched"
+    else:
+        demand.quantity_kg -= qty
 
     # the 1:1 matcher may already have queued matches against this demand — they
     # are moot now that the pool has consumed it.

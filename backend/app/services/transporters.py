@@ -84,6 +84,22 @@ def seed_transporters(db) -> int:
     return inserted
 
 
+def _resolve_district_centroid(district: str | None) -> tuple[float, float] | None:
+    """An exact-key lookup misses a free-typed pickup/drop point like "APMC
+    yard, Sector 5, Nashik" entirely, silently returning every transporter
+    unsorted and undistanced. Fall back to matching a known district name
+    anywhere in the string."""
+    if not district:
+        return None
+    if district in DISTRICT_CENTROIDS:
+        return DISTRICT_CENTROIDS[district]
+    low = district.lower()
+    for name, coord in DISTRICT_CENTROIDS.items():
+        if name.lower() in low:
+            return coord
+    return None
+
+
 def nearby_transporters(
     db,
     lat: float | None,
@@ -105,8 +121,8 @@ def nearby_transporters(
     origin: tuple[float, float] | None = None
     if lat is not None and lon is not None:
         origin = (lat, lon)
-    elif district and district in DISTRICT_CENTROIDS:
-        origin = DISTRICT_CENTROIDS[district]
+    else:
+        origin = _resolve_district_centroid(district)
 
     result = []
     for t in rows:

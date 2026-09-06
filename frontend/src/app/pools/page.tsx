@@ -65,7 +65,7 @@ function PoolCard({ pool }: { pool: PoolSummary }) {
       <div>
         <div className="mb-1 flex items-center justify-between text-xs font-semibold text-[var(--ink-soft)]">
           <span>{Math.round(pool.committed_quantity_kg)} / {Math.round(pool.target_quantity_kg)} kg</span>
-          <span>{t("filled", { pct: Math.round(pool.fill_pct) })}</span>
+          <span>{t("filled", { pct: Math.min(100, Math.round(pool.fill_pct)) })}</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-[var(--line)]">
           <div

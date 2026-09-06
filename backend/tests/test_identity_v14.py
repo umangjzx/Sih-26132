@@ -77,6 +77,29 @@ def test_verification_request_then_admin_verifies(db, buyer_user, admin_user):
         assert r.json()["verification_status"] == "verified"
         db.refresh(buyer_user)
         assert buyer_user.kyc_status == "verified" and buyer_user.verified_by == admin_user.id
+        # the applicant's own note must survive an admin decision that doesn't
+        # supply one of its own (previously admin.py unconditionally overwrote
+        # verification_note with the request body's, which was None here)
+        assert buyer_user.verification_note == "GST 27ABC"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_reject_can_supply_its_own_note(db, buyer_user, admin_user):
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        client.post("/api/auth/me/request-verification", json={"note": "GST 27ABC"})
+
+        _as(admin_user)
+        r = client.patch(
+            f"/api/admin/users/{buyer_user.id}/verify",
+            json={"status": "rejected", "note": "Reference number doesn't match records"},
+        )
+        assert r.status_code == 200
+        db.refresh(buyer_user)
+        assert buyer_user.verification_status == "rejected"
+        assert buyer_user.verification_note == "Reference number doesn't match records"
     finally:
         app.dependency_overrides.clear()
 

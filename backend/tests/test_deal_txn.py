@@ -231,6 +231,29 @@ def test_transporter_seed_and_nearby(db, farmer_user):
         app.dependency_overrides.clear()
 
 
+def test_transporter_nearby_matches_district_named_inside_a_longer_string(db, farmer_user):
+    """A farmer who edits the pickup point to something more specific ("APMC
+    yard, Sector 5, Nashik") previously got every transporter back unsorted and
+    undistanced, because the lookup required an exact district match."""
+    from app.services.transporters import seed_transporters
+
+    seed_transporters(db)
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        exact = client.get("/api/transporters/nearby", params={"district": "Nashik", "limit": 5}).json()
+        fuzzy = client.get(
+            "/api/transporters/nearby",
+            params={"district": "APMC yard, Sector 5, Nashik", "limit": 5},
+        ).json()
+        assert len(fuzzy) == len(exact)
+        assert [t["id"] for t in fuzzy] == [t["id"] for t in exact]
+        if fuzzy:
+            assert fuzzy[0].get("distance_km") is not None
+    finally:
+        app.dependency_overrides.clear()
+
+
 # --------------------------------------------------------------------------- #
 # Module 5 hardening
 # --------------------------------------------------------------------------- #

@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.models.notification import Notification
 from app.models.price_alert import PriceAlert
+from app.models.price_cache import PriceCache
 from app.schemas.alert import (
     NotificationResponse,
     PriceAlertCreate,
@@ -19,6 +20,20 @@ router = APIRouter(prefix="/api", tags=["alerts"])
 _MAX_ALERTS_PER_USER = 50
 
 
+def _has_price_history(db: Session, crop: str, market: str) -> bool:
+    """Exact match first (index-friendly), then case-insensitive — same lookup
+    order as evaluate_alerts._latest_modal, so "does this pair have data" agrees
+    with "will this alert ever be able to fire"."""
+    for ci in (False, True):
+        crop_c = PriceCache.crop.ilike(crop) if ci else PriceCache.crop == crop
+        mkt_c = PriceCache.market.ilike(market) if ci else PriceCache.market == market
+        if db.execute(
+            select(PriceCache.id).where(crop_c, mkt_c).limit(1)
+        ).first() is not None:
+            return True
+    return False
+
+
 # ---- price alerts -------------------------------------------------------- #
 
 @router.post("/alerts", response_model=PriceAlertResponse, status_code=201)
@@ -28,6 +43,13 @@ def create_alert(
     db: Session = Depends(get_db),
 ) -> PriceAlert:
     crop, market = body.crop.strip(), body.market.strip()
+
+    if not _has_price_history(db, crop, market):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"No price history found for {crop} at {market} — check the spelling, "
+            "or pick a crop/market shown on the Prices page.",
+        )
 
     count = db.execute(
         select(func.count()).select_from(PriceAlert)

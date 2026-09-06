@@ -133,13 +133,16 @@ function DisputeRow({
   const t = useTranslations("admin");
   const td = useTranslations("disputes");
   const [open, setOpen] = useState(false);
-  const [outcome, setOutcome] = useState<DisputeOutcome>("dismissed");
+  // No default outcome — "dismissed" pre-selected meant an admin could type a
+  // resolution favouring one party and submit without ever touching the
+  // dropdown, silently recording "dismissed" instead of what they wrote.
+  const [outcome, setOutcome] = useState<DisputeOutcome | "">("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function submit() {
-    if (!token) return;
+    if (!token || !outcome) return;
     setBusy(true);
     setErr(null);
     try {
@@ -189,6 +192,7 @@ function DisputeRow({
                   onChange={(e) => setOutcome(e.target.value as DisputeOutcome)}
                   className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm"
                 >
+                  <option value="" disabled>{t("resolveOutcomeChoose")}</option>
                   {DISPUTE_OUTCOMES.map((o) => (
                     <option key={o} value={o}>
                       {td(`outcome_${o}`)}
@@ -210,7 +214,7 @@ function DisputeRow({
               <button
                 type="button"
                 onClick={submit}
-                disabled={busy}
+                disabled={busy || !outcome}
                 className="self-start rounded-lg bg-[var(--color-brand)] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
               >
                 {t("resolveConfirm")}
@@ -718,7 +722,13 @@ export default function AdminPage() {
         <div className="mb-3 flex justify-end">
           <button
             type="button"
-            onClick={() => token && downloadAdminEventsCsv(token).catch(() => {})}
+            onClick={() => {
+              if (!token) return;
+              setError(null);
+              downloadAdminEventsCsv(token).catch(
+                (e) => setError(e instanceof ApiError ? e.message : t("loadError")),
+              );
+            }}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-bold opacity-80 hover:opacity-100"
           >
             <Icon name="chart" size={13} /> {t("downloadCsv")}

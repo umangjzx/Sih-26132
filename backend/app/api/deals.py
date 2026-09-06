@@ -28,6 +28,7 @@ from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.models.deal import Deal
 from app.models.demand import Demand
+from app.models.dispute import Dispute
 from app.models.lot import Lot
 from app.models.logistics import DealLogistics
 from app.models.match import Match
@@ -203,6 +204,16 @@ def advance_deal(
             detail="Mark the deal paid before closing it.",
         )
 
+    # Nor while a dispute is still open — closing would end the escalation
+    # mechanism the UI implies is meaningful.
+    if new_status == "closed" and db.execute(
+        select(Dispute.id).where(Dispute.deal_id == deal.id, Dispute.status == "open")
+    ).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This deal has an open dispute — resolve it before closing the deal.",
+        )
+
     # Role gate: the seller confirms delivery, the buyer confirms payment.
     # Admins may push any stage (they are not a party).
     required = _STAGE_ACTOR.get(new_status)
@@ -225,6 +236,29 @@ def advance_deal(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="A payment reference (UPI / bank txn id) is required to mark a deal paid",
             )
+        # This is a deliberate second path to "paid" alongside the itemised
+        # POST .../payments instalment ledger — a buyer can confirm payment made
+        # outside the app with a single reference. Without this, that path left
+        # payment_status="paid" sitting next to a ledger total of ₹0, which
+        # DealTransactionPanel showed as a contradiction ("Paid" / "₹0 collected").
+        # Auto-log the outstanding balance as one instalment so the ledger always
+        # backs up what the pipeline status claims.
+        already_paid = float(
+            db.execute(
+                select(func.coalesce(func.sum(DealPayment.amount_inr), 0.0))
+                .where(DealPayment.deal_id == deal.id)
+            ).scalar_one()
+        )
+        agreed_value = deal.agreed_price * deal.agreed_quantity / 100.0
+        outstanding = agreed_value - already_paid
+        if outstanding > 0.01:
+            db.add(DealPayment(
+                deal_id=deal.id, payer_id=current_user.id,
+                amount_inr=round(outstanding, 2),
+                method=body.payment_method or "UPI",
+                reference=body.payment_reference,
+                note=body.note,
+            ))
         deal.payment_status = "paid"
         deal.payment_method = body.payment_method
         deal.payment_reference = body.payment_reference

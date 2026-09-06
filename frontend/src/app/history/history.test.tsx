@@ -8,9 +8,16 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
+// `mock`-prefixed so vitest's hoisting allows referencing it inside the
+// factory below; mutated per-test to check both role's rendering.
+const mockUser = {
+  id: 2, phone: "+910000000002", name: "Anil Traders", role: "buyer" as "buyer" | "farmer",
+  district: "Nashik", taluka: "Nashik", kyc_status: "verified", is_active: true,
+};
+
 vi.mock("@/components/AuthProvider", () => ({
   useAuth: () => ({
-    user: { id: 2, phone: "+910000000002", name: "Anil Traders", role: "buyer", district: "Nashik", taluka: "Nashik", kyc_status: "verified", is_active: true },
+    user: mockUser,
     token: "mock-token",
     isAuthenticated: true,
     ready: true,
@@ -45,15 +52,31 @@ const dealHistory = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUser.role = "buyer";
 });
 
-it("renders all three history sections", async () => {
+// A farmer can never have a demand, and a buyer can never have a lot — each
+// role only sees the section(s) relevant to them, not a permanently empty
+// "No lots yet" / "No demands yet" section for something that isn't
+// applicable to their role at all.
+
+it("a buyer sees the Demands and Deals sections, not Lots", async () => {
+  vi.mocked(api.getMyHistory).mockResolvedValue(emptyHistory);
+  renderWithIntl(<HistoryPage />);
+
+  expect(await screen.findByText(/my demands/i)).toBeInTheDocument();
+  expect(screen.getByText(/my deals/i)).toBeInTheDocument();
+  expect(screen.queryByText(/my lots/i)).not.toBeInTheDocument();
+});
+
+it("a farmer sees the Lots and Deals sections, not Demands", async () => {
+  mockUser.role = "farmer";
   vi.mocked(api.getMyHistory).mockResolvedValue(emptyHistory);
   renderWithIntl(<HistoryPage />);
 
   expect(await screen.findByText(/my lots/i)).toBeInTheDocument();
-  expect(screen.getByText(/my demands/i)).toBeInTheDocument();
   expect(screen.getByText(/my deals/i)).toBeInTheDocument();
+  expect(screen.queryByText(/my demands/i)).not.toBeInTheDocument();
 });
 
 it("shows a deal's crop and a View Deal link", async () => {
@@ -63,11 +86,10 @@ it("shows a deal's crop and a View Deal link", async () => {
   expect(await screen.findByRole("link", { name: /view deal/i })).toHaveAttribute("href", "/deals/1");
 });
 
-it("shows empty-state messages when every list is empty", async () => {
+it("shows empty-state messages for the sections a buyer sees", async () => {
   vi.mocked(api.getMyHistory).mockResolvedValue(emptyHistory);
   renderWithIntl(<HistoryPage />);
 
-  expect(await screen.findByText(/no lots yet/i)).toBeInTheDocument();
-  expect(screen.getByText(/no demands yet/i)).toBeInTheDocument();
+  expect(await screen.findByText(/no demands yet/i)).toBeInTheDocument();
   expect(screen.getByText(/no deals yet/i)).toBeInTheDocument();
 });

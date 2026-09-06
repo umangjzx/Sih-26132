@@ -57,9 +57,15 @@ export default function DealDetailPage() {
     paid: t("pipeline_paid"),
     closed: t("pipeline_closed"),
   };
+  // A pool- or forward-contract-originated deal is created with
+  // logistics_mode="hired_transport" (see backend/app/api/pools.py,
+  // backend/app/api/forward.py) — previously missing here, so the header
+  // printed the raw enum string instead of a translated label.
   const logisticsLabel: Record<string, string> = {
     self_pickup: t("logistics_self_pickup"),
     platform_arranged: t("logistics_platform_arranged"),
+    hired_transport: t("logistics_hired_transport"),
+    buyer_arranged: t("logistics_buyer_arranged"),
   };
   const paymentLabel: Record<string, string> = {
     pending: t("payment_pending"),

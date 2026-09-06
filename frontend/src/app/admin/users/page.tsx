@@ -139,6 +139,7 @@ export default function AdminUsersPage() {
                     <div className="font-semibold">{r.name}</div>
                     <div className="text-xs opacity-60">{r.phone}</div>
                     {r.verification_ref && <div className="text-xs opacity-60">ref: {r.verification_ref}</div>}
+                    {r.verification_note && <div className="text-xs italic opacity-60">"{r.verification_note}"</div>}
                   </td>
                   <td className="px-3 py-2 capitalize">{r.role}</td>
                   <td className="px-3 py-2">{[r.district, r.state].filter(Boolean).join(", ") || "—"}</td>
@@ -165,7 +166,11 @@ export default function AdminUsersPage() {
                       {r.role !== "admin" && r.verification_status !== "rejected" && r.verification_status !== "verified" && (
                         <button
                           disabled={busy === r.id}
-                          onClick={() => act(() => verifyUser(r.id, "rejected", undefined, token!), r.id)}
+                          onClick={() => {
+                            const reason = window.prompt(t("rejectReasonPrompt"));
+                            if (reason === null) return; // cancelled
+                            act(() => verifyUser(r.id, "rejected", reason.trim() || undefined, token!), r.id);
+                          }}
                           className="rounded-lg border border-[var(--color-wait)]/50 px-2.5 py-1 text-xs font-bold text-[var(--color-wait)] disabled:opacity-50"
                         >
                           {t("reject")}

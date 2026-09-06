@@ -21,7 +21,17 @@ def _client(db):
     return TestClient(app)
 
 
+def _seed_price(db, crop="Onion", market="Pune"):
+    """create_alert (v1.9) rejects a crop/market with no price history at all —
+    give these CRUD-focused tests one real row so that check doesn't interfere."""
+    db.add(PriceCache(crop=crop, variety="", market=market, district=market,
+                      state="Maharashtra", date=date(2026, 9, 1),
+                      min_price=1800, max_price=2100, modal_price=2000, arrival_volume=None))
+    db.commit()
+
+
 def test_alert_crud_and_ownership(db, farmer_user, buyer_user):
+    _seed_price(db)
     client = _client(db)
     try:
         _as(farmer_user)
@@ -45,6 +55,21 @@ def test_alert_crud_and_ownership(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_alert_rejects_crop_market_with_no_price_history(db, farmer_user):
+    """A typo'd crop/market ("Poona" instead of "Pune") used to be accepted and
+    just silently never fire, forever — now it's rejected at creation time."""
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        r = client.post("/api/alerts", json={
+            "crop": "Onion", "market": "Poona", "direction": "above", "threshold": 2000,
+        })
+        assert r.status_code == 422
+        assert len(client.get("/api/alerts").json()) == 0
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_alert_validation(db, farmer_user):
     client = _client(db)
     try:
@@ -58,6 +83,7 @@ def test_alert_validation(db, farmer_user):
 
 
 def test_duplicate_alert_is_rejected(db, farmer_user):
+    _seed_price(db)
     client = _client(db)
     try:
         _as(farmer_user)
@@ -73,6 +99,7 @@ def test_duplicate_alert_is_rejected(db, farmer_user):
 def test_alert_count_is_capped(db, farmer_user):
     from app.api.alerts import _MAX_ALERTS_PER_USER
 
+    _seed_price(db)
     for i in range(_MAX_ALERTS_PER_USER):
         db.add(PriceAlert(user_id=farmer_user.id, crop=f"Crop{i}", market="Pune",
                           direction="above", threshold=100 + i, active=True))
