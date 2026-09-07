@@ -143,35 +143,48 @@ aren't a client component top-to-bottom; see [Architecture](#architecture).
 
 ```mermaid
 flowchart LR
-    subgraph Client["Frontend — Next.js 16 (client components + 4 thin metadata wrappers)"]
-      UI["Routes: /, /features, /how-it-works,\n/market-insights, /about, /prices, /advisor,\n/directory, /explore, /alerts, /login, /farmer,\n/buyer, /matches, /browse, /pools, /forward,\n/profile, /history, /deals, /admin"]
-      Providers["LocaleProvider · AuthProvider · LocationProvider"]
+    classDef client fill:#e8f3ff,stroke:#2f6fb3,color:#0b3a63
+    classDef backend fill:#eaf7ec,stroke:#2f8f52,color:#0d3d21
+    classDef brief fill:#fff0e0,stroke:#c9581c,color:#5c2005,stroke-width:2px
+    classDef data fill:#f3eefc,stroke:#7a4fc9,color:#2f1c57
+    classDef ext fill:#fff6e0,stroke:#c98a1c,color:#5c3d05
+
+    subgraph Client["Frontend — Next.js 16 App Router (client components + 4 thin metadata wrappers)"]
+      direction TB
+      UI["20 routes: home · prices · advisor · directory · explore ·\nalerts · login · farmer · buyer · matches · browse · pools ·\nforward · profile · history · deals · admin\n+ 4 marketing pages (features, how-it-works, market-insights, about)"]:::client
+      Providers["LocaleProvider (en·hi·mr) · AuthProvider · LocationProvider"]:::client
     end
 
     subgraph API["Backend — FastAPI"]
-      Routers["Routers: prices · intel · public · location ·\nauth · lots · demands · matching · offers ·\ndeals · disputes · history · alerts · admin ·\nassistant · ocr · pools · forward"]
-      Services["Services: ingestion · signal · forecast · matching ·\nweather · routing · best_market · freight · brief ·\ngeo · geocode · locations · reference · holidays ·\nalerts · audit · knowledge · realization · security ·\npools · discovery · grading · llm"]
-      Sched["APScheduler — 6-hourly ingestion + alert eval"]
+      direction TB
+      Routers["18 routers: prices · intel · public · location · auth ·\nlots · demands · matching · offers · deals · disputes ·\nhistory · alerts · admin · assistant · ocr · pools · forward"]:::backend
+      Brief["★ Decision Brief\nfuses every signal into one ranked action\n(see Decision Brief diagram below)"]:::brief
+      Services["30 services, grouped by role —\ndata: ingestion · snapshot · fixtures\ndecision: signal · forecast · best_market · freight · realization\nmarketplace: matching · discovery · pools · grading\nlocation: geo · geocode · locations · routing\nknowledge: reference · holidays · knowledge · embeddings\ntrust: audit · alerts · llm · sms · forward_settlement"]:::backend
+      Sched["APScheduler\n6-hourly price re-ingestion + alert eval"]:::backend
     end
 
-    DB[("PostgreSQL 16\n19 tables")]
+    DB[("PostgreSQL 16\n19 tables · Alembic-managed")]:::data
 
-    subgraph Ext["Free external sources (all with offline fallback)"]
-      AGMARKNET["data.gov.in AGMARKNET"]
-      OM["Open-Meteo (forecast + geocoding)"]
-      OWM["OpenWeatherMap (optional key)"]
-      POWER["NASA POWER"]
-      OSRM["OSRM routing"]
-      BDC["BigDataCloud reverse-geocode"]
-      NAGER["Nager.Date holidays"]
-      OR["OpenRouter LLM (optional key)"]
+    subgraph Ext["Free external sources — every call degrades to a neutral result offline"]
+      direction TB
+      AGMARKNET["data.gov.in AGMARKNET\nmandi prices"]:::ext
+      OM["Open-Meteo\nforecast + geocoding"]:::ext
+      OWM["OpenWeatherMap\noptional key"]:::ext
+      POWER["NASA POWER\nrainfall anomaly"]:::ext
+      OSRM["OSRM\nroad routing"]:::ext
+      BDC["BigDataCloud\nreverse-geocode"]:::ext
+      NAGER["Nager.Date\nmandi holidays"]:::ext
+      OR["OpenRouter\nLLM + embeddings, optional"]:::ext
+      SMS["Fast2SMS-compatible\nOTP delivery, optional"]:::ext
     end
 
     UI -->|"REST /api/*"| Routers
+    Routers --> Brief
     Routers --> Services
+    Brief --> Services
     Services --> DB
     Sched --> Services
-    Services -.-> AGMARKNET & OM & OWM & POWER & OSRM & BDC & NAGER & OR
+    Services -.->|"never blocks —\nfailure = neutral result"| AGMARKNET & OM & OWM & POWER & OSRM & BDC & NAGER & OR & SMS
 ```
 
 - **Frontend** is a client-rendered SPA — nearly every route is `"use client"`
@@ -249,10 +262,14 @@ agrilink/
 │   │       ├── audit.py        append-only transaction_events + deal timeline
 │   │       ├── transporters.py curated transporter directory (seeded on boot)
 │   │       ├── alerts.py       evaluate price alerts → notifications
-│   │       └── llm.py          OpenRouter client: chat, vision, translate (all degrade gracefully)
-│   ├── alembic/versions/       12 revisions, 0001_initial → f6c9d2e4a1b8_v1_7_dispute_resolution
+│   │       ├── llm.py          OpenRouter client: chat, vision, translate (all degrade gracefully)
+│   │       ├── embeddings.py   optional semantic re-ranking for Ask AgriLink retrieval
+│   │       ├── sms.py          OTP delivery for forgot-password (Fast2SMS-compatible, optional)
+│   │       ├── forward_settlement.py  overdue-commitment reminders (visibility only)
+│   │       └── district_coords.py / market_towns.py   curated all-India lat/lon lookups
+│   ├── alembic/versions/       15 revisions, 0001_initial → c8a4f2b7d9e1_v1_11_forward_breach_penalty
 │   │                           (see Database schema → Migrations for the full chain)
-│   ├── tests/                  pytest suite (SQLite in-memory) — 37 test files, 355 tests
+│   ├── tests/                  pytest suite (SQLite in-memory) — 38 test files, 397 tests
 │   └── .env.example
 ├── frontend/
 │   └── src/
@@ -540,10 +557,53 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 ## Database schema
 
 PostgreSQL, managed **only** by Alembic (no `create_all`). `Base` carries a
-deterministic constraint-naming convention.
+deterministic constraint-naming convention. 19 tables total; `price_cache`,
+`geo_cache` and `transporters` are standalone/curated with no foreign keys, so
+they're omitted from the relationship graph below (full columns for every
+table, including those three, are in the reference table underneath it).
 
 ```mermaid
 erDiagram
+    USERS {
+      int id PK
+      string role "farmer | buyer | admin"
+      string phone UK
+      string verification_status "unverified…verified"
+    }
+    LOTS {
+      int id PK
+      int farmer_id FK
+      string crop
+      float quantity_kg
+      string status "open | matched | closed"
+    }
+    DEMANDS {
+      int id PK
+      int buyer_id FK
+      string crop
+      float quantity_kg
+      string status "open | matched | closed"
+    }
+    MATCHES {
+      int id PK
+      int lot_id FK
+      int demand_id FK
+      float score
+      string status "proposed…accepted"
+    }
+    OFFERS {
+      int id PK
+      int match_id FK
+      float price
+      string status "pending…accepted"
+    }
+    DEALS {
+      int id PK
+      int match_id FK
+      string pipeline_status "matched…closed"
+      string payment_status "pending | paid"
+    }
+
     USERS ||--o{ LOTS : "farmer_id"
     USERS ||--o{ DEMANDS : "buyer_id"
     USERS ||--o{ OFFERS : "from_user_id"
@@ -565,19 +625,6 @@ erDiagram
     DEALS ||--o{ TRANSACTION_EVENTS : "entity_id"
     FORWARD_BIDS ||--o{ FORWARD_COMMITMENTS : "bid_id"
     FORWARD_COMMITMENTS ||--o| DEALS : "deal_id"
-    PRICE_CACHE {
-      int id PK
-      string crop
-      string variety
-      string market
-      string district
-      string state
-      date date
-      float min_price
-      float max_price
-      float modal_price
-      float arrival_volume "nullable"
-    }
 ```
 
 | Table | Key columns | Status/enum values |
@@ -593,11 +640,11 @@ erDiagram
 | `deal_payments` | `deal_id→deals`, `payer_id→users`, `amount_inr, method` (free text, default `UPI`), `reference?, note?, paid_at` | a deal is settled when `SUM(amount_inr) ≥ agreed_price × qty / 100` |
 | `transaction_events` | `entity_type, entity_id, actor_id→users?, action, detail` (JSON string), `created_at` — **append-only** | entity_type: `deal` \| `payment` \| `logistics` \| `match` \| `offer` \| `pool` \| `forward_bid` |
 | `transporters` | `name, phone?, base_district, latitude?, longitude?, vehicle_types, service_states, notes?` — curated, seeded on boot | — |
-| `disputes` | `deal_id→deals`, `raised_by→users`, `reason`, `created_at`, `evidence_url?`, `outcome?`, `resolution?`, `resolved_by→users?`, `resolved_at?` (v1.7) | status: `open` \| `resolved` \| `withdrawn` |
+| `disputes` | `deal_id→deals`, `raised_by→users`, `reason`, `created_at`, `evidence_url?`, `outcome?`, `resolution?`, `resolved_by→users?`, `resolved_at?` (v1.7) — resolving one on a forward-linked deal can also breach the `forward_commitments` row (v1.11, see [Forward contracts](#forward-contracts)) | status: `open` \| `resolved` \| `withdrawn` |
 | `pools` | `organizer_id→users`, `crop, title, target_quantity_kg, floor_price, grade, delivery_window, location, latitude?, longitude?`, `status`, `matched_deal_id?`, `created_at` | status: `open` \| `locked` \| `matched` \| `closed` |
 | `pool_members` | `pool_id→pools`, `farmer_id→users`, `lot_id→lots?`, `quantity_kg, expected_price`, `status`, `created_at` | status: `committed` \| `withdrawn` |
 | `forward_bids` | `buyer_id→users`, `crop, quantity_kg, price_min, price_max, delivery_from, delivery_to, delivery_district, latitude?, longitude?, quality_grade_min?, notes?`, `status`, `created_at` | status: `open` \| `closed` \| `filled` \| `cancelled` |
-| `forward_commitments` | `bid_id→forward_bids`, `farmer_id→users`, `quantity_kg, price_per_qtl, expected_ready, note?`, `status`, `deal_id→deals?`, `created_at` | status: `pending` \| `accepted` \| `declined` \| `withdrawn` |
+| `forward_commitments` | `bid_id→forward_bids`, `farmer_id→users`, `quantity_kg, price_per_qtl, expected_ready, note?`, `status`, `deal_id→deals?`, `created_at`, `settlement_due?, settlement_reminder_sent_at?` (v1.8), `breach_status?, penalty_inr?, breached_at?` (v1.11) | status: `pending` \| `accepted` \| `declined` \| `withdrawn` \| `breached` |
 | `geo_cache` | `query` (unique), `latitude, longitude, display_name, admin1/2/3`, `created_at` | reverse-geocode key = `@rev:{lat},{lon}` |
 | `price_alerts` | `user_id→users`, `crop, market, direction, threshold, active, last_triggered_at?` | direction: `above` \| `below` |
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
@@ -635,7 +682,34 @@ plain, farmer-friendly language.
 
 `app/services/brief.py` + `GET /api/brief` — one endpoint that assembles every
 signal the platform computes in isolation into a single **prioritised action
-list** a farmer can work top-to-bottom.
+list** a farmer can work top-to-bottom. This is the single biggest thing that
+separates AgriLink from a price-lookup app: nothing else in this space fuses
+price, weather, freight, MSP, calendar and buyer-demand into one ranked call.
+
+```mermaid
+flowchart LR
+    classDef input fill:#eef3fb,stroke:#3a6ea8,color:#1a3a5c
+    classDef brief fill:#fff0e0,stroke:#c9581c,color:#5c2005,stroke-width:2px
+    classDef output fill:#eaf7ec,stroke:#2f8f52,color:#0d3d21
+
+    subgraph Inputs["8 signals, each computed independently and individually testable"]
+      direction TB
+      S1["Sell/wait signal\nprice momentum · arrivals · weather"]:::input
+      S2["Price forecast\ntrend + seasonality, 30d"]:::input
+      S3["Diesel-costed best market\nnet price after freight"]:::input
+      S4["MSP gap"]:::input
+      S5["3-day weather outlook"]:::input
+      S6["Crop-calendar phase\nglut-risk window"]:::input
+      S7["Next mandi holiday"]:::input
+      S8["Nearby verified buyers\nwithin radius"]:::input
+    end
+
+    Brief["Decision Brief\nGET /api/brief"]:::brief
+
+    Out["Ranked action list\n{rank, kind, urgency, title, detail}\nurgency: now · soon · watch\n+ headline: recommendation · score · confidence"]:::output
+
+    S1 & S2 & S3 & S4 & S5 & S6 & S7 & S8 --> Brief --> Out
+```
 
 It fuses: the sell/wait signal, the price forecast, the diesel-costed best
 market, the MSP gap, the 3-day weather outlook, the crop-calendar phase, the
@@ -728,17 +802,43 @@ offer and counter is written to the `transaction_events` ledger.
 Accepting an offer (`POST /api/offers/{id}/accept`) creates a `Deal` from the
 match, sets `agreed_price`/`agreed_quantity` from the offer, and flips the lot and
 demand to `matched`. `PATCH /api/deals/{id}/advance` steps the deal one stage
-forward:
+forward. **One pipeline, three origins** — a 1:1 offer, an accepted forward
+commitment, or an accepted FPO pool demand all materialise into the exact same
+`Deal` row, so logistics, payments, disputes and the audit ledger work
+identically no matter how the deal was struck:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> matched
-    matched --> offer_accepted
-    offer_accepted --> logistics_arranged
-    logistics_arranged --> delivered
-    delivered --> paid
-    paid --> closed
+    classDef origin fill:#eef3fb,stroke:#3a6ea8,color:#1a3a5c
+    classDef live fill:#eaf7ec,stroke:#2f8f52,color:#0d3d21
+    classDef done fill:#f3eefc,stroke:#7a4fc9,color:#2f1c57
+
+    state "1:1 offer accepted" as O1
+    state "forward commitment accepted" as O2
+    state "FPO pool demand accepted" as O3
+    class O1,O2,O3 origin
+
+    [*] --> O1
+    [*] --> O2
+    [*] --> O3
+    O1 --> matched
+    O2 --> matched
+    O3 --> matched
+    matched --> offer_accepted: buyer/farmer advances
+    offer_accepted --> logistics_arranged: logistics plan set
+    logistics_arranged --> delivered: pickup/drop confirmed
+    delivered --> paid: payment_reference recorded
+    paid --> closed: final confirmation
     closed --> [*]
+
+    class matched,offer_accepted,logistics_arranged,delivered live
+    class closed done
+
+    note right of matched
+      A dispute can be raised at any stage —
+      pipeline_status stays independent of the
+      dispute's own open/resolved/withdrawn status
+    end note
 ```
 
 Access to a deal is limited to the lot's farmer, the demand's buyer, or an admin.
@@ -1071,7 +1171,7 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-**Backend** (37 test files, 355 tests): signal cases and MSP/weather factors;
+**Backend** (38 test files, 397 tests): signal cases and MSP/weather factors;
 price forecast (trend+seasonality, prediction band, short-history degradation);
 the **Decision Brief** (assembly, urgency ordering, reference-market inference,
 thin-history 404); **diesel-indexed freight** (breakdown sums, rate range,
