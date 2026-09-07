@@ -12,6 +12,7 @@ correct without it.
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 from statistics import mean
 
@@ -39,6 +40,38 @@ _BETTER_MARKET_MIN_DELTA = 40.0   # ₹/qtl net gain worth a separate trip
 _RAIN_ALERT_MM = 20.0             # 3-day rain that threatens an unshedded harvest
 _BUYER_RADIUS_KM = 200.0
 
+# Matches AdvisorDetail.tsx's classifyReason() keyword patterns — used to find
+# which of sig.reasons[] actually corresponds to the factor that decided the
+# recommendation, since reason order (price -> volume -> [weather] ->
+# [forecast]) is not the same as "which one mattered".
+_FACTOR_REASON_PATTERN = {
+    "price": re.compile(r"average|day comparison", re.I),
+    "arrivals": re.compile(r"arrival|volume|supply", re.I),
+    "weather": re.compile(r"rain|weather|wet|dry spell|monsoon", re.I),
+    "forecast": re.compile(r"trending up|trending down|next 7 days|look flat", re.I),
+}
+
+
+def _dominant_reason(sig) -> str | None:
+    """The reason sentence matching whichever factor actually drove the
+    recommendation — not just reasons[0], which is always the price-momentum
+    sentence regardless of whether price was the deciding factor (e.g. a
+    "sell_now" reached mostly on rising arrivals/weather while price reads
+    "no strong signal either way" would otherwise show that neutral price
+    sentence under a bold SELL NOW heading)."""
+    if not sig or not sig.reasons:
+        return None
+    scored = [f for f in (sig.factors or []) if f.get("contribution")]
+    if not scored:
+        return sig.reasons[0]
+    dominant = max(scored, key=lambda f: abs(f["contribution"]))
+    pattern = _FACTOR_REASON_PATTERN.get(dominant["key"])
+    if pattern:
+        for r in sig.reasons:
+            if pattern.search(r):
+                return r
+    return sig.reasons[0]
+
 
 def _series(db: Session, crop: str, market: str, days: int = 90) -> list[PriceCache]:
     since = date.today() - timedelta(days=days)
@@ -54,7 +87,22 @@ def _series(db: Session, crop: str, market: str, days: int = 90) -> list[PriceCa
             ).scalars().all()
         )
 
-    return _q(False) or _q(True)
+    rows = _q(False) or _q(True)
+    # Same lazy backfill as app/api/prices.py._fetch_series — without it, a
+    # thin live-feed series (the common case; AGMARKNET's live feed only
+    # carries the latest day) makes the Decision Brief say "not enough data"
+    # while /api/prices/signal (backed by _fetch_series, which does backfill)
+    # confidently renders sell/wait for the exact same crop+market right below
+    # it on /advisor.
+    from app.services import ingestion
+
+    if rows and len({r.date for r in rows}) < ingestion.BACKFILL_MIN_REAL_DAYS:
+        try:
+            if ingestion.backfill_series(db, crop, market):
+                rows = _q(False) or _q(True)
+        except Exception:  # noqa: BLE001 - backfill is best-effort  # nosec B110
+            pass
+    return rows
 
 
 def _nearest_market_with_data(
@@ -216,13 +264,13 @@ def build_brief(
     if rec == "sell_now":
         actions.append({
             "kind": "sell", "urgency": "now", "title": "Sell now",
-            "detail": (sig.reasons[0] if sig and sig.reasons else
+            "detail": (_dominant_reason(sig) or
                        "Price momentum favours selling at today's rate."),
         })
     elif rec == "wait":
         actions.append({
             "kind": "wait", "urgency": "watch", "title": "Hold — prices look weak",
-            "detail": (sig.reasons[0] if sig and sig.reasons else
+            "detail": (_dominant_reason(sig) or
                        "Today's price is depressed versus its recent average."),
         })
     else:

@@ -40,14 +40,16 @@ export function LocationChip() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const errorKey: "errorDenied" | "errorUnsupported" | "errorResolve" | null =
+  const errorKey: "errorDenied" | "errorUnavailable" | "errorUnsupported" | "errorResolve" | null =
     error === "denied"
       ? "errorDenied"
-      : error === "unsupported"
-        ? "errorUnsupported"
-        : error === "resolve"
-          ? "errorResolve"
-          : null;
+      : error === "unavailable"
+        ? "errorUnavailable"
+        : error === "unsupported"
+          ? "errorUnsupported"
+          : error === "resolve"
+            ? "errorResolve"
+            : null;
 
   return (
     <div ref={ref} className="relative inline-flex max-w-full">

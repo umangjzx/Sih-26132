@@ -218,7 +218,7 @@ export default function FarmerPage() {
         ...withPhoto,
         crop: d.crop ?? withPhoto.crop,
         quantity_kg: d.quantity_kg != null ? String(d.quantity_kg) : withPhoto.quantity_kg,
-        quality_grade: d.grade && d.grade !== "FAQ" ? d.grade : withPhoto.quality_grade,
+        quality_grade: d.grade || withPhoto.quality_grade,
         expected_price: d.expected_price != null ? String(d.expected_price) : withPhoto.expected_price,
         available_from: d.available_from ?? withPhoto.available_from,
       };

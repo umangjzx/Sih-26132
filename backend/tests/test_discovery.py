@@ -135,6 +135,60 @@ def test_express_interest_without_a_demand_409s(db):
         app.dependency_overrides.clear()
 
 
+def test_express_interest_picks_the_best_scoring_demand_not_the_first(db):
+    """Previously stopped at the first demand that cleared MIN_SCORE — a
+    poor-but-still-passing demand inserted first would win over a much better
+    one inserted after it."""
+    farmer, buyer = _cbe_farmer(db), _cbe_buyer(db)
+    lot = _onion_lot(db, farmer)  # expected_price=2400
+    poor = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=1000, quality_spec="Grade A",
+                  price_band_min=1000, price_band_max=1200, delivery_window="Within 7 days",
+                  delivery_district="Coimbatore", latitude=11.0168, longitude=76.9558, status="open")
+    good = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=1000, quality_spec="Grade A",
+                  price_band_min=2200, price_band_max=2700, delivery_window="Within 7 days",
+                  delivery_district="Coimbatore", latitude=11.0168, longitude=76.9558, status="open")
+    db.add(poor); db.add(good); db.commit()
+    client = _client(db)
+    try:
+        _as(buyer)
+        r = client.post(f"/api/lots/{lot.id}/express-interest")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["matched"] is True
+        match = db.get(Match, body["match_id"])
+        assert match.demand_id == good.id
+        assert db.query(Match).count() == 1  # the poor candidate never got upserted
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_express_interest_in_demand_picks_the_best_scoring_lot_not_the_first(db):
+    """Same fix, other direction — a farmer's demand-side express-interest."""
+    farmer, buyer = _cbe_farmer(db), _cbe_buyer(db)
+    demand = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=1000, quality_spec="Grade A",
+                     price_band_min=2200, price_band_max=2700, delivery_window="Within 7 days",
+                     delivery_district="Coimbatore", latitude=11.0168, longitude=76.9558, status="open")
+    db.add(demand); db.flush()
+    poor_lot = Lot(farmer_id=farmer.id, crop="Onion", quantity_kg=1000, quality_grade="A",
+                   expected_price=5000, available_from=date(2026, 10, 1), location="Coimbatore",
+                   latitude=11.0168, longitude=76.9558, status="open")
+    good_lot = Lot(farmer_id=farmer.id, crop="Onion", quantity_kg=1000, quality_grade="A",
+                   expected_price=2400, available_from=date(2026, 10, 1), location="Coimbatore",
+                   latitude=11.0168, longitude=76.9558, status="open")
+    db.add(poor_lot); db.add(good_lot); db.commit()
+    client = _client(db)
+    try:
+        _as(farmer)
+        r = client.post(f"/api/demands/{demand.id}/express-interest")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["matched"] is True
+        match = db.get(Match, body["match_id"])
+        assert match.lot_id == good_lot.id
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_express_interest_refuses_a_far_pair(db):
     farmer = _cbe_farmer(db)
     lot = _onion_lot(db, farmer)

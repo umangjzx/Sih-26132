@@ -1,8 +1,12 @@
 """Decision Brief orchestration (v1.5 #2)."""
 
+from datetime import date
+
 import pytest
 
-from app.services.brief import build_brief
+from app.models.price_cache import PriceCache
+from app.services.brief import _dominant_reason, build_brief
+from app.services.signal import SellWaitSignal
 
 
 def test_brief_assembles_for_seeded_market(seeded_db):
@@ -50,6 +54,55 @@ def test_brief_freight_block_is_diesel_indexed(seeded_db):
     fr = b["best_market"]["freight"]
     assert fr["rate_per_qtl_km"] > 0
     assert round(fr["breakdown"]["handling"] + fr["breakdown"]["fuel"], 3) == fr["rate_per_qtl_km"]
+
+
+def test_brief_backfills_thin_history_instead_of_raising(db):
+    """A crop+market with only today's row (the shape a fresh live-feed pull
+    actually has) used to make the Decision Brief raise "not enough price
+    history", while /api/prices/signal (whose _fetch_series already backfills)
+    confidently renders sell/wait for the exact same pair right below it on
+    /advisor. brief.py's own _series() must backfill the same way."""
+    db.add(PriceCache(crop="Onion", variety="Local", market="Pune", district="Pune",
+                      state="Maharashtra", date=date.today(),
+                      min_price=1900, max_price=2100, modal_price=2000, arrival_volume=None))
+    db.commit()
+
+    b = build_brief(db, crop="Onion", market="Pune", lat=18.5204, lon=73.8567)
+    assert b["reference_market"] == "Pune"
+    assert b["headline"]["action"] in {"sell_now", "wait", "hold"}
+
+
+def test_dominant_reason_picks_the_factor_that_actually_decided():
+    """reasons[0] is always the price-momentum sentence regardless of whether
+    price was the deciding factor — _dominant_reason must instead pick the
+    reason matching whichever factor's contribution actually swung the
+    recommendation."""
+    sig = SellWaitSignal(
+        recommendation="sell_now",
+        reasons=[
+            "Today's price (₹2000) is close to the 30-day average (₹1980) — "
+            "no strong price signal either way.",
+            "Arrivals are rising sharply — a glut is likely soon, sell before prices fall.",
+        ],
+        current_price=2000, ma_7=1990, ma_30=1980, volume_trend_pct=20.0, days_of_data=30,
+        total_score=1,
+        factors=[
+            {"key": "price", "weight": 2, "score": 0, "contribution": 0},
+            {"key": "arrivals", "weight": 1, "score": 1, "contribution": 1},
+            {"key": "weather", "weight": 1, "score": 0, "contribution": 0},
+            {"key": "forecast", "weight": 1, "score": 0, "contribution": 0},
+        ],
+    )
+    assert "Arrivals are rising" in _dominant_reason(sig)
+
+
+def test_dominant_reason_falls_back_to_first_when_no_factors():
+    sig = SellWaitSignal(
+        recommendation="sell_now", reasons=["Only reason available."],
+        current_price=2000, ma_7=1990, ma_30=1980, volume_trend_pct=None, days_of_data=30,
+        total_score=2, factors=None,
+    )
+    assert _dominant_reason(sig) == "Only reason available."
 
 
 def test_brief_endpoint_ok(client):

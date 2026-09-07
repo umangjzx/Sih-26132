@@ -45,6 +45,10 @@ export default function MatchThreadPage() {
   const [offerPrice, setOfferPrice] = useState("");
   const [offerQty, setOfferQty] = useState("");
   const [offerMsg, setOfferMsg] = useState("");
+  // Set when the form was opened via "Counter" — the price/qty are the OTHER
+  // party's numbers, silently pre-filled; without this nothing on screen said
+  // so, and there was no way to back out to a blank form.
+  const [counteringPrice, setCounteringPrice] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [toastErr, setToastErr] = useState(false);
@@ -74,9 +78,16 @@ export default function MatchThreadPage() {
   function startCounter(price: number, qty: number) {
     setOfferPrice(String(price));
     setOfferQty(String(qty));
+    setCounteringPrice(price);
     requestAnimationFrame(() =>
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
     );
+  }
+
+  function cancelCounter() {
+    setCounteringPrice(null);
+    setOfferPrice("");
+    setOfferQty("");
   }
 
   useEffect(() => { load(); }, [load]);
@@ -99,7 +110,7 @@ export default function MatchThreadPage() {
     setSubmitting(true);
     try {
       await postOffer(matchId, { price, quantity: qty, message: offerMsg || null }, token);
-      setOfferPrice(""); setOfferQty(""); setOfferMsg("");
+      setOfferPrice(""); setOfferQty(""); setOfferMsg(""); setCounteringPrice(null);
       flash(t("offerSent"));
       load();
     } catch (err) {
@@ -114,7 +125,16 @@ export default function MatchThreadPage() {
     try {
       const d = await acceptOffer(offerId, token);
       setDeal(d);
-      setToast(t("dealCreated", { price: d.agreed_price, qty: d.agreed_quantity }));
+      // Accepting takes the WHOLE lot off the market, even for a fraction of
+      // its quantity — the remainder doesn't silently vanish if the farmer
+      // notices and re-lists it, so say so rather than leaving them to
+      // discover it later.
+      const remaining = lotQty - d.agreed_quantity;
+      setToast(
+        remaining > 0.5
+          ? t("dealCreatedPartial", { price: d.agreed_price, qty: d.agreed_quantity, remaining })
+          : t("dealCreated", { price: d.agreed_price, qty: d.agreed_quantity }),
+      );
       setToastErr(false);
       load();
     } catch (err) {
@@ -281,8 +301,14 @@ export default function MatchThreadPage() {
                     </p>
                   )}
                   
-                  {/* Accept / counter / decline buttons */}
-                  {offer.status === "pending" && !isMe && match.status !== "accepted" && (
+                  {/* Accept / counter / decline buttons — gated on the match
+                      still being open, not just "not accepted": a match can
+                      also be auto-'rejected' (a sibling match on the same lot
+                      won), and this offer can still read 'pending' since
+                      accepting/declining elsewhere never touched it. Acting on
+                      it here used to create a second Deal on an
+                      already-committed lot, or resurrect a dead match. */}
+                  {offer.status === "pending" && !isMe && matchOpen && (
                     <div className="mt-2 flex flex-wrap gap-3 pt-2">
                       <button onClick={() => handleAccept(offer.id)}
                         className="flex-1 rounded-xl bg-[var(--green-700)] px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)]">
@@ -311,6 +337,15 @@ export default function MatchThreadPage() {
           <h2 className="mb-4 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
             <Icon name="handshake" size={18} className="text-[var(--green-600)]" /> {t("makeOffer")}
           </h2>
+
+          {counteringPrice != null && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-[var(--amber-100)]/60 px-3 py-2 text-xs font-bold text-[var(--amber-800)]">
+              <span>{t("counterHint", { name: cp?.name ?? "", price: counteringPrice })}</span>
+              <button type="button" onClick={cancelCounter} className="shrink-0 underline">
+                {t("cancel")}
+              </button>
+            </div>
+          )}
 
           {/* Price references — link the negotiation to the price-discovery layer */}
           {nego && (

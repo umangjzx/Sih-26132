@@ -209,18 +209,24 @@ def express_interest_in_lot(
             f"Post an open demand for {lot.crop} first, then express interest.",
         )
 
-    from app.services.matching import try_pair
+    from app.services.matching import score_candidate, try_pair
 
-    # Stop at the first demand that clears the bar (try_pair upserts a Match as
-    # a side effect, so we must not fan it out across every demand); otherwise
-    # report the closest near-miss.
+    # Score every one of the buyer's candidate demands first (score_candidate
+    # makes no DB writes) and commit only the best-scoring viable one — not
+    # just the first that clears the bar, which could lock the farmer into a
+    # weak match while a much better one from the same buyer sat later in the
+    # (unordered) query result.
+    best_dem: Demand | None = None
     best: dict | None = None
     for dem in demands:
-        r = try_pair(db, lot, dem)
-        if r.get("matched"):
-            return ExpressInterestResult(**r)
-        if best is None or (r.get("score") or -1) > (best.get("score") or -1):
+        r = score_candidate(db, lot, dem)
+        if "detail" in r:
+            if best is None or r["score"] > best["score"]:
+                best_dem, best = dem, r
+        elif best_dem is None and (best is None or (r.get("score") or -1) > (best.get("score") or -1)):
             best = r
+    if best_dem is not None:
+        return ExpressInterestResult(**try_pair(db, lot, best_dem))
     return ExpressInterestResult(**(best or {"matched": False}))
 
 

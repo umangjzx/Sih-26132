@@ -269,6 +269,17 @@ def accept_offer(
 
     match, lot, demand = _load_match_with_access(offer.match_id, current_user.id, db)
 
+    # The offer can still be "pending" even after its match was already killed
+    # off — e.g. a sibling match on the same lot got accepted first, which
+    # auto-rejects this match but doesn't touch offers sitting on it. Without
+    # this check, accepting here creates a second Deal on an already-committed
+    # lot.
+    if match.status not in ("proposed", "offered"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This match is '{match.status}' — it's no longer open to act on.",
+        )
+
     # Must be the other party — not the one who made the offer
     if offer.from_user_id == current_user.id:
         raise HTTPException(
@@ -367,6 +378,15 @@ def decline_offer(
         )
 
     match, lot, demand = _load_match_with_access(offer.match_id, current_user.id, db)
+
+    # Same stale-match guard as accept_offer — otherwise declining a leftover
+    # pending offer on an already-rejected match resurrects it back to
+    # 'proposed' (see the "no pending left" branch below).
+    if match.status not in ("proposed", "offered"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This match is '{match.status}' — it's no longer open to act on.",
+        )
 
     if offer.from_user_id == current_user.id:
         raise HTTPException(

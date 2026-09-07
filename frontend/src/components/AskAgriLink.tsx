@@ -25,7 +25,6 @@ export function AskAgriLink() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [unavailable, setUnavailable] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   async function send(e: React.FormEvent) {
@@ -50,7 +49,9 @@ export function AskAgriLink() {
           { role: "ai", text, sources: r.reference!.map((ref) => ({ title: ref.title })) },
         ]);
       } else {
-        setUnavailable(true);
+        // A single question with no grounded hit and no LLM key configured
+        // used to permanently hide the input for the rest of the session —
+        // show the "nothing found" turn but keep the conversation usable.
         setTurns((s) => [...s, { role: "ai", text: t("unavailable") }]);
       }
     } catch {
@@ -120,24 +121,22 @@ export function AskAgriLink() {
             )}
           </div>
 
-          {!unavailable && (
-            <form onSubmit={send} className="flex gap-2 border-t border-[var(--line)] p-3">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t("placeholder")}
-                maxLength={500}
-                className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
-              />
-              <button
-                type="submit"
-                disabled={busy || !q.trim()}
-                className="shrink-0 rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-              >
-                {t("send")}
-              </button>
-            </form>
-          )}
+          <form onSubmit={send} className="flex gap-2 border-t border-[var(--line)] p-3">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("placeholder")}
+              maxLength={500}
+              className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
+            />
+            <button
+              type="submit"
+              disabled={busy || !q.trim()}
+              className="shrink-0 rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {t("send")}
+            </button>
+          </form>
         </div>
       )}
     </>

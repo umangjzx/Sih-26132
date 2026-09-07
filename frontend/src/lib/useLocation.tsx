@@ -30,7 +30,7 @@ export type AppLocation = {
   source: string;
 };
 
-export type LocationError = "denied" | "unsupported" | "resolve" | null;
+export type LocationError = "denied" | "unavailable" | "unsupported" | "resolve" | null;
 
 type LocationContextValue = {
   location: AppLocation | null;
@@ -143,8 +143,13 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => resolveAndWarm({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => {
-        setError("denied");
+      (err) => {
+        // code 1 = PERMISSION_DENIED; codes 2 (POSITION_UNAVAILABLE) and 3
+        // (TIMEOUT — common on a first cold GPS fix indoors/rural/weak signal,
+        // exactly this app's target device profile) are not a permission
+        // problem, so don't send the farmer off to fix a setting that was
+        // never broken.
+        setError(err.code === GeolocationPositionError.PERMISSION_DENIED ? "denied" : "unavailable");
         setLoading(false);
       },
       { timeout: 10000, maximumAge: 600000 },

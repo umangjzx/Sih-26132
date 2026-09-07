@@ -25,7 +25,7 @@ const V_STYLE: Record<string, string> = {
 
 export default function ProfilePage() {
   const { user, token, ready, isAuthenticated, updateUser } = useAuth();
-  const { location, detect, loading: locating } = useLocation();
+  const { location, detect, error: locError, loading: locating } = useLocation();
   const router = useRouter();
   const t = useTranslations("profile");
   const inputCls =
@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [vNote, setVNote] = useState("");
   const [vRef, setVRef] = useState("");
+  const [pendingGps, setPendingGps] = useState(false);
 
   useEffect(() => {
     if (ready && !isAuthenticated) router.replace("/login");
@@ -51,6 +52,22 @@ export default function ProfilePage() {
     setState(user.state ?? "");
     setCoords({ lat: user.latitude ?? null, lon: user.longitude ?? null });
   }, [user]);
+
+  // "Use my current location" only updated the shared header-chip context —
+  // the district/state fields on THIS form stayed at their old values until
+  // the user separately noticed and clicked a second, only-then-appearing
+  // button. Track that a GPS detection is in flight and pull its result into
+  // the form as soon as it resolves, so one click does the whole job.
+  useEffect(() => {
+    if (!pendingGps) return;
+    if (location) {
+      pullFromChip();
+      setPendingGps(false);
+    } else if (locError) {
+      setPendingGps(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingGps, location, locError]);
 
   if (!ready || !isAuthenticated || !user) return null;
 
@@ -147,7 +164,7 @@ export default function ProfilePage() {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => detect()}
+            onClick={() => { setPendingGps(true); detect(); }}
             disabled={locating}
             className="flex items-center gap-2 rounded-xl border border-[var(--green-600)] px-4 py-2 text-sm font-bold text-[var(--green-700)] hover:bg-[var(--green-100)] disabled:opacity-60"
           >

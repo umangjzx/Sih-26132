@@ -19,6 +19,7 @@ from app.models.demand import Demand
 from app.models.lot import Lot
 from app.models.match import Match
 from app.models.offer import Offer
+from app.models.user import User
 from app.services.matching import run_matching
 
 
@@ -281,6 +282,68 @@ def test_all_other_offers_declined_on_accept(db, farmer_user, buyer_user):
         all_offers = db.execute(select(Offer).where(Offer.match_id == match.id)).scalars().all()
         statuses = {o.status for o in all_offers}
         assert "pending" not in statuses
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_stale_offer_on_auto_rejected_match_cannot_be_accepted_or_declined(db, farmer_user, buyer_user):
+    """A lot with two live matches (two interested buyers): accepting one
+    auto-rejects the sibling match, but a still-pending offer sitting on that
+    now-rejected match must not be actionable any more — accepting it used to
+    create a second Deal on an already-committed lot; declining it used to
+    resurrect the dead match back to 'proposed'."""
+    lot = Lot(farmer_id=farmer_user.id, crop="Onion", quantity_kg=500, quality_grade="A",
+              expected_price=2400, available_from=date(2026, 10, 1), location="Pune", status="open")
+    db.add(lot); db.flush()
+
+    buyer2 = User(role="buyer", name="Second Buyer", phone="+91secondbuyer", district="Pune", taluka="")
+    buyer3 = User(role="buyer", name="Third Buyer", phone="+91thirdbuyer", district="Pune", taluka="")
+    db.add(buyer2); db.add(buyer3); db.flush()
+
+    d1 = Demand(buyer_id=buyer_user.id, crop="Onion", quantity_kg=500, quality_spec="Grade A",
+                price_band_min=2000, price_band_max=2800, delivery_window="7 days", status="open")
+    d2 = Demand(buyer_id=buyer2.id, crop="Onion", quantity_kg=500, quality_spec="Grade A",
+                price_band_min=2000, price_band_max=2800, delivery_window="7 days", status="open")
+    d3 = Demand(buyer_id=buyer3.id, crop="Onion", quantity_kg=500, quality_spec="Grade A",
+                price_band_min=2000, price_band_max=2800, delivery_window="7 days", status="open")
+    db.add(d1); db.add(d2); db.add(d3); db.commit()
+    run_matching(db)
+
+    m1 = db.execute(select(Match).where(Match.demand_id == d1.id)).scalar_one()
+    m2 = db.execute(select(Match).where(Match.demand_id == d2.id)).scalar_one()
+    m3 = db.execute(select(Match).where(Match.demand_id == d3.id)).scalar_one()
+
+    app.dependency_overrides[get_db] = lambda: db
+    client = TestClient(app)
+    try:
+        # farmer posts an offer on each of the two "other" matches
+        _as_farmer(farmer_user)
+        off2 = client.post(f"/api/matches/{m2.id}/offers", json=OFFER_BODY).json()["id"]
+        off3 = client.post(f"/api/matches/{m3.id}/offers", json=OFFER_BODY).json()["id"]
+
+        # buyer1 offers and farmer accepts on match 1 -> lot committed, m2/m3
+        # auto-rejected as siblings on the same lot
+        app.dependency_overrides[get_current_user] = lambda: buyer_user
+        off1 = client.post(f"/api/matches/{m1.id}/offers", json=OFFER_BODY).json()["id"]
+        _as_farmer(farmer_user)
+        assert client.post(f"/api/offers/{off1}/accept").status_code == 200
+
+        db.expire_all()
+        assert db.get(Match, m2.id).status == "rejected"
+        assert db.get(Offer, off2).status == "pending"  # untouched by the accept above
+
+        # buyer2 tries to accept the farmer's still-pending offer on the dead match
+        app.dependency_overrides[get_current_user] = lambda: buyer2
+        r = client.post(f"/api/offers/{off2}/accept")
+        assert r.status_code == 409
+        assert db.query(Deal).count() == 1  # no second deal created
+
+        # buyer3 tries to decline the farmer's still-pending offer on the other dead match
+        app.dependency_overrides[get_current_user] = lambda: buyer3
+        r = client.post(f"/api/offers/{off3}/decline")
+        assert r.status_code == 409
+        db.expire_all()
+        assert db.get(Match, m3.id).status == "rejected"  # not resurrected to 'proposed'
     finally:
         app.dependency_overrides.clear()
 

@@ -23,6 +23,14 @@ def test_retrieval_top_hit_is_relevant(query, expect_id_prefix):
     assert hits[0].doc.id == expect_id_prefix
 
 
+def test_tokenizer_handles_devanagari_script():
+    """The ASCII-only [a-z0-9]+ pattern reduced any Hindi/Marathi-script query
+    to zero tokens, short-circuiting search() to [] before the fuzzy fallback
+    ever got a chance to run — \\w (Unicode by default) fixes that."""
+    tokens = knowledge._tokens("मुझे एफपीओ के बारे में जानना है")
+    assert tokens, "Devanagari text should still tokenize to something"
+
+
 def test_generated_msp_and_calendar_docs_exist():
     ids = {d.id for d in knowledge._corpus()}
     assert "msp-crop-soybean" in ids

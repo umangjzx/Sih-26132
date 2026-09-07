@@ -65,7 +65,7 @@ function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null
             style={{ width: `${score}%` }}
           />
         </div>
-        <span className="text-sm font-extrabold text-[var(--green-700)]">{score}%</span>
+        <span className="text-sm font-extrabold text-[var(--green-700)]">{Math.round(score)}%</span>
       </div>
       {detail && (
         <div className="flex items-center gap-4 text-xs font-medium text-[var(--ink-soft)]">

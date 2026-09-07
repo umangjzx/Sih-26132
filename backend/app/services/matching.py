@@ -389,10 +389,16 @@ def run_matching(db: Session) -> int:
     return upserted
 
 
-def try_pair(db: Session, lot: Lot, demand: Demand) -> dict:
-    """Score one specific lot×demand pair (used by the 'express interest' buttons
-    on the discovery boards). Upserts a proposed Match when it clears the veto
-    and MIN_SCORE. Returns {matched, match_id?, score?, reason?}."""
+def score_candidate(db: Session, lot: Lot, demand: Demand) -> dict:
+    """Score one lot×demand pair with **no DB writes** — shared by try_pair
+    (which upserts the winner) and the express-interest endpoints, which need
+    to rank every one of the caller's open candidates before committing to the
+    best one rather than upserting the first that merely clears the bar.
+
+    Returns {"score", "detail"} when the pair is viable (crop matches, within
+    range, score >= MIN_SCORE); otherwise {"matched": False, "reason", "score"?}
+    in the same shape try_pair/express-interest already return on a miss.
+    """
     from app.core.config import settings
 
     if lot.crop.strip().lower() != demand.crop.strip().lower():
@@ -420,6 +426,17 @@ def try_pair(db: Session, lot: Lot, demand: Demand) -> dict:
     )
     if total < MIN_SCORE:
         return {"matched": False, "score": total, "reason": "quantity / price / distance don't line up well enough yet"}
+    return {"score": total, "detail": detail}
+
+
+def try_pair(db: Session, lot: Lot, demand: Demand) -> dict:
+    """Score one specific lot×demand pair (used by the 'express interest' buttons
+    on the discovery boards). Upserts a proposed Match when it clears the veto
+    and MIN_SCORE. Returns {matched, match_id?, score?, reason?}."""
+    result = score_candidate(db, lot, demand)
+    if "detail" not in result:
+        return result
+    total, detail = result["score"], result["detail"]
 
     existing = db.execute(
         select(Match).where(Match.lot_id == lot.id, Match.demand_id == demand.id)

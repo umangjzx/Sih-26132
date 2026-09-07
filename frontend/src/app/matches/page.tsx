@@ -38,7 +38,7 @@ function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null
             style={{ width: `${score}%` }}
           />
         </div>
-        <span className="text-sm font-extrabold text-[var(--green-700)]">{score}%</span>
+        <span className="text-sm font-extrabold text-[var(--green-700)]">{Math.round(score)}%</span>
         {tier && (
           <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${TIER_STYLE[tier] ?? TIER_STYLE.weak}`}>
             {tm(`tier_${tier}` as "tier_strong")}

@@ -220,13 +220,20 @@ def express_interest_in_demand(
             f"List an open lot of {demand.crop} first, then express interest.",
         )
 
-    from app.services.matching import try_pair
+    from app.services.matching import score_candidate, try_pair
 
+    # Score every one of the farmer's candidate lots first (no DB writes) and
+    # commit only the best-scoring viable one — see the matching lot.py
+    # express-interest handler for the full rationale.
+    best_lot: Lot | None = None
     best: dict | None = None
     for lot in lots:
-        r = try_pair(db, lot, demand)
-        if r.get("matched"):
-            return ExpressInterestResult(**r)
-        if best is None or (r.get("score") or -1) > (best.get("score") or -1):
+        r = score_candidate(db, lot, demand)
+        if "detail" in r:
+            if best is None or r["score"] > best["score"]:
+                best_lot, best = lot, r
+        elif best_lot is None and (best is None or (r.get("score") or -1) > (best.get("score") or -1)):
             best = r
+    if best_lot is not None:
+        return ExpressInterestResult(**try_pair(db, best_lot, demand))
     return ExpressInterestResult(**(best or {"matched": False}))

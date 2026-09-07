@@ -23,7 +23,11 @@ from app.services import holidays as holidays_svc
 from app.services.grading import GRADES
 from app.services.reference import CALENDAR, MSP, _months_label
 
-_TOKEN_RE = re.compile(r"[a-z0-9]+")
+# \w (Unicode by default in Python 3) instead of [a-z0-9] — an ASCII-only
+# pattern tokenized a Devanagari-script question (hi/mr) to nothing at all,
+# short-circuiting search() to an empty result before the fuzzy fallback ever
+# got a chance to run.
+_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 _STOP = {
     "the", "a", "an", "is", "are", "of", "to", "in", "on", "for", "and", "or",
     "how", "what", "when", "where", "which", "do", "does", "did", "can", "i",
