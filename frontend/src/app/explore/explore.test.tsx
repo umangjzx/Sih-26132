@@ -1,5 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => "/explore",
+  useSearchParams: () => new URLSearchParams(),
+}));
 vi.mock("@/lib/api", () => ({ fetchPublicOverview: vi.fn() }));
 vi.mock("recharts", () => {
   const Wrap = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;

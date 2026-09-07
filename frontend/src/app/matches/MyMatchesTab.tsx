@@ -1,0 +1,168 @@
+"use client";
+
+/** "My Matches" tab of the Marketplace hub — formerly the whole /matches
+ * list page. Every scored lot×demand match for the caller, with a
+ * component breakdown and a link into the offer thread. */
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useAuth } from "@/components/AuthProvider";
+import { Icon } from "@/components/ui";
+import { listMyMatches, type MatchResponse, type ScoreDetail } from "@/lib/api";
+
+function parseScoreDetail(raw: string | null): ScoreDetail | null {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as ScoreDetail; } catch { return null; }
+}
+
+const TIER_STYLE: Record<string, string> = {
+  strong: "bg-[var(--green-100)] text-[var(--green-700)]",
+  good: "bg-[var(--green-100)] text-[var(--green-700)]",
+  fair: "bg-[var(--amber-100)] text-[var(--amber-700)]",
+  weak: "bg-[var(--line)] text-[var(--ink-soft)]",
+};
+
+function ScoreBar({ score, detail }: { score: number; detail: ScoreDetail | null }) {
+  const tm = useTranslations("matching");
+  const tdash = useTranslations("dash");
+  const tier = detail?.tier;
+  const qf = detail?.quality_factor;
+  const tf = detail?.timing_factor;
+  const hasModifier = (qf !== undefined && qf < 1) || (tf !== undefined && tf < 1);
+  return (
+    <div className="mt-3 flex flex-col gap-2 rounded-xl bg-[var(--paper)] p-3 border border-[var(--line)]">
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-widest shrink-0">{tm("scoreLabel")}</span>
+        <div className="h-2 flex-1 rounded-full bg-[var(--line)] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-[var(--green-600)]"
+            style={{ width: `${score}%` }}
+          />
+        </div>
+        <span className="text-sm font-extrabold text-[var(--green-700)]">{Math.round(score)}%</span>
+        {tier && (
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${TIER_STYLE[tier] ?? TIER_STYLE.weak}`}>
+            {tm(`tier_${tier}` as "tier_strong")}
+          </span>
+        )}
+      </div>
+      {detail && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-[var(--ink-soft)]">
+          <span className="flex items-center gap-1"><Icon name="leaf" size={14} className="text-[var(--amber-600)]" /> {tdash("qty")}: {detail.quantity}/30</span>
+          <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--amber-600)]" /> {tdash("price")}: {detail.price}/40</span>
+          <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> {tdash("dist")}: {detail.distance}/30</span>
+          {qf !== undefined && qf < 1 && (
+            <span className="flex items-center gap-1 text-[var(--amber-700)]"><Icon name="check" size={14} /> {tm("gradeFit")}: ×{qf}</span>
+          )}
+          {tf !== undefined && tf < 1 && (
+            <span className="flex items-center gap-1 text-[var(--amber-700)]"><Icon name="clock" size={14} /> {tm("timing")}: ×{tf}</span>
+          )}
+        </div>
+      )}
+      {hasModifier && (
+        <p className="text-[11px] font-medium text-[var(--ink-soft)]">{tm("modifiersNote")}</p>
+      )}
+    </div>
+  );
+}
+
+export function MyMatchesTab() {
+  const { user, token } = useAuth();
+  const tm = useTranslations("matching");
+  const tdash = useTranslations("dash");
+  const tc = useTranslations("common");
+
+  const [matches, setMatches] = useState<MatchResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
+
+  const loadData = useCallback(async () => {
+    if (!token) return;
+    setLoadErr(false);
+    try {
+      const m = await listMyMatches(token);
+      setMatches(m);
+    } catch {
+      setLoadErr(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      {loading ? (
+        <div className="flex flex-col gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-32 w-full animate-pulse rounded-2xl bg-white/50" />
+          ))}
+        </div>
+      ) : loadErr ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
+          <Icon name="close" size={26} className="text-[var(--red-600)]" />
+          <p className="text-sm font-semibold text-[var(--red-700)]">{tc("error")}</p>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); loadData(); }}
+            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      ) : matches.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--paper)] py-12 text-center shadow-sm">
+          <Icon name="connection" size={32} className="text-[var(--green-300)]" />
+          <p className="font-heading text-lg font-bold text-[var(--ink)]">{tdash("noMatchesYet")}</p>
+          <p className="text-sm font-medium text-[var(--ink-soft)]">{tm("noMatches")}</p>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-4">
+          {matches.map((match) => {
+            const detail = parseScoreDetail(match.score_detail);
+            const cp = match.counterparty;
+            const isFarmer = user?.role === "farmer";
+
+            return (
+              <li key={match.id}
+                className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm transition hover:shadow-md">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
+                      <Icon name="leaf" size={24} />
+                    </div>
+                    <div>
+                      <span className="font-heading text-base font-bold text-[var(--ink)]">{match.lot.crop}</span>
+                      <div className="mt-1 text-xs font-medium text-[var(--ink-soft)]">
+                        {match.lot.quantity_kg} kg · ₹{match.lot.expected_price}/qtl · {match.lot.location}
+                      </div>
+                      {cp && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold text-[var(--ink)]">{cp.name}</span>
+                          {cp.kyc_status === "verified" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--green-100)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--green-700)]">
+                              <Icon name="check" size={10} /> {isFarmer ? tm("verifiedBuyer") : tm("verifiedFarmer")}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Link href={`/matches/${match.id}`}
+                    className="shrink-0 rounded-xl bg-[var(--green-700)] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)]">
+                    {tm("viewOffers")}
+                  </Link>
+                </div>
+                <div className="mt-4 border-t border-[var(--line)] pt-1">
+                  <ScoreBar score={match.score} detail={detail} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

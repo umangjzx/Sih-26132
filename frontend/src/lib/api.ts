@@ -1287,6 +1287,72 @@ export function getMatchingHealth(token: string): Promise<MatchingHealth> {
   return getJson("/api/admin/matching-health", token);
 }
 
+// ---------------------------------------------------------------------------
+// Admin listings/demands moderation + full disputes history (v1.18)
+// ---------------------------------------------------------------------------
+
+export type AdminLot = {
+  id: number;
+  farmer_id: number;
+  farmer_name: string;
+  crop: string;
+  quantity_kg: number;
+  quality_grade: string;
+  expected_price: number;
+  available_from: string;
+  location: string;
+  status: string;
+};
+
+export type AdminDemand = {
+  id: number;
+  buyer_id: number;
+  buyer_name: string;
+  crop: string;
+  quantity_kg: number;
+  quality_spec: string;
+  quality_grade_min: string | null;
+  price_band_min: number;
+  price_band_max: number;
+  delivery_window: string;
+  delivery_district: string;
+  status: string;
+};
+
+export function listAdminLots(
+  token: string,
+  opts: { status?: string; crop?: string; q?: string } = {},
+): Promise<AdminLot[]> {
+  return getJson(`/api/admin/lots?${qs(opts)}`, token);
+}
+export function closeAdminLot(id: number, reason: string, token: string): Promise<AdminLot> {
+  return patchJson(`/api/admin/lots/${id}/close`, { reason }, token);
+}
+
+export function listAdminDemands(
+  token: string,
+  opts: { status?: string; crop?: string; q?: string } = {},
+): Promise<AdminDemand[]> {
+  return getJson(`/api/admin/demands?${qs(opts)}`, token);
+}
+export function closeAdminDemand(id: number, reason: string, token: string): Promise<AdminDemand> {
+  return patchJson(`/api/admin/demands/${id}/close`, { reason }, token);
+}
+
+export type AdminDispute = DisputeSummary & {
+  raised_by_name: string;
+  evidence_url: string | null;
+  outcome: string | null;
+  resolution: string | null;
+  resolved_by: number | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
+};
+
+export function listAdminDisputes(token: string, status?: string): Promise<AdminDispute[]> {
+  return getJson(`/api/admin/disputes?${qs({ status })}`, token);
+}
+
 export type AdminEvent = {
   id: number;
   actor_id: number | null;

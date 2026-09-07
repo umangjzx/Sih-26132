@@ -20,7 +20,14 @@ import { useAuth } from "./AuthProvider";
 import { Logo } from "./Logo";
 import { Icon } from "./ui";
 
-type NavItem = { href: string; labelKey: string; icon: string };
+type NavItem = {
+  href: string;
+  labelKey: string;
+  icon: string;
+  /** Extra path prefixes that should also light this item up as active —
+   * e.g. Market Intelligence lives at /prices but also covers /explore. */
+  matchPrefixes?: string[];
+};
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -44,7 +51,8 @@ function SidebarLink({
   const t        = useTranslations("nav");
   const active   =
     pathname === item.href ||
-    (item.href !== "/" && pathname.startsWith(item.href));
+    (item.href !== "/" && pathname.startsWith(item.href)) ||
+    (item.matchPrefixes?.some((p) => pathname.startsWith(p)) ?? false);
 
   return (
     <Link
@@ -116,27 +124,32 @@ export function Sidebar({
   /* ── Nav groups ── */
   const discoveryLinks: NavItem[] = [
     { href: "/",         labelKey: "home",          icon: "house"     },
-    { href: "/prices",   labelKey: "prices",        icon: "chart"     },
+    { href: "/prices",   labelKey: "marketIntel",   icon: "chart",    matchPrefixes: ["/explore"] },
     { href: "/advisor",  labelKey: "advisor",       icon: "spark"     },
-    { href: "/explore",  labelKey: "explore",       icon: "globe"     },
     { href: "/directory",labelKey: "directory",     icon: "warehouse" },
   ];
 
   const tradeLinks: NavItem[] = [];
   if (user?.role === "farmer") {
     tradeLinks.push({ href: "/farmer",  labelKey: "myLots",    icon: "leaf"       });
-    tradeLinks.push({ href: "/browse",  labelKey: "browse",    icon: "globe"      });
+  }
+  if (user?.role === "buyer") {
+    tradeLinks.push({ href: "/buyer",   labelKey: "myDemands", icon: "handshake"  });
+  }
+  if (user?.role === "farmer" || user?.role === "buyer") {
+    // Marketplace merges the former Browse + Matches items into one
+    // destination with an in-page tab switch (discover / my matches).
+    tradeLinks.push({ href: "/browse",  labelKey: "marketplace", icon: "globe", matchPrefixes: ["/matches"] });
+  }
+  if (user?.role === "farmer") {
     tradeLinks.push({ href: "/pools",   labelKey: "pools",     icon: "coins"      });
     tradeLinks.push({ href: "/forward", labelKey: "forward",   icon: "calendar"   });
     tradeLinks.push({ href: "/financing", labelKey: "financing", icon: "warehouse" });
   }
   if (user?.role === "buyer") {
-    tradeLinks.push({ href: "/buyer",   labelKey: "myDemands", icon: "handshake"  });
-    tradeLinks.push({ href: "/browse",  labelKey: "browse",    icon: "globe"      });
     tradeLinks.push({ href: "/forward", labelKey: "forward",   icon: "calendar"   });
   }
   if (user?.role === "farmer" || user?.role === "buyer") {
-    tradeLinks.push({ href: "/matches", labelKey: "matches",   icon: "connection" });
     tradeLinks.push({ href: "/history", labelKey: "history",   icon: "clock"      });
     tradeLinks.push({ href: "/alerts",  labelKey: "alerts",    icon: "bell"       });
   }
@@ -145,8 +158,10 @@ export function Sidebar({
   }
 
   const adminLinks: NavItem[] = [
-    { href: "/admin",       labelKey: "administration", icon: "shield" },
-    { href: "/admin/users", labelKey: "users",          icon: "users"  },
+    { href: "/admin",          labelKey: "administration", icon: "shield"    },
+    { href: "/admin/users",    labelKey: "users",          icon: "users"     },
+    { href: "/admin/listings", labelKey: "adminListings",  icon: "warehouse" },
+    { href: "/admin/disputes", labelKey: "adminDisputes",  icon: "scale"     },
   ];
 
   const handleLogout = () => {

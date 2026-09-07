@@ -22,6 +22,7 @@ from app.models.match import Match
 from app.models.offer import Offer
 from app.models.price_cache import PriceCache
 from app.models.user import User
+from app.schemas.admin import AdminDemandOut, AdminDisputeOut, AdminLotOut, ModerationClose
 from app.schemas.auth import AdminUserOut, SetActiveBody, VerifyUserBody
 from app.schemas.deal import (
     AdminAnalyticsResponse,
@@ -42,6 +43,40 @@ router = APIRouter(tags=["admin"])
 
 PRICE_TREND_DAYS = 30
 ANOMALY_PCT = 20.0
+
+
+def _enrich_disputes(db: Session, dispute_rows: list[Dispute]) -> list[AdminDisputeOut]:
+    """Attach raiser/resolver names and, where the deal came from an accepted
+    forward-contract commitment, the penalty-preview fields the resolve UI
+    needs — shared by the dashboard's open-only queue and the dedicated
+    /api/admin/disputes history."""
+    if not dispute_rows:
+        return []
+    user_ids = {d.raised_by for d in dispute_rows} | {d.resolved_by for d in dispute_rows if d.resolved_by}
+    names = dict(db.execute(select(User.id, User.name).where(User.id.in_(user_ids))).all())
+    forward_by_deal = {
+        c.deal_id: c
+        for c in db.execute(
+            select(ForwardCommitment).where(
+                ForwardCommitment.deal_id.in_([d.deal_id for d in dispute_rows]),
+                ForwardCommitment.status == "accepted",
+            )
+        ).scalars()
+    }
+    out = []
+    for d in dispute_rows:
+        item = AdminDisputeOut.model_validate(d)
+        item.raised_by_name = names.get(d.raised_by, "")
+        item.resolved_by_name = names.get(d.resolved_by) if d.resolved_by else None
+        c = forward_by_deal.get(d.deal_id)
+        if c is not None:
+            item.is_forward = True
+            item.forward_commitment_id = c.id
+            item.forward_penalty_preview_inr = round(
+                c.quantity_kg / 100 * c.price_per_qtl * settings.forward_penalty_pct, 2
+            )
+        out.append(item)
+    return out
 
 
 @router.get("/api/admin/dashboard", response_model=AdminDashboardResponse)
@@ -465,6 +500,161 @@ def admin_analytics(
         avg_hours_to_deal=avg_hours_to_deal,
         price_vs_msp=price_vs_msp,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Admin listings & demands moderation (v1.18)
+#
+# The dashboard only ever showed aggregate counts — there was no way for an
+# admin to open a single lot or demand and act on it. These two list
+# endpoints plus a force-close action close that gap: same soft-delete the
+# owner's own withdraw already does (status -> closed, drop pending matches),
+# just admin-initiated and requiring a reason for the audit ledger.
+# --------------------------------------------------------------------------- #
+
+@router.get("/api/admin/lots", response_model=list[AdminLotOut])
+def admin_list_lots(
+    current_user: CurrentUser,
+    status_filter: str | None = Query(None, alias="status"),
+    crop: str | None = None,
+    q: str | None = Query(None, description="farmer name or phone substring"),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> list[AdminLotOut]:
+    stmt = select(Lot, User.name).join(User, User.id == Lot.farmer_id).order_by(Lot.id.desc())
+    if status_filter:
+        stmt = stmt.where(Lot.status == status_filter)
+    if crop:
+        stmt = stmt.where(Lot.crop.ilike(f"%{crop.strip()}%"))
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(User.name.ilike(like), User.phone.ilike(like)))
+    rows = db.execute(stmt.limit(limit)).all()
+    out = []
+    for lot, farmer_name in rows:
+        item = AdminLotOut.model_validate(lot)
+        item.farmer_name = farmer_name
+        out.append(item)
+    return out
+
+
+@router.patch("/api/admin/lots/{lot_id}/close", response_model=AdminLotOut)
+def admin_close_lot(
+    lot_id: int,
+    body: ModerationClose,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> AdminLotOut:
+    lot = db.get(Lot, lot_id)
+    if lot is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lot not found")
+    if lot.status != "open":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Lot is '{lot.status}', not open")
+    lot.status = "closed"
+    for m in db.execute(
+        select(Match).where(Match.lot_id == lot.id, Match.status.in_(("proposed", "offered")))
+    ).scalars().all():
+        m.status = "rejected"
+    db.flush()
+
+    from app.services.audit import log_event
+    log_event(
+        db, actor_id=current_user.id, entity_type="lot", entity_id=lot.id,
+        action="admin_lot_closed", detail={"reason": body.reason},
+    )
+    db.commit()
+    db.refresh(lot)
+
+    farmer = db.get(User, lot.farmer_id)
+    item = AdminLotOut.model_validate(lot)
+    item.farmer_name = farmer.name if farmer else ""
+    return item
+
+
+@router.get("/api/admin/demands", response_model=list[AdminDemandOut])
+def admin_list_demands(
+    current_user: CurrentUser,
+    status_filter: str | None = Query(None, alias="status"),
+    crop: str | None = None,
+    q: str | None = Query(None, description="buyer name or phone substring"),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> list[AdminDemandOut]:
+    stmt = select(Demand, User.name).join(User, User.id == Demand.buyer_id).order_by(Demand.id.desc())
+    if status_filter:
+        stmt = stmt.where(Demand.status == status_filter)
+    if crop:
+        stmt = stmt.where(Demand.crop.ilike(f"%{crop.strip()}%"))
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(User.name.ilike(like), User.phone.ilike(like)))
+    rows = db.execute(stmt.limit(limit)).all()
+    out = []
+    for demand, buyer_name in rows:
+        item = AdminDemandOut.model_validate(demand)
+        item.buyer_name = buyer_name
+        out.append(item)
+    return out
+
+
+@router.patch("/api/admin/demands/{demand_id}/close", response_model=AdminDemandOut)
+def admin_close_demand(
+    demand_id: int,
+    body: ModerationClose,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> AdminDemandOut:
+    demand = db.get(Demand, demand_id)
+    if demand is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Demand not found")
+    if demand.status != "open":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Demand is '{demand.status}', not open")
+    demand.status = "closed"
+    for m in db.execute(
+        select(Match).where(Match.demand_id == demand.id, Match.status.in_(("proposed", "offered")))
+    ).scalars().all():
+        m.status = "rejected"
+    db.flush()
+
+    from app.services.audit import log_event
+    log_event(
+        db, actor_id=current_user.id, entity_type="demand", entity_id=demand.id,
+        action="admin_demand_closed", detail={"reason": body.reason},
+    )
+    db.commit()
+    db.refresh(demand)
+
+    buyer = db.get(User, demand.buyer_id)
+    item = AdminDemandOut.model_validate(demand)
+    item.buyer_name = buyer.name if buyer else ""
+    return item
+
+
+# --------------------------------------------------------------------------- #
+# Admin disputes — full history (v1.18)
+#
+# The dashboard's dispute_queue only ever showed 'open' disputes. This gives
+# an admin the resolved/withdrawn history too, reusing the exact same
+# PATCH /api/disputes/{id}/close the dashboard's inline resolve control uses.
+# --------------------------------------------------------------------------- #
+
+@router.get("/api/admin/disputes", response_model=list[AdminDisputeOut])
+def admin_list_disputes(
+    current_user: CurrentUser,
+    status_filter: str | None = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _admin: User = require_role("admin"),
+) -> list[AdminDisputeOut]:
+    stmt = select(Dispute).order_by(Dispute.created_at.desc(), Dispute.id.desc())
+    if status_filter:
+        stmt = stmt.where(Dispute.status == status_filter)
+    rows = db.execute(stmt.limit(limit)).scalars().all()
+    return _enrich_disputes(db, rows)
 
 
 # --------------------------------------------------------------------------- #
