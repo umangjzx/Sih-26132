@@ -33,3 +33,7 @@ class FinancingRequest(Base):
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # v1.20 — stamped once the pledged lot actually sells, so a financed lot's
+    # downstream deal is traceable from the financing record instead of only
+    # the other way around (deal -> match -> lot).
+    deal_id: Mapped[int | None] = mapped_column(ForeignKey("deals.id"), nullable=True, index=True)

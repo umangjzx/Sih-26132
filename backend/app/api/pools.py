@@ -36,6 +36,7 @@ from app.schemas.pool import (
 )
 from app.services import pools as pool_svc
 from app.services.audit import log_event
+from app.services.financing_link import link_financing_request_to_deal
 from app.services.geo import _district_coord, haversine_km
 
 router = APIRouter(prefix="/api/pools", tags=["pools"])
@@ -434,6 +435,7 @@ def accept_demand_for_pool(
             select(Lot).where(Lot.id.in_(committed_lot_ids), Lot.status == "open")
         ).scalars():
             member_lot.status = "matched"
+            link_financing_request_to_deal(db, member_lot.id, deal.id)
         for stale in db.execute(
             select(Match).where(
                 Match.lot_id.in_(committed_lot_ids),

@@ -222,6 +222,39 @@ def test_accept_offer_notifies_the_offer_maker(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_accept_offer_links_an_active_financing_request_to_the_deal(db, farmer_user, buyer_user):
+    """v1.20 — a lot pledged for financing that then actually sells should be
+    traceable from the financing record, not just discoverable by walking
+    Deal -> Match -> Lot by hand."""
+    from app.models.financing import FinancingRequest
+
+    match = _seed_match(db, farmer_user, buyer_user)
+    lot = db.execute(select(Lot).where(Lot.id == match.lot_id)).scalar_one()
+    financing = FinancingRequest(
+        farmer_id=farmer_user.id, lot_id=lot.id, requested_amount_inr=1000, status="pending",
+    )
+    db.add(financing)
+    db.commit()
+
+    client, _ = _make_clients(db, farmer_user, buyer_user)
+    try:
+        _as_farmer(farmer_user)
+        offer_id = client.post(f"/api/matches/{match.id}/offers", json=OFFER_BODY).json()["id"]
+
+        _as_buyer(buyer_user)
+        resp = client.post(f"/api/offers/{offer_id}/accept")
+        assert resp.status_code == 200, resp.text
+        deal_id = resp.json()["id"]
+
+        db.expire_all()
+        row = db.execute(
+            select(FinancingRequest).where(FinancingRequest.id == financing.id)
+        ).scalar_one()
+        assert row.deal_id == deal_id
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_accept_offer_takes_lot_and_demand_off_the_market(db, farmer_user, buyer_user):
     """Accepting an offer must flip the lot + demand to 'matched' (so the matcher
     and discovery board stop offering an already-committed lot) and reject any

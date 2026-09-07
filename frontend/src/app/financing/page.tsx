@@ -74,6 +74,15 @@ function RequestRow({ req, onWithdraw }: { req: FinancingRequest; onWithdraw: (i
           {t("adminNote")}: {req.admin_note}
         </p>
       )}
+      {req.deal_id && (
+        <Link
+          href={`/deals/${req.deal_id}`}
+          className="flex items-center gap-1.5 text-xs font-bold text-[var(--green-700)] hover:underline"
+        >
+          <Icon name="handshake" size={13} />
+          {t("viewDeal")}
+        </Link>
+      )}
       <div className="flex items-center justify-between text-xs font-medium text-[var(--ink-soft)]">
         <span>{t("eligibleUpTo", { amount: Math.round(req.max_eligible_inr).toLocaleString("en-IN") })}</span>
         {req.status === "pending" && (

@@ -852,6 +852,7 @@
     "selectLot": "Select an open lot…",
     "grade": "Grade",
     "eligibleUpTo": "Eligible up to ₹{amount}",
+    "viewDeal": "This lot sold — view the deal",
     "amount": "Requested amount (₹)",
     "warehouseName": "Warehouse name",
     "receiptRef": "Receipt reference",

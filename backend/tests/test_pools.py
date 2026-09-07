@@ -332,6 +332,41 @@ def test_pool_accept_demand_closes_member_linked_lots(farmer_client, db):
     assert db.get(Lot, lot.id).status == "matched"
 
 
+def test_pool_accept_demand_links_member_financing_request_to_the_deal(farmer_client, db):
+    """v1.20 — the same traceability fix as the 1:1 offer path, for a member
+    lot that was pledged for financing before the pool sold."""
+    from datetime import date as _date
+
+    from app.models.financing import FinancingRequest
+    from app.models.lot import Lot
+
+    lot = Lot(farmer_id=1, crop="Onion", quantity_kg=1500, quality_grade="B",
+              expected_price=2200, available_from=_date.today(), location="Pune", status="open")
+    db.add(lot); db.commit()
+    financing = FinancingRequest(farmer_id=1, lot_id=lot.id, requested_amount_inr=1000, status="pending")
+    db.add(financing); db.commit()
+
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 5000,
+        "floor_price": 2000, "grade": "B", "location": "Pune",
+    }).json()["id"]
+    farmer_client.post(f"/api/pools/{pid}/join",
+                       json={"quantity_kg": 1500, "expected_price": 2200, "lot_id": lot.id})
+
+    buyer = User(role="buyer", name="BulkCo4", phone="+91bulk4", district="Pune", taluka="")
+    db.add(buyer); db.commit()
+    dem = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=5000, quality_spec="",
+                 price_band_min=2000, price_band_max=2600, delivery_window="", status="open")
+    db.add(dem); db.commit()
+
+    r = farmer_client.post(f"/api/pools/{pid}/accept-demand", json={"demand_id": dem.id})
+    assert r.status_code == 201, r.text
+    deal_id = r.json()["deal_id"]
+
+    db.expire_all()
+    assert db.get(FinancingRequest, financing.id).deal_id == deal_id
+
+
 def test_pool_create_rejects_absurd_quantity(farmer_client):
     r = farmer_client.post("/api/pools", json={
         "crop": "Onion", "title": "p", "target_quantity_kg": 99_000_000, "floor_price": 2000,

@@ -59,7 +59,7 @@ const TABLES = [
   { name: "geo_cache", purpose: "Cached geocode lookups, to avoid repeat external calls", fields: "query (unique), lat/lon, display_name, admin1/2/3, created_at", rel: "Written by geocode.py, read on every location resolve", source: "Nominatim / BigDataCloud / Open-Meteo geocoding" },
   { name: "price_alerts", purpose: "\"Notify me when crop X at market Y crosses ₹Z\"", fields: "user_id→users, crop, market, direction (above/below), threshold, active, last_triggered_at?", rel: "Evaluated by the 6-hourly scheduler; writes notifications", source: "User-created" },
   { name: "notifications", purpose: "In-app notification feed", fields: "user_id→users, kind, title, body, link?, read, created_at", rel: "One row per triggered price alert or a forward-contract settlement-risk deal event", source: "System-generated (both kinds fire only as a side effect of the price-ingestion cycle — see Notifications in Modules)" },
-  { name: "financing_requests", purpose: "A farmer's warehouse-receipt financing ask against a lot", fields: "lot_id→lots, farmer_id→users, requested_amount_inr, warehouse_name?, receipt_ref?, note?, status (pending/approved/rejected/withdrawn), admin_note?, reviewed_by?→users, reviewed_at?", rel: "Reviewed by admin; the platform tracks the request only — no money is held or disbursed", source: "Farmer-submitted, v1.17" },
+  { name: "financing_requests", purpose: "A farmer's warehouse-receipt financing ask against a lot", fields: "lot_id→lots, farmer_id→users, requested_amount_inr, warehouse_name?, receipt_ref?, note?, status (pending/approved/rejected/withdrawn), admin_note?, reviewed_by?→users, reviewed_at?, deal_id?→deals (v1.21)", rel: "Reviewed by admin; deal_id is stamped once the pledged lot actually sells, so the request is traceable to its outcome — the platform still tracks the request only, no money is held or disbursed", source: "Farmer-submitted, v1.17" },
 ];
 
 export function DatabaseSection() {
@@ -67,7 +67,7 @@ export function DatabaseSection() {
     <JudgeSection
       id="database"
       eyebrow="Data model"
-      title="Database design — 20 tables, 17 migrations"
+      title="Database design — 20 tables, 18 migrations"
       quickAnswer="A real relational schema (not a document store bolted onto a marketplace) — every foreign key below exists as an actual constraint, managed exclusively through Alembic migrations, never create_all()."
     >
       <div className="al-card-plain p-4 sm:p-6">

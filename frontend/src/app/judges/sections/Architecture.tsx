@@ -15,7 +15,7 @@ const CHART = `flowchart LR
       Sched["APScheduler — 6-hourly ingestion + alert eval"]
     end
 
-    DB[("PostgreSQL 16\\n20 tables · 17 migrations")]
+    DB[("PostgreSQL 16\\n20 tables · 18 migrations")]
 
     subgraph Ext["11 external sources — every one has an offline fallback"]
       AGMARKNET["data.gov.in AGMARKNET"]
@@ -55,7 +55,7 @@ const LAYERS = [
         tech: "React 19 client components, recharts for trend/comparison charts",
         input: "User actions, form input, JWT-authenticated API calls",
         output: "Live price data, signals, deal state, receipts",
-        deps: "lib/api.ts (92 typed fetch functions), AuthProvider, LocationProvider",
+        deps: "lib/api.ts (105 typed fetch functions), AuthProvider, LocationProvider",
       },
       {
         title: "Admin dashboard",
@@ -63,7 +63,7 @@ const LAYERS = [
         tech: "React 19 client components, role-gated (admin only)",
         input: "Admin actions (verify user, close dispute, export CSV)",
         output: "GMV/funnel analytics, the append-only event feed, CSV export",
-        deps: "/api/admin/* (8 endpoints)",
+        deps: "/api/admin/* (13 endpoints)",
       },
     ],
   },
@@ -84,11 +84,11 @@ const LAYERS = [
         tech: "Pure Python scoring functions (matching.py, pools.py), SQLAlchemy 2.0 typed models",
         input: "Lot/demand posts, offers, pool commitments, forward bids",
         output: "Scored matches, deals, pool candidates, materialised deals",
-        deps: "19-table schema, audit.py (append-only event log)",
+        deps: "20-table schema, audit.py (append-only event log)",
       },
       {
         title: "Rate limiting",
-        purpose: "In-process sliding-window limiter guarding 19 call sites across 12 route files",
+        purpose: "In-process sliding-window limiter guarding 27 call sites across 14 route files",
         tech: "Custom thread-lock-protected limiter (core/ratelimit.py) — deliberately not Redis, since the deployment runs a single Uvicorn worker",
         input: "Every request to a guarded endpoint",
         output: "429 once the window is exceeded",
@@ -158,7 +158,7 @@ const LAYERS = [
         tech: "SQLAlchemy 2.0 typed Mapped[] models, deterministic constraint naming",
         input: "Every write path in the app",
         output: "Durable relational storage",
-        deps: "17-migration linear chain, head e7f2a9c3b6d5",
+        deps: "18-migration linear chain, head b6f0d3e2c9a4",
       },
       {
         title: "geo_cache",
@@ -223,7 +223,7 @@ export function ArchitectureSection() {
       id="architecture"
       eyebrow="How it's built"
       title="Complete system architecture"
-      quickAnswer="A client-rendered Next.js frontend talks to a FastAPI backend over REST; the backend owns all business logic and a 19-table Postgres schema, and every outbound call to an external source degrades gracefully instead of breaking the UI."
+      quickAnswer="A client-rendered Next.js frontend talks to a FastAPI backend over REST; the backend owns all business logic and a 20-table Postgres schema, and every outbound call to an external source degrades gracefully instead of breaking the UI."
     >
       <div className="al-card-plain p-4 sm:p-6">
         <Mermaid chart={CHART} />

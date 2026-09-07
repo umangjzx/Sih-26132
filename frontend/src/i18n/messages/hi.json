@@ -852,6 +852,7 @@
     "selectLot": "एक खुला लॉट चुनें…",
     "grade": "ग्रेड",
     "eligibleUpTo": "₹{amount} तक पात्र",
+    "viewDeal": "यह लॉट बिक गया — सौदा देखें",
     "amount": "अनुरोधित राशि (₹)",
     "warehouseName": "गोदाम का नाम",
     "receiptRef": "रसीद संदर्भ",

@@ -26,6 +26,7 @@ from app.models.price_cache import PriceCache
 from app.models.user import User
 from app.schemas.offer import DealResponse, OfferCreate, OfferResponse
 from app.services.audit import log_event
+from app.services.financing_link import link_financing_request_to_deal
 
 router = APIRouter(tags=["offers"])
 logger = logging.getLogger(__name__)
@@ -330,6 +331,7 @@ def accept_offer(
     )
     db.add(deal)
     db.flush()
+    link_financing_request_to_deal(db, lot.id, deal.id)
     log_event(
         db, actor_id=current_user.id, entity_type="match", entity_id=match.id,
         action="offer_accepted",

@@ -1044,6 +1044,7 @@ export type FinancingRequest = {
   reviewed_by: number | null;
   reviewed_at: string | null;
   created_at: string;
+  deal_id: number | null;
   crop: string;
   farmer_name: string;
   max_eligible_inr: number;

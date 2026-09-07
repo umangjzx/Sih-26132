@@ -76,15 +76,25 @@ function FinancingHistoryRow({
           {r.admin_note && <div className="mt-1 text-xs opacity-70">{r.admin_note}</div>}
         </td>
         <td className="px-3 py-2 text-right align-top">
-          {r.status === "pending" && (
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              className="rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--color-border)]/30"
-            >
-              {open ? t("resolveCancel") : t("resolveAction")}
-            </button>
-          )}
+          <div className="flex items-center justify-end gap-2">
+            {r.deal_id && (
+              <Link
+                href={`/deals/${r.deal_id}`}
+                className="rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-xs font-semibold text-[var(--green-700)] hover:bg-[var(--color-border)]/30"
+              >
+                {tf("viewDeal")}
+              </Link>
+            )}
+            {r.status === "pending" && (
+              <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--color-border)]/30"
+              >
+                {open ? t("resolveCancel") : t("resolveAction")}
+              </button>
+            )}
+          </div>
         </td>
       </tr>
       {open && (

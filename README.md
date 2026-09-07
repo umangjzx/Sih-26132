@@ -52,6 +52,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.18 · Buyer-perspective Decision Brief | `/api/brief?perspective=buyer` mirrors the same computation for a buyer's sourcing decision | ✅ |
 | v1.19 · Navigation & IA overhaul | role-gated Advisor link, admin home + overview/activity tabs, dedicated `/admin/financing` and `/notifications` pages, terminology sync | ✅ |
 | v1.20 · Full-lifecycle notifications | offer accept/decline, financing approve/reject, deal-pipeline advance, and dispute resolution now each create a real notification, not just price alerts and forward settlement | ✅ |
+| v1.21 · Financing ↔ deal traceability | `financing_requests.deal_id` is stamped once the pledged lot actually sells (via a 1:1 offer accept or a pool acceptance), with a "View deal" link on both the farmer and admin financing screens | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -191,7 +192,7 @@ append-only ledger every other step uses.
 
 Frontend: Next.js 16 (App Router) client-rendered SPA, 31 routes. Backend:
 FastAPI, 19 routers, 111 endpoints, 32 single-responsibility services.
-Database: PostgreSQL 16, 20 tables, 17 linear Alembic migrations. 11 free
+Database: PostgreSQL 16, 20 tables, 18 linear Alembic migrations. 11 free
 external data sources, every one with an offline-safe fallback. Full diagrams,
 the complete API reference, and the database ER diagram are in
 [Architecture](#architecture), [API reference](#api-reference), and
@@ -530,9 +531,9 @@ agrilink/
 │   │       ├── satellite.py    optional Google Earth Engine NDVI crop-health reading
 │   │       ├── forward_settlement.py  overdue-commitment reminders (visibility only)
 │   │       └── district_coords.py / market_towns.py   curated all-India lat/lon lookups
-│   ├── alembic/versions/       17 revisions, 0001_initial → e7f2a9c3b6d5_v1_17_financing_requests
+│   ├── alembic/versions/       18 revisions, 0001_initial → b6f0d3e2c9a4_v1_21_financing_deal_link
 │   │                           (see Database schema → Migrations for the full chain)
-│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 469 tests
+│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 471 tests
 │   └── .env.example
 ├── frontend/
 │   └── src/
@@ -900,6 +901,7 @@ erDiagram
     DEALS ||--o{ TRANSACTION_EVENTS : "entity_id"
     FORWARD_BIDS ||--o{ FORWARD_COMMITMENTS : "bid_id"
     FORWARD_COMMITMENTS ||--o| DEALS : "deal_id"
+    FINANCING_REQUESTS ||--o| DEALS : "deal_id"
 ```
 
 | Table | Key columns | Status/enum values |
@@ -920,13 +922,13 @@ erDiagram
 | `pool_members` | `pool_id→pools`, `farmer_id→users`, `lot_id→lots?`, `quantity_kg, expected_price`, `status`, `created_at` | status: `committed` \| `withdrawn` |
 | `forward_bids` | `buyer_id→users`, `crop, quantity_kg, price_min, price_max, delivery_from, delivery_to, delivery_district, latitude?, longitude?, quality_grade_min?, notes?`, `status`, `created_at` | status: `open` \| `closed` \| `filled` \| `cancelled` |
 | `forward_commitments` | `bid_id→forward_bids`, `farmer_id→users`, `quantity_kg, price_per_qtl, expected_ready, note?`, `status`, `deal_id→deals?`, `created_at`, `settlement_due?, settlement_reminder_sent_at?` (v1.8), `breach_status?, penalty_inr?, breached_at?` (v1.11) | status: `pending` \| `accepted` \| `declined` \| `withdrawn` \| `breached` |
-| `financing_requests` | `farmer_id→users`, `lot_id→lots`, `requested_amount_inr, warehouse_name?, receipt_ref?, note?`, `status`, `admin_note?, reviewed_by→users?, reviewed_at?`, `created_at` (v1.17) | status: `pending` \| `approved` \| `rejected` \| `withdrawn` |
+| `financing_requests` | `farmer_id→users`, `lot_id→lots`, `requested_amount_inr, warehouse_name?, receipt_ref?, note?`, `status`, `admin_note?, reviewed_by→users?, reviewed_at?`, `created_at` (v1.17), `deal_id→deals?` (v1.21 — stamped once the pledged lot sells, via a 1:1 offer accept or a pool acceptance) | status: `pending` \| `approved` \| `rejected` \| `withdrawn` |
 | `geo_cache` | `query` (unique), `latitude, longitude, display_name, admin1/2/3`, `created_at` | reverse-geocode key = `@rev:{lat},{lon}` |
 | `price_alerts` | `user_id→users`, `crop, market, direction, threshold, active, last_triggered_at?` | direction: `above` \| `below` |
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system`. **v1.19** — `price_alert` (threshold crossing) and `deal` (a forward-contract settlement running late) fire from the 6-hourly ingestion cycle; `deal` also now fires on an offer accept/decline, a financing approve/reject, and a deal-pipeline advance; `dispute` fires when an admin resolves a dispute. `digest`/`system` are still reserved kinds with no producing code path (see [Known limitations](#known-limitations)) |
 
 **Migrations** (linear chain, in order):
-`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) · `a7d1e9c4b6f2_v1_8_forward_settlement` (`forward_commitments.settlement_due/settlement_reminder_sent_at`) · `b3f8e1a9c5d2_v1_9_lot_photo_storage` (widens `lots.photo_url` to `Text` for base64 data-URL photos) · `c8a4f2b7d9e1_v1_11_forward_breach_penalty` (`forward_commitments.breach_status/penalty_inr/breached_at`) · `d3e6a8b1c4f7_v1_14_sms_digest` (`users.sms_digest_enabled/sms_digest_sent_at`) · `e7f2a9c3b6d5_v1_17_financing_requests` (`financing_requests` table) — **head**.
+`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) · `a7d1e9c4b6f2_v1_8_forward_settlement` (`forward_commitments.settlement_due/settlement_reminder_sent_at`) · `b3f8e1a9c5d2_v1_9_lot_photo_storage` (widens `lots.photo_url` to `Text` for base64 data-URL photos) · `c8a4f2b7d9e1_v1_11_forward_breach_penalty` (`forward_commitments.breach_status/penalty_inr/breached_at`) · `d3e6a8b1c4f7_v1_14_sms_digest` (`users.sms_digest_enabled/sms_digest_sent_at`) · `e7f2a9c3b6d5_v1_17_financing_requests` (`financing_requests` table) · `b6f0d3e2c9a4_v1_21_financing_deal_link` (`financing_requests.deal_id`) — **head**.
 
 ---
 
@@ -1534,7 +1536,7 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-**Backend** (42 test files, 469 tests): signal cases and MSP/weather factors;
+**Backend** (42 test files, 471 tests): signal cases and MSP/weather factors;
 price forecast (trend+seasonality, prediction band, short-history degradation);
 the **Decision Brief** (assembly, urgency ordering, reference-market inference,
 thin-history 404, and the v1.18 buyer-perspective mirror — headline action,

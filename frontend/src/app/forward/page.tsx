@@ -459,9 +459,11 @@ export default function ForwardPage() {
   const { user, token, isAuthenticated, ready } = useAuth();
   const router = useRouter();
   const t = useTranslations("forward");
+  const tc = useTranslations("common");
   const { location } = useLocation();
   const [bids, setBids] = useState<ForwardBid[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
 
   const isBuyer = user?.role === "buyer";
 
@@ -481,8 +483,10 @@ export default function ForwardPage() {
       } else {
         setBids(await listForwardBids(token, { lat: location?.lat ?? undefined, lon: location?.lon ?? undefined }));
       }
+      setLoadErr(false);
     } catch {
       setBids([]);
+      setLoadErr(true);
     } finally {
       setLoading(false);
     }
@@ -507,6 +511,18 @@ export default function ForwardPage() {
         <div className="flex flex-col gap-4">
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-40 w-full" />
+        </div>
+      ) : loadErr ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
+          <Icon name="close" size={26} className="text-[var(--red-600)]" />
+          <p className="text-sm font-semibold text-[var(--red-700)]">{tc("error")}</p>
+          <button
+            type="button"
+            onClick={() => load()}
+            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+          >
+            {tc("retry")}
+          </button>
         </div>
       ) : sorted.length === 0 ? (
         <Card>

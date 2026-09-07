@@ -82,7 +82,7 @@ marked `pg` (the Postgres-only `on_conflict_do_update` upsert path) are opt-in:
 cd backend && venv/Scripts/python.exe -m pytest -q -m "not pg"   # skip the Postgres-only test
 ```
 
-`tests/` (42 files, 469 tests, all passing) covers the sell/wait signal cases and
+`tests/` (42 files, 471 tests, all passing) covers the sell/wait signal cases and
 MSP/weather factors, the price forecast, the **Decision Brief** (seller and the
 v1.18 buyer-perspective mirror), **diesel-indexed freight**, the **knowledge
 base** retrieval, geo distance and `nearest_state`, ingestion normalize +

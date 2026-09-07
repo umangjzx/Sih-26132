@@ -52,6 +52,7 @@ class FinancingRequestOut(BaseModel):
     reviewed_by: int | None
     reviewed_at: datetime | None
     created_at: datetime
+    deal_id: int | None = None
     # enriched
     crop: str = ""
     farmer_name: str = ""
