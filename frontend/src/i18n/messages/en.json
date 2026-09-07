@@ -16,7 +16,7 @@
     "logout": "Logout",
     "myLots": "My Lots",
     "myDemands": "My Demands",
-    "history": "My History",
+    "history": "Deals & History",
     "admin": "Admin",
     "explore": "Explore",
     "alerts": "Alerts",
@@ -26,12 +26,13 @@
     "openMenu": "Open menu",
     "tradeSection": "Trade & Logistics",
     "matches": "Matches",
-    "administration": "Administration",
+    "administration": "Dashboard",
     "pools": "Pools",
     "profile": "Profile",
     "users": "Users",
     "adminListings": "Listings & Demands",
     "adminDisputes": "Disputes",
+    "adminFinancing": "Financing Queue",
     "browse": "Browse",
     "marketplace": "Marketplace",
     "forward": "Forward deals",
@@ -67,7 +68,9 @@
     "wait": "Wait",
     "hold": "Hold / Watch",
     "why": "Why this recommendation?",
-    "notEnoughData": "Not enough price history yet to give a recommendation"
+    "notEnoughData": "Not enough price history yet to give a recommendation",
+    "buy_now": "Buy Now",
+    "wait_to_buy": "Wait"
   },
   "nearby": {
     "title": "Nearby Market Comparison",
@@ -530,7 +533,13 @@
     "noFinancing": "No pending financing requests",
     "farmer": "Farmer",
     "requested": "Requested",
-    "eligible": "Eligible up to"
+    "eligible": "Eligible up to",
+    "financingPendingCount": "{n} pending request(s)",
+    "manageFinancing": "Manage financing",
+    "disputesOpenCount": "{n} open dispute(s)",
+    "manageDisputes": "Manage disputes",
+    "tabOverview": "Overview",
+    "tabActivity": "Activity Log"
   },
   "weather": {
     "title": "7-Day Weather",
@@ -665,7 +674,12 @@
     "title": "Notifications",
     "none": "No notifications",
     "markAllRead": "Mark all read",
-    "unread": "{count} unread"
+    "unread": "{count} unread",
+    "viewAll": "View all notifications",
+    "pageTitle": "Notifications",
+    "pageSubtitle": "Every price alert, deal update, and system message in one place.",
+    "filterAll": "All",
+    "filterUnread": "Unread"
   },
   "home": {
     "heroTitle": "Know your price. Sell at the right time.",
@@ -782,6 +796,7 @@
     "noActions": "No action needed right now — check back after the next price update.",
     "loadError": "Could not build an action plan for this crop and market yet.",
     "viewBuyers": "View buyers",
+    "viewSellers": "View sellers",
     "cropHealth": "Satellite crop health: {health} (NDVI {ndvi}, {date})",
     "health_poor": "poor",
     "health_fair": "fair",
@@ -824,6 +839,7 @@
     "title": "Financing Requests",
     "subtitle": "Pledge a stored, graded lot as collateral for a cash advance. An admin reviews every request.",
     "disclaimer": "AgriLink does not lend or hold money — this only tracks your request and an admin's approve/reject decision. Actual disbursement is arranged separately with a bank, NBFC, or warehouse partner.",
+    "findWarehouse": "Find a warehouse or cold-storage facility near you",
     "newRequest": "New financing request",
     "cancel": "Cancel",
     "lot": "Lot",
@@ -1064,6 +1080,38 @@
     "actions": "Actions",
     "none": "No disputes match.",
     "loadError": "Could not load disputes."
+  },
+  "adminFinancing": {
+    "title": "Financing Requests",
+    "back": "Dashboard",
+    "allStatus": "Any status",
+    "status_pending": "Pending",
+    "status_approved": "Approved",
+    "status_rejected": "Rejected",
+    "status_withdrawn": "Withdrawn",
+    "farmer": "Farmer",
+    "requested": "Requested",
+    "eligible": "Eligible up to",
+    "date": "Date",
+    "status": "Status",
+    "actions": "Actions",
+    "none": "No financing requests match.",
+    "loadError": "Could not load financing requests."
+  },
+  "adminHome": {
+    "greeting": "Welcome back, {name}",
+    "subtitle": "What needs your attention today.",
+    "loadError": "Could not load the dashboard summary.",
+    "openDisputes": "Open disputes",
+    "pendingFinancing": "Pending financing",
+    "openLots": "Open lots",
+    "totalDeals": "Total deals",
+    "quickActions": "Quick actions",
+    "linkDashboard": "Full dashboard & analytics",
+    "linkDisputes": "Review disputes",
+    "linkFinancing": "Review financing requests",
+    "linkListings": "Moderate listings & demands",
+    "linkUsers": "Manage users & verification"
   },
   "browse": {
     "titleBuyer": "Browse lots near you",

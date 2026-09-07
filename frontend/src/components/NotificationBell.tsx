@@ -119,6 +119,13 @@ export function NotificationBell() {
               })}
             </ul>
           )}
+          <Link
+            href="/notifications"
+            onClick={() => setOpen(false)}
+            className="mt-2 block rounded-lg py-1.5 text-center text-xs font-bold text-[var(--color-brand)] hover:underline"
+          >
+            {t("viewAll")}
+          </Link>
         </div>
       )}
     </div>

@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.demand import Demand
+from app.models.lot import Lot
 from app.models.price_cache import PriceCache
 from app.models.user import User
 from app.services import forecast as forecast_svc
@@ -170,6 +171,37 @@ def _verified_buyers_nearby(
     return out
 
 
+def _verified_sellers_nearby(
+    db: Session, crop: str, origin: tuple[float, float] | None, radius_km: float
+) -> list[dict]:
+    """Buyer-perspective mirror of ``_verified_buyers_nearby`` — open lots
+    (farmers with produce to sell) instead of open demands."""
+    rows = db.execute(
+        select(Lot, User)
+        .join(User, Lot.farmer_id == User.id)
+        .where(Lot.status == "open", Lot.crop.ilike(crop), User.is_active.is_(True))
+    ).all()
+    out: list[dict] = []
+    for lot, farmer in rows:
+        coords = (lot.latitude, lot.longitude) if lot.latitude is not None and lot.longitude is not None else None
+        dist = round(haversine_km(origin, coords), 1) if origin and coords else None
+        if dist is not None and dist > radius_km:
+            continue
+        out.append(
+            {
+                "lot_id": lot.id,
+                "farmer_name": farmer.name,
+                "farmer_district": farmer.district or "",
+                "farmer_verified": (getattr(farmer, "verification_status", "") == "verified"),
+                "quantity_kg": lot.quantity_kg,
+                "expected_price": lot.expected_price,
+                "distance_km": dist,
+            }
+        )
+    out.sort(key=lambda x: (not x["farmer_verified"], x["distance_km"] is None, x["distance_km"] or 0.0))
+    return out
+
+
 def _confidence(total_score: int) -> str:
     a = abs(total_score)
     if a >= 4:
@@ -200,9 +232,19 @@ def build_brief(
     lon: float | None = None,
     radius_km: float = _BUYER_RADIUS_KM,
     lang: str = "en",
+    perspective: str = "seller",
 ) -> dict:
     """Assemble the ranked decision brief. Raises ValueError when the origin
-    can't be resolved or there's no usable price history."""
+    can't be resolved or there's no usable price history.
+
+    ``perspective`` (v1.19): "seller" (default, a farmer deciding whether to
+    sell) or "buyer" (a buyer deciding whether to source now or wait). Both
+    read the exact same underlying price/weather/forecast/MSP analysis —
+    only the recommendation label, the best-market direction (net price
+    *after* transport is maximised for a seller, minimised for a buyer), and
+    which counterparties get surfaced (open demands vs. open lots) differ.
+    """
+    is_buyer = perspective == "buyer"
     # --- resolve an origin point ---
     origin: tuple[float, float] | None = None
     if lat is not None and lon is not None:
@@ -242,12 +284,21 @@ def build_brief(
     sig = compute_signal(rows, weather=wx, msp=msp, forecast=fc)
 
     # --- diesel-costed best market ---
-    ranked = best_markets(db, crop, origin, limit=6, use_routing=False, origin_state=state)
-    here = next((r for r in ranked if r["market"] == ref_market), None)
-    best_alt = ranked[0] if ranked else None
+    # Fetched wide (12, not the usual top-6) so a buyer's ascending re-sort
+    # still has real candidates to pick the cheapest delivered market from,
+    # not just the top-6-for-a-seller subset.
+    ranked = best_markets(db, crop, origin, limit=12, use_routing=False, origin_state=state)
+    ranked_for_view = (
+        sorted(ranked, key=lambda r: r["net_price_per_qtl"]) if is_buyer else ranked
+    )
+    here = next((r for r in ranked_for_view if r["market"] == ref_market), None)
+    best_alt = ranked_for_view[0] if ranked_for_view else None
     better_market = None
     if best_alt and here and best_alt["market"] != here["market"]:
-        delta = round(best_alt["net_price_per_qtl"] - here["net_price_per_qtl"], 0)
+        # seller: alt nets *more*; buyer: alt costs *less* delivered.
+        delta = round(
+            (best_alt["net_price_per_qtl"] - here["net_price_per_qtl"]) * (-1 if is_buyer else 1), 0
+        )
         if delta >= _BETTER_MARKET_MIN_DELTA:
             better_market = {**best_alt, "net_gain_per_qtl": delta}
 
@@ -256,7 +307,11 @@ def build_brief(
     if hs:
         holiday = hs[0]
 
-    buyers = _verified_buyers_nearby(db, crop, origin, radius_km)
+    counterparties = (
+        _verified_sellers_nearby(db, crop, origin, radius_km)
+        if is_buyer
+        else _verified_buyers_nearby(db, crop, origin, radius_km)
+    )
 
     # v1.12: optional satellite crop-health context — informational only,
     # never blocks the brief and never drives the sell/wait actions above.
@@ -267,10 +322,38 @@ def build_brief(
         crop_health = None
 
     # --- build the ranked action list ---
+    # v1.19: a buyer reads the *same* price/forecast analysis a seller does —
+    # a market trending up is exactly as urgent to lock in for a buyer (before
+    # it rises further) as it is for a seller (while it's still high) — only
+    # the label flips. Rain-risk (protecting an unharvested crop) and storage
+    # (holding your own stock) are genuinely seller-only concerns and are
+    # skipped for a buyer rather than stretched into a false equivalence.
     actions: list[dict] = []
     rec = sig.recommendation if sig else "hold"
 
-    if rec == "sell_now":
+    if is_buyer:
+        if rec == "sell_now":
+            actions.append({
+                "kind": "buy_now", "urgency": "now", "title": "Buy now — price is trending up",
+                "detail": (
+                    f"{_trend_note(current_price, ma_7, ma_30)} Waiting is likely to cost "
+                    "more per quintal — lock a deal or forward contract now."
+                ),
+            })
+        elif rec == "wait":
+            actions.append({
+                "kind": "wait_to_buy", "urgency": "watch", "title": "Wait — price looks weak and may fall further",
+                "detail": (
+                    f"{_trend_note(current_price, ma_7, ma_30)} Holding off before locking "
+                    "a deal could save you money."
+                ),
+            })
+        else:
+            actions.append({
+                "kind": "hold", "urgency": "soon", "title": "No urgency — buy on your schedule",
+                "detail": "No strong signal either way; the factors roughly cancel out.",
+            })
+    elif rec == "sell_now":
         actions.append({
             "kind": "sell", "urgency": "now", "title": "Sell now",
             "detail": (_dominant_reason(sig) or
@@ -289,26 +372,47 @@ def build_brief(
         })
 
     if sig and sig.msp and sig.msp.get("below"):
-        actions.append({
-            "kind": "msp", "urgency": "now", "title": "Price is below MSP — use a procurement centre",
-            "detail": (
-                f"₹{abs(sig.msp['gap']):.0f}/qtl below the Minimum Support Price "
-                f"(₹{sig.msp['price']:.0f}). A government centre should pay MSP — "
-                "don't sell to a private trader below it."
-            ),
-        })
+        if is_buyer:
+            actions.append({
+                "kind": "msp", "urgency": "watch", "title": "Price is below MSP",
+                "detail": (
+                    f"₹{abs(sig.msp['gap']):.0f}/qtl below the Minimum Support Price "
+                    f"(₹{sig.msp['price']:.0f}) — farmers may hold out for government "
+                    "procurement instead of selling here."
+                ),
+            })
+        else:
+            actions.append({
+                "kind": "msp", "urgency": "now", "title": "Price is below MSP — use a procurement centre",
+                "detail": (
+                    f"₹{abs(sig.msp['gap']):.0f}/qtl below the Minimum Support Price "
+                    f"(₹{sig.msp['price']:.0f}). A government centre should pay MSP — "
+                    "don't sell to a private trader below it."
+                ),
+            })
 
     if better_market:
-        actions.append({
-            "kind": "best_market", "urgency": "now" if rec == "sell_now" else "soon",
-            "title": f"Truck to {better_market['market']} — nets ₹{better_market['net_gain_per_qtl']:.0f}/qtl more",
-            "detail": (
-                f"₹{better_market['net_price_per_qtl']:.0f}/qtl net there after "
-                f"₹{better_market['transport_cost_per_qtl']:.0f}/qtl diesel-indexed "
-                f"freight over {better_market['road_km']:.0f} km, versus "
-                f"₹{here['net_price_per_qtl']:.0f}/qtl at {ref_market}."
-            ),
-        })
+        if is_buyer:
+            actions.append({
+                "kind": "best_market", "urgency": "now" if rec == "sell_now" else "soon",
+                "title": f"Source from {better_market['market']} instead — saves ₹{better_market['net_gain_per_qtl']:.0f}/qtl delivered",
+                "detail": (
+                    f"₹{better_market['net_price_per_qtl']:.0f}/qtl delivered there (mandi price + "
+                    f"₹{better_market['transport_cost_per_qtl']:.0f}/qtl diesel-indexed freight over "
+                    f"{better_market['road_km']:.0f} km), versus ₹{here['net_price_per_qtl']:.0f}/qtl at {ref_market}."
+                ),
+            })
+        else:
+            actions.append({
+                "kind": "best_market", "urgency": "now" if rec == "sell_now" else "soon",
+                "title": f"Truck to {better_market['market']} — nets ₹{better_market['net_gain_per_qtl']:.0f}/qtl more",
+                "detail": (
+                    f"₹{better_market['net_price_per_qtl']:.0f}/qtl net there after "
+                    f"₹{better_market['transport_cost_per_qtl']:.0f}/qtl diesel-indexed "
+                    f"freight over {better_market['road_km']:.0f} km, versus "
+                    f"₹{here['net_price_per_qtl']:.0f}/qtl at {ref_market}."
+                ),
+            })
 
     if holiday and holiday["in_days"] <= 5:
         actions.append({
@@ -316,44 +420,72 @@ def build_brief(
             "urgency": "now" if holiday["in_days"] <= 2 else "soon",
             "title": f"{holiday['name']} closes mandis in {holiday['in_days']} day(s)",
             "detail": (
-                f"APMC markets will likely be shut on {holiday['date']} — sell before, "
-                "or plan the trip for after."
+                f"APMC markets will likely be shut on {holiday['date']} — "
+                + ("source before, or plan the trip for after." if is_buyer
+                   else "sell before, or plan the trip for after.")
             ),
         })
 
-    rain_mm = (wx or {}).get("next3_rain_mm")
-    if rain_mm is not None and rain_mm >= _RAIN_ALERT_MM:
-        actions.append({
-            "kind": "weather", "urgency": "now",
-            "title": f"Rain coming — about {rain_mm:.0f} mm over 3 days",
-            "detail": "Shed or dry the harvest and move it to market before quality drops.",
-        })
+    if not is_buyer:
+        rain_mm = (wx or {}).get("next3_rain_mm")
+        if rain_mm is not None and rain_mm >= _RAIN_ALERT_MM:
+            actions.append({
+                "kind": "weather", "urgency": "now",
+                "title": f"Rain coming — about {rain_mm:.0f} mm over 3 days",
+                "detail": "Shed or dry the harvest and move it to market before quality drops.",
+            })
 
     if cal and cal.get("glut_risk"):
-        actions.append({
-            "kind": "calendar", "urgency": "soon",
-            "title": "Peak-arrivals season — expect prices to soften",
-            "detail": f"{cal['current_phase'].capitalize()}. {cal.get('note', '')}".strip(),
-        })
+        if is_buyer:
+            actions.append({
+                "kind": "calendar", "urgency": "watch",
+                "title": "Peak-arrivals season — good time to source",
+                "detail": (
+                    f"{cal['current_phase'].capitalize()}. Prices tend to soften as more farmers "
+                    f"bring in the harvest. {cal.get('note', '')}"
+                ).strip(),
+            })
+        else:
+            actions.append({
+                "kind": "calendar", "urgency": "soon",
+                "title": "Peak-arrivals season — expect prices to soften",
+                "detail": f"{cal['current_phase'].capitalize()}. {cal.get('note', '')}".strip(),
+            })
 
-    if buyers:
-        vcount = sum(1 for b in buyers if b["buyer_verified"])
-        actions.append({
-            "kind": "buyers", "urgency": "soon",
-            "title": (
-                f"{len(buyers)} buyer(s) seeking {crop} within {radius_km:.0f} km"
-                + (f" ({vcount} verified)" if vcount else "")
-            ),
-            "detail": (
-                "Open a direct deal instead of the mandi — top match: "
-                f"{buyers[0]['buyer_name']}"
-                + (f", {buyers[0]['distance_km']:.0f} km" if buyers[0]['distance_km'] is not None else "")
-                + f", ₹{buyers[0]['price_band'][0]:.0f}–{buyers[0]['price_band'][1]:.0f}/qtl."
-            ),
-        })
+    if counterparties:
+        if is_buyer:
+            vcount = sum(1 for c in counterparties if c["farmer_verified"])
+            actions.append({
+                "kind": "sellers", "urgency": "soon",
+                "title": (
+                    f"{len(counterparties)} farmer(s) offering {crop} within {radius_km:.0f} km"
+                    + (f" ({vcount} verified)" if vcount else "")
+                ),
+                "detail": (
+                    "Open a direct deal instead of the mandi — top match: "
+                    f"{counterparties[0]['farmer_name']}"
+                    + (f", {counterparties[0]['distance_km']:.0f} km" if counterparties[0]['distance_km'] is not None else "")
+                    + f", asking ₹{counterparties[0]['expected_price']:.0f}/qtl."
+                ),
+            })
+        else:
+            vcount = sum(1 for c in counterparties if c["buyer_verified"])
+            actions.append({
+                "kind": "buyers", "urgency": "soon",
+                "title": (
+                    f"{len(counterparties)} buyer(s) seeking {crop} within {radius_km:.0f} km"
+                    + (f" ({vcount} verified)" if vcount else "")
+                ),
+                "detail": (
+                    "Open a direct deal instead of the mandi — top match: "
+                    f"{counterparties[0]['buyer_name']}"
+                    + (f", {counterparties[0]['distance_km']:.0f} km" if counterparties[0]['distance_km'] is not None else "")
+                    + f", ₹{counterparties[0]['price_band'][0]:.0f}–{counterparties[0]['price_band'][1]:.0f}/qtl."
+                ),
+            })
 
     storage: list[dict] = []
-    if rec in ("wait", "hold"):
+    if not is_buyer and rec in ("wait", "hold"):
         storage = ref.nearby_cold_storage(
             district=district, lat=origin[0], lon=origin[1], max_km=200, limit=3
         )
@@ -371,6 +503,12 @@ def build_brief(
     for i, a in enumerate(actions, 1):
         a["rank"] = i
 
+    # The buyer's headline label is the mirror of the seller's, not the raw
+    # sig.recommendation — a buyer reading "SELL NOW" on their own brief would
+    # be reading someone else's instruction.
+    _BUYER_ACTION = {"sell_now": "buy_now", "wait": "wait_to_buy", "hold": "hold"}
+    headline_action = _BUYER_ACTION[rec] if is_buyer else rec
+
     brief = {
         "crop": crop,
         "reference_market": ref_market,
@@ -378,8 +516,9 @@ def build_brief(
         "state": rows[-1].state or state,
         "as_of": as_of,
         "origin": {"latitude": origin[0], "longitude": origin[1]},
+        "perspective": perspective,
         "headline": {
-            "action": rec,
+            "action": headline_action,
             "score": sig.total_score if sig else 0,
             "confidence": _confidence(sig.total_score if sig else 0),
         },
@@ -419,7 +558,7 @@ def build_brief(
         "calendar": cal,
         "holiday": holiday,
         "crop_health": crop_health,
-        "buyers_nearby": {"count": len(buyers), "top": buyers[:5]},
+        "counterparties_nearby": {"count": len(counterparties), "top": counterparties[:5]},
         "storage_nearby": storage,
         "actions": actions,
     }

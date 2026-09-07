@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
+import { useAuth } from "@/components/AuthProvider";
 import { useAppLocale } from "@/i18n/LocaleProvider";
 import { fetchBrief, type BriefAction, type DecisionBrief as Brief } from "@/lib/api";
 import type { CropMarketState } from "@/lib/useCropMarket";
@@ -42,6 +43,9 @@ const KIND_ICON: Record<BriefAction["kind"], string> = {
   calendar: "calendar",
   buyers: "users",
   storage: "warehouse",
+  buy_now: "coins",
+  wait_to_buy: "clock",
+  sellers: "users",
 };
 
 export function DecisionBrief({ cm }: { cm: CropMarketState }) {
@@ -49,6 +53,8 @@ export function DecisionBrief({ cm }: { cm: CropMarketState }) {
   const ts = useTranslations("signal");
   const { locale } = useAppLocale();
   const { location } = useLocation();
+  const { user } = useAuth();
+  const isBuyer = user?.role === "buyer";
   const [brief, setBrief] = useState<Brief | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -65,6 +71,7 @@ export function DecisionBrief({ cm }: { cm: CropMarketState }) {
         lat: location?.lat ?? undefined,
         lon: location?.lon ?? undefined,
         lang: locale,
+        perspective: isBuyer ? "buyer" : "seller",
       });
       setBrief(b);
     } catch {
@@ -73,7 +80,7 @@ export function DecisionBrief({ cm }: { cm: CropMarketState }) {
     } finally {
       setLoading(false);
     }
-  }, [cm.crop, cm.market, cm.district, location?.lat, location?.lon, locale]);
+  }, [cm.crop, cm.market, cm.district, location?.lat, location?.lon, locale, isBuyer]);
 
   useEffect(() => {
     load();
@@ -160,12 +167,12 @@ export function DecisionBrief({ cm }: { cm: CropMarketState }) {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-[var(--ink-soft)]">{a.detail}</p>
-                {a.kind === "buyers" && (
+                {(a.kind === "buyers" || a.kind === "sellers") && (
                   <Link
                     href={`/browse?crop=${encodeURIComponent(brief.crop)}`}
                     className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-[var(--green-700)] hover:underline"
                   >
-                    {t("viewBuyers")} &rarr;
+                    {a.kind === "sellers" ? t("viewSellers") : t("viewBuyers")} &rarr;
                   </Link>
                 )}
               </div>

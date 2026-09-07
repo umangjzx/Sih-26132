@@ -125,9 +125,14 @@ export function Sidebar({
   const discoveryLinks: NavItem[] = [
     { href: "/",         labelKey: "home",          icon: "house"     },
     { href: "/prices",   labelKey: "marketIntel",   icon: "chart",    matchPrefixes: ["/explore"] },
-    { href: "/advisor",  labelKey: "advisor",       icon: "spark"     },
     { href: "/directory",labelKey: "directory",     icon: "warehouse" },
   ];
+  // Advisor gives a personal buy/sell-timing call — real for farmer (sell
+  // timing) and buyer (sourcing timing, v1.19) alike, but meaningless for an
+  // admin who has no lot/demand of their own to act on.
+  if (user?.role === "farmer" || user?.role === "buyer") {
+    discoveryLinks.splice(2, 0, { href: "/advisor", labelKey: "advisor", icon: "spark" });
+  }
 
   const tradeLinks: NavItem[] = [];
   if (user?.role === "farmer") {
@@ -158,10 +163,11 @@ export function Sidebar({
   }
 
   const adminLinks: NavItem[] = [
-    { href: "/admin",          labelKey: "administration", icon: "shield"    },
-    { href: "/admin/users",    labelKey: "users",          icon: "users"     },
-    { href: "/admin/listings", labelKey: "adminListings",  icon: "warehouse" },
-    { href: "/admin/disputes", labelKey: "adminDisputes",  icon: "scale"     },
+    { href: "/admin",           labelKey: "administration", icon: "shield"    },
+    { href: "/admin/users",     labelKey: "users",          icon: "users"     },
+    { href: "/admin/listings",  labelKey: "adminListings",  icon: "warehouse" },
+    { href: "/admin/disputes",  labelKey: "adminDisputes",  icon: "scale"     },
+    { href: "/admin/financing", labelKey: "adminFinancing", icon: "coins"     },
   ];
 
   const handleLogout = () => {

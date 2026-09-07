@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { useAppLocale } from "@/i18n/LocaleProvider";
 
+import { AdminHome } from "@/components/AdminHome";
 import { useAuth } from "@/components/AuthProvider";
 import { CropMarketPicker } from "@/components/CropMarketPicker";
 import { Landing } from "@/components/Landing";
@@ -519,12 +520,17 @@ function HomeInner() {
 }
 
 export default function HomePage() {
-  const { ready, isAuthenticated } = useAuth();
+  const { ready, isAuthenticated, user } = useAuth();
 
   // Logged-out visitors get the marketing landing page; the full price
   // dashboard (and the rest of the modules) live behind login.
   if (!ready) return <div className="al-skeleton h-40" />;
   if (!isAuthenticated) return <Landing />;
+
+  // v1.19 — an admin has no lot/demand of their own to act on, so the
+  // one-crop price snapshot every farmer/buyer lands on has nothing for
+  // them; they get headline counts + quick links instead.
+  if (user?.role === "admin") return <AdminHome />;
 
   return (
     <Suspense fallback={<div className="al-skeleton h-40" />}>

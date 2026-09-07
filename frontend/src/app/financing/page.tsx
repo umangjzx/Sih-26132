@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
@@ -192,6 +193,15 @@ export default function FinancingPage() {
         <Icon name="shield" size={14} className="mr-1.5 inline-block align-text-bottom" />
         {t("disclaimer")}
       </div>
+
+      <Link
+        href="/directory"
+        className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
+      >
+        <Icon name="warehouse" size={16} className="shrink-0" />
+        {t("findWarehouse")}
+        <Icon name="chevronLeft" size={14} className="ml-auto rotate-180" />
+      </Link>
 
       {toast && (
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">

@@ -1707,18 +1707,29 @@ export function fetchHolidays(days = 30): Promise<{ holidays: HolidayInfo[]; not
 
 export type BriefAction = {
   rank: number;
-  kind: "sell" | "wait" | "hold" | "msp" | "best_market" | "holiday" | "weather" | "calendar" | "buyers" | "storage";
+  kind:
+    | "sell" | "wait" | "hold" | "msp" | "best_market" | "holiday" | "weather"
+    | "calendar" | "buyers" | "storage"
+    /** v1.19 — buyer-perspective-only kinds */
+    | "buy_now" | "wait_to_buy" | "sellers";
   urgency: "now" | "soon" | "watch";
   title: string;
   detail: string;
 };
+export type BriefPerspective = "seller" | "buyer";
 export type DecisionBrief = {
   crop: string;
   reference_market: string;
   district: string | null;
   state: string | null;
   as_of: string;
-  headline: { action: "sell_now" | "wait" | "hold"; score: number; confidence: "high" | "moderate" | "low" };
+  /** v1.19 — which side of the trade this brief was framed for. */
+  perspective: BriefPerspective;
+  headline: {
+    action: "sell_now" | "wait" | "hold" | "buy_now" | "wait_to_buy";
+    score: number;
+    confidence: "high" | "moderate" | "low";
+  };
   price: { latest_per_qtl: number; ma_7: number; ma_30: number | null; trend_note: string };
   signal: { recommendation: string; total_score: number; factors: unknown[]; reasons: string[] };
   forecast: { available: boolean; change_pct_7d: number | null; note: string | null };
@@ -1736,17 +1747,30 @@ export type DecisionBrief = {
    * NDVI). null when GEE isn't configured or no recent imagery was found;
    * informational only, never part of the sell/wait recommendation itself. */
   crop_health: { ndvi: number; as_of: string; health: "poor" | "fair" | "good" | "excellent"; source: string } | null;
-  buyers_nearby: {
+  /** v1.19 — nearby counterparties: open demands (seller perspective) or
+   * open lots (buyer perspective) depending on `perspective`. */
+  counterparties_nearby: {
     count: number;
-    top: {
-      demand_id: number;
-      buyer_name: string;
-      buyer_district: string;
-      buyer_verified: boolean;
-      quantity_kg: number;
-      price_band: [number, number];
-      distance_km: number | null;
-    }[];
+    top: (
+      | {
+          demand_id: number;
+          buyer_name: string;
+          buyer_district: string;
+          buyer_verified: boolean;
+          quantity_kg: number;
+          price_band: [number, number];
+          distance_km: number | null;
+        }
+      | {
+          lot_id: number;
+          farmer_name: string;
+          farmer_district: string;
+          farmer_verified: boolean;
+          quantity_kg: number;
+          expected_price: number;
+          distance_km: number | null;
+        }
+    )[];
   };
   storage_nearby: { name: string; type?: string; district?: string; distance_km?: number }[];
   actions: BriefAction[];
@@ -1760,6 +1784,7 @@ export function fetchBrief(params: {
   lon?: number;
   radiusKm?: number;
   lang?: string;
+  perspective?: BriefPerspective;
 }): Promise<DecisionBrief> {
   return getJson(
     `/api/brief?${qs({
@@ -1770,6 +1795,7 @@ export function fetchBrief(params: {
       lon: params.lon,
       radius_km: params.radiusKm,
       lang: params.lang,
+      perspective: params.perspective,
     })}`,
   );
 }
@@ -1793,8 +1819,12 @@ export async function deleteAlert(id: number, token: string): Promise<void> {
   });
   if (!res.ok && res.status !== 204) throw new Error(`Request failed: ${res.status}`);
 }
-export function listNotifications(token: string, unreadOnly = false): Promise<AppNotification[]> {
-  return getJson(`/api/notifications?${qs({ unread_only: unreadOnly })}`, token);
+export function listNotifications(
+  token: string,
+  unreadOnly = false,
+  limit?: number,
+): Promise<AppNotification[]> {
+  return getJson(`/api/notifications?${qs({ unread_only: unreadOnly, limit })}`, token);
 }
 export function notificationUnreadCount(token: string): Promise<{ unread: number }> {
   return getJson("/api/notifications/unread-count", token);

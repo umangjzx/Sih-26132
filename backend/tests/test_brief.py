@@ -143,3 +143,64 @@ def test_brief_endpoint_is_rate_limited(client):
     codes = [client.get("/api/brief", params=params).status_code for _ in range(33)]
     assert codes.count(200) == 30
     assert codes[-1] == 429
+
+
+# ---------------------------------------------------------------------------
+# Buyer perspective (v1.19)
+# ---------------------------------------------------------------------------
+
+def test_brief_buyer_perspective_headline_is_never_a_seller_label(seeded_db):
+    b = build_brief(seeded_db, crop="Onion", market="Pune", perspective="buyer")
+    assert b["perspective"] == "buyer"
+    assert b["headline"]["action"] in {"buy_now", "wait_to_buy", "hold"}
+    kinds = {a["kind"] for a in b["actions"]}
+    assert not kinds & {"sell", "wait", "weather", "storage", "buyers"}
+
+
+def test_brief_seller_perspective_unchanged_by_default(seeded_db):
+    b = build_brief(seeded_db, crop="Onion", market="Pune")
+    assert b["perspective"] == "seller"
+    assert b["headline"]["action"] in {"sell_now", "wait", "hold"}
+
+
+def test_brief_buyer_best_market_prefers_cheaper_not_higher(seeded_db):
+    b = build_brief(seeded_db, crop="Tomato", market="Lasalgaon", perspective="buyer")
+    alt = b["best_market"]["better_alternative"]
+    here = b["best_market"]["here"]
+    if alt and here:
+        # a buyer's alternative must cost LESS delivered, never more
+        assert alt["net_price_per_qtl"] <= here["net_price_per_qtl"]
+
+
+def test_brief_buyer_sees_sellers_not_buyers_nearby(db, farmer_user):
+    from datetime import timedelta
+
+    from app.models.lot import Lot
+    from app.services.fixtures import generate_fixture_rows
+
+    db.add_all(PriceCache(**row) for row in generate_fixture_rows(days=40))
+    db.add(Lot(
+        farmer_id=farmer_user.id, crop="Onion", quantity_kg=500, quality_grade="A",
+        expected_price=2200, available_from=date.today() + timedelta(days=3),
+        location="Pune", latitude=18.5204, longitude=73.8567, status="open",
+    ))
+    db.commit()
+
+    b = build_brief(db, crop="Onion", market="Pune", perspective="buyer")
+    assert b["counterparties_nearby"]["count"] >= 1
+    top = b["counterparties_nearby"]["top"][0]
+    assert "farmer_name" in top and "buyer_name" not in top
+    action_kinds = {a["kind"] for a in b["actions"]}
+    assert "sellers" in action_kinds
+    assert "buyers" not in action_kinds
+
+
+def test_brief_endpoint_accepts_buyer_perspective(client):
+    resp = client.get("/api/brief", params={"crop": "Onion", "market": "Pune", "perspective": "buyer"})
+    assert resp.status_code == 200
+    assert resp.json()["perspective"] == "buyer"
+
+
+def test_brief_endpoint_rejects_invalid_perspective(client):
+    resp = client.get("/api/brief", params={"crop": "Onion", "market": "Pune", "perspective": "potato"})
+    assert resp.status_code == 422

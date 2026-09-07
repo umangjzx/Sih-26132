@@ -277,11 +277,15 @@ def decision_brief(
     lon: float | None = None,
     radius_km: float = Query(200.0, ge=25, le=600),
     lang: str = "en",
+    perspective: str = Query("seller", pattern="^(seller|buyer)$"),
     db: Session = Depends(get_db),
 ) -> dict:
     """One orchestrated, prioritised action plan for a crop — the sell/wait
     signal, forecast, diesel-costed best market, MSP gap, weather, crop
-    calendar, mandi holidays and nearby verified buyers, ranked by urgency."""
+    calendar, mandi holidays and nearby verified counterparties, ranked by
+    urgency. ``perspective=buyer`` (v1.19) reframes the same underlying
+    analysis for a buyer's sourcing decision instead of a farmer's selling
+    decision — see ``build_brief``'s docstring."""
     _heavy_guard(request, "brief")
     from app.services.brief import build_brief
 
@@ -289,6 +293,7 @@ def decision_brief(
         return build_brief(
             db, crop=crop, market=market, district=district,
             lat=lat, lon=lon, radius_km=radius_km, lang=lang,
+            perspective=perspective,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
