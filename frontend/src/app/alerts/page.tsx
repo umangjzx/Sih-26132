@@ -35,14 +35,18 @@ export default function AlertsPage() {
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!token) return;
+    setLoading(true);
     try {
       setAlerts(await listAlerts(token));
       setError(null);
     } catch {
       setError(tc("error"));
+    } finally {
+      setLoading(false);
     }
   }, [token, tc]);
 
@@ -123,6 +127,13 @@ export default function AlertsPage() {
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
           <Icon name="close" size={18} />
           {error}
+          <button
+            type="button"
+            onClick={() => load()}
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+          >
+            {tc("retry")}
+          </button>
         </div>
       )}
 
@@ -204,7 +215,13 @@ export default function AlertsPage() {
           </h2>
         </div>
 
-        {alerts.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-white/50" />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
             <Icon name="bell" size={28} className="text-[var(--green-400)]" />
             <div>

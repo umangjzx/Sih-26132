@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
-import { Icon } from "@/components/ui";
+import { Icon, SkeletonTableRows } from "@/components/ui";
 import { ApiError, getAdminUsers, setUserActive, verifyUser, type AdminUser } from "@/lib/api";
 
 const V_STYLE: Record<string, string> = {
@@ -129,7 +129,7 @@ export default function AdminUsersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-3 py-6 text-center opacity-50">…</td></tr>
+              <SkeletonTableRows colSpan={6} />
             ) : rows.length === 0 ? (
               <tr><td colSpan={6} className="px-3 py-6 text-center opacity-50">{t("none")}</td></tr>
             ) : (

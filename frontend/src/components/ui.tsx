@@ -334,6 +334,23 @@ export function Skeleton({ className = "" }: { className?: string }) {
   );
 }
 
+/** Placeholder `<tr>`s for a `<table>` body while its data loads — replaces
+ * the bare "…" text a few admin tables used to show, which looked identical
+ * to a genuinely empty table. */
+export function SkeletonTableRows({ colSpan, rows = 3 }: { colSpan: number; rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, i) => (
+        <tr key={i} className="border-b border-[var(--color-border)] last:border-0">
+          <td colSpan={colSpan} className="px-3 py-3">
+            <Skeleton className="h-4 w-full" />
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
 export function EmptyState({
   icon = "leaf",
   children,

@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
-import { Icon } from "@/components/ui";
+import { Icon, SkeletonTableRows } from "@/components/ui";
 import {
   ApiError,
   closeAdminDemand,
@@ -175,7 +175,7 @@ export default function AdminListingsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="px-3 py-6 text-center opacity-50">…</td></tr>
+              <SkeletonTableRows colSpan={7} />
             ) : rows.length === 0 ? (
               <tr><td colSpan={7} className="px-3 py-6 text-center opacity-50">{t("none")}</td></tr>
             ) : kind === "lots" ? (

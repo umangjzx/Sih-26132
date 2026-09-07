@@ -23,6 +23,7 @@ export default function HistoryPage() {
   const router = useRouter();
   const t = useTranslations("history");
   const tdeals = useTranslations("deals");
+  const tc = useTranslations("common");
 
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,13 @@ export default function HistoryPage() {
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-bold text-[var(--red-700)]">
           <Icon name="close" size={18} />
           {error}
+          <button
+            type="button"
+            onClick={() => load()}
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+          >
+            {tc("retry")}
+          </button>
         </div>
       )}
 

@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
-import { Icon } from "@/components/ui";
+import { Icon, SkeletonTableRows } from "@/components/ui";
 import {
   ApiError,
   DISPUTE_OUTCOMES,
@@ -231,7 +231,7 @@ export default function AdminDisputesPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-3 py-6 text-center opacity-50">…</td></tr>
+              <SkeletonTableRows colSpan={6} />
             ) : rows.length === 0 ? (
               <tr><td colSpan={6} className="px-3 py-6 text-center opacity-50">
                 <Icon name="check" size={16} className="mr-1.5 inline-block align-text-bottom opacity-50" />

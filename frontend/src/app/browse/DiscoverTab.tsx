@@ -38,6 +38,7 @@ function VBadge({ ok, label }: { ok: boolean; label: string }) {
 export function DiscoverTab() {
   const { user, token } = useAuth();
   const t = useTranslations("browse");
+  const tc = useTranslations("common");
   const isBuyer = user?.role === "buyer";
   const verifiedTxt = t("verified");
   const unverifiedTxt = t("unverified");
@@ -132,8 +133,15 @@ export function DiscoverTab() {
       </div>
 
       {loadErr && !loading && (
-        <div className="flex items-center gap-2 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
           <Icon name="close" size={16} /> {t("error")}
+          <button
+            type="button"
+            onClick={() => load()}
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+          >
+            {tc("retry")}
+          </button>
         </div>
       )}
 
