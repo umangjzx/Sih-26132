@@ -152,6 +152,9 @@ export default function AdminPage() {
   const [health, setHealth] = useState<MatchingHealth | null>(null);
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [anErr, setAnErr] = useState(false);
+  const [healthErr, setHealthErr] = useState(false);
+  const [eventsErr, setEventsErr] = useState(false);
   const [tab, setTab] = useState<"overview" | "activity">("overview");
 
   useEffect(() => {
@@ -169,18 +172,24 @@ export default function AdminPage() {
     }
     try {
       setAn(await getAdminAnalytics(token));
+      setAnErr(false);
     } catch {
-      /* analytics block is optional */
+      // Non-fatal — the rest of the dashboard still works — but silent
+      // failure here was indistinguishable from "no analytics data yet",
+      // so surface it instead of just swallowing it.
+      setAnErr(true);
     }
     try {
       setHealth(await getMatchingHealth(token));
+      setHealthErr(false);
     } catch {
-      /* match-health panel is optional */
+      setHealthErr(true);
     }
     try {
       setEvents(await getAdminEvents(token));
+      setEventsErr(false);
     } catch {
-      /* activity ledger is optional */
+      setEventsErr(true);
     }
   }, [token, t]);
 
@@ -259,6 +268,20 @@ export default function AdminPage() {
           {t("tabActivity")}
         </button>
       </div>
+
+      {((tab === "overview" && (anErr || healthErr)) || (tab === "activity" && eventsErr)) && (
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--color-wait)]/40 bg-[var(--color-wait)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--color-wait)]">
+          <Icon name="alert" size={16} />
+          {t("partialLoadError")}
+          <button
+            type="button"
+            onClick={() => load()}
+            className="ml-auto rounded-lg border border-[var(--color-wait)]/40 bg-white px-3 py-1 text-xs font-bold"
+          >
+            {t("retryAction")}
+          </button>
+        </div>
+      )}
 
       {tab === "overview" && (
       <>

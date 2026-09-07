@@ -454,6 +454,8 @@
     "reason": "Reason",
     "date": "Date",
     "loadError": "Could not load the dashboard",
+    "partialLoadError": "Some of this dashboard didn't load — the numbers above may be incomplete.",
+    "retryAction": "Retry",
     "forbidden": "Admin access only",
     "matchHealth": "Match Quality",
     "matchHealthSubtitle": "Every live match re-scored against the current lot & demand.",
