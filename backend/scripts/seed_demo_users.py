@@ -8,9 +8,10 @@ none exist yet. Run from the backend dir:
     venv/Scripts/python.exe -m scripts.seed_demo_users --reset    # wipe trade tables first
 
 ``--reset`` clears every transactional table (deals, offers, matches, logistics,
-payments, disputes, forward_*, pools, lots, demands, alerts, notifications,
-transaction_events) and reseeds from scratch — use it on a dev DB when you want a
-known-good state. It never touches users, price_cache, transporters or geo_cache.
+payments, disputes, forward_*, financing_requests, pools, lots, demands, alerts,
+notifications, transaction_events) and reseeds from scratch — use it on a dev DB
+when you want a known-good state. It never touches users, price_cache,
+transporters or geo_cache.
 
 Two clusters: Maharashtra (the SIH home region) and Tamil Nadu / Kongu belt
 around Coimbatore so the 200 km radius, distance-aware matching and the
@@ -26,7 +27,7 @@ Coimbatore-area logins (all password farmer123 / buyer123):
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 
@@ -35,10 +36,12 @@ from app.core.security import hash_password
 from app.models.deal import Deal
 from app.models.demand import Demand
 from app.models.dispute import Dispute
+from app.models.financing import FinancingRequest
 from app.models.forward import ForwardBid, ForwardCommitment
 from app.models.logistics import DealLogistics
 from app.models.lot import Lot
 from app.models.match import Match
+from app.models.notification import Notification
 from app.models.offer import Offer
 from app.models.payment import DealPayment
 from app.models.pool import Pool, PoolMember
@@ -367,6 +370,50 @@ def _seed_alerts(db, rows) -> None:
                               direction=direction, threshold=threshold, active=True))
 
 
+def _seed_notifications(db, rows) -> None:
+    """Hand-crafted notifications matching evaluate_alerts' own title/body
+    template (app/services/alerts.py) — seeded directly rather than by
+    actually calling evaluate_alerts(), since that depends on whatever the
+    live-ingested modal price happens to be that day and would make the demo
+    dataset non-deterministic."""
+    for user, crop, market, direction, threshold, modal in rows:
+        exists = db.execute(
+            select(Notification).where(
+                Notification.user_id == user.id, Notification.kind == "price_alert",
+                Notification.title.like(f"{crop} at {market}%"),
+            )
+        ).scalar_one_or_none()
+        if exists is None:
+            db.add(Notification(
+                user_id=user.id,
+                kind="price_alert",
+                title=f"{crop} at {market} is {direction} ₹{threshold:.0f}",
+                body=f"Latest modal price is ₹{modal:.0f}/quintal.",
+                link=f"/?crop={crop}&market={market}",
+            ))
+
+
+def _seed_financing(db, admin: User, requests: list[tuple]) -> None:
+    """(farmer, lot, requested_amount_inr, warehouse_name, receipt_ref, note,
+    status, admin_note) — status one of pending/approved/rejected."""
+    for farmer, lot, amount, warehouse, receipt, note, status, admin_note in requests:
+        exists = db.execute(
+            select(FinancingRequest).where(
+                FinancingRequest.farmer_id == farmer.id, FinancingRequest.lot_id == lot.id,
+            )
+        ).scalar_one_or_none()
+        if exists is not None:
+            continue
+        reviewed = status in ("approved", "rejected")
+        db.add(FinancingRequest(
+            farmer_id=farmer.id, lot_id=lot.id, requested_amount_inr=amount,
+            warehouse_name=warehouse, receipt_ref=receipt, note=note, status=status,
+            admin_note=admin_note if reviewed else None,
+            reviewed_by=admin.id if reviewed else None,
+            reviewed_at=datetime.now(timezone.utc) if reviewed else None,
+        ))
+
+
 def _reset_trade_tables(db) -> None:
     """Truncate every transactional table and restart its id sequence, so a
     reseed produces clean deal#1 / bid#1 ids. Keeps users, price_cache,
@@ -375,7 +422,7 @@ def _reset_trade_tables(db) -> None:
 
     tables = (
         "transaction_events", "deal_payments", "deal_logistics", "disputes",
-        "forward_commitments", "forward_bids", "offers",
+        "forward_commitments", "forward_bids", "financing_requests", "offers",
         "pool_members", "pools", "deals", "matches",
         "price_alerts", "notifications", "lots", "demands",
     )
@@ -391,6 +438,7 @@ def main(reset: bool = False) -> None:
         u = {phone: _upsert_user(db, phone, *row) for phone, row in DEMO_USERS.items()}
         ravi, sita = u["+919000000001"], u["+919000000002"]
         anita, mega = u["+919000000003"], u["+919000000004"]
+        admin = u["+919000000009"]
         murugan, lakshmi = u["+919000000011"], u["+919000000012"]
         kovai, tnagro, chennai = u["+919000000013"], u["+919000000014"], u["+919000000015"]
         salem = u["+919000000016"]
@@ -402,8 +450,8 @@ def main(reset: bool = False) -> None:
 
         # --- Maharashtra trade data ---
         ravi_onion = _upsert_lot(db, ravi, "Onion", 800, "A", 3750, "Pune", 18.5204, 73.8567)
-        _upsert_lot(db, ravi, "Tomato", 500, "B", 1350, "Pune", 18.5204, 73.8567)
-        _upsert_lot(db, sita, "Onion", 1200, "A", 3700, "Nashik", 19.9975, 73.7898)
+        ravi_tomato = _upsert_lot(db, ravi, "Tomato", 500, "B", 1350, "Pune", 18.5204, 73.8567)
+        sita_onion = _upsert_lot(db, sita, "Onion", 1200, "A", 3700, "Nashik", 19.9975, 73.7898)
         anita_onion = _upsert_demand(db, anita, "Onion", 1000, "Grade A", 3400, 4200, "Within 7 days")
         _upsert_demand(db, mega, "Onion", 5000, "Grade A or better", 3500, 4300, "Within 2 weeks")
         _upsert_demand(db, anita, "Tomato", 600, "Grade B", 1150, 1600, "Within 5 days")
@@ -412,8 +460,8 @@ def main(reset: bool = False) -> None:
 
         # --- Tamil Nadu / Coimbatore trade data ---
         murugan_onion = _upsert_lot(db, murugan, "Onion", 1000, "A", 5400, "Coimbatore", 11.0168, 76.9558)
-        _upsert_lot(db, murugan, "Tomato", 600, "B", 1450, "Coimbatore", 11.0168, 76.9558)
-        _upsert_lot(db, lakshmi, "Turmeric", 2000, "A", 13000, "Erode", 11.3410, 77.7172)
+        murugan_tomato = _upsert_lot(db, murugan, "Tomato", 600, "B", 1450, "Coimbatore", 11.0168, 76.9558)
+        lakshmi_turmeric = _upsert_lot(db, lakshmi, "Turmeric", 2000, "A", 13000, "Erode", 11.3410, 77.7172)
         # Kovai (Coimbatore) — should strong-match Murugan's onion lot (0 km)
         kovai_onion = _upsert_demand(db, kovai, "Onion", 1200, "Grade A", 5200, 6100, "Within 7 days")
         # TN Agro (Madurai, ~176 km from Erode) — should match Lakshmi's turmeric
@@ -452,6 +500,29 @@ def main(reset: bool = False) -> None:
             (ravi, "Onion", "Pune", "above", 2650),
         ])
 
+        _seed_notifications(db, [
+            (murugan, "Onion", "Kurichi(Uzhavar Sandhai )", "below", 2000, 1850),
+            (ravi, "Onion", "Pune", "above", 2650, 2720),
+        ])
+
+        # Warehouse-receipt financing (v1.17) — a mix of statuses/crops/farmers
+        # across both clusters so the farmer view and the admin review queue
+        # both have realistic content instead of an empty state.
+        _seed_financing(db, admin, [
+            (ravi, ravi_tomato, 4000, "Pune Market Yard Cold Store", "WH-PN-0234",
+             "Need working capital ahead of the next sowing cycle.", "pending", None),
+            (sita, sita_onion, 25000, "Nashik APMC Warehouse", "WH-NSK-1187",
+             "Holding for a better price; would like an advance against the stored lot.",
+             "approved", "Verified against the warehouse receipt — approved."),
+            (murugan, murugan_tomato, 6000, "Kovai Cold Storage", "WH-CBE-0098",
+             "", "rejected",
+             "Receipt reference could not be verified with the warehouse — please "
+             "resubmit with a valid WDRA receipt number."),
+            (lakshmi, lakshmi_turmeric, 150000, "Erode Turmeric Warehouse", "WH-ERD-0456",
+             "Curing complete, awaiting a stronger export price before selling.",
+             "pending", None),
+        ])
+
         db.commit()
 
         counts = {
@@ -459,6 +530,7 @@ def main(reset: bool = False) -> None:
             for t, m in [("offers", Offer), ("deals", Deal), ("deal_payments", DealPayment),
                          ("disputes", Dispute), ("forward_bids", ForwardBid),
                          ("forward_commitments", ForwardCommitment), ("price_alerts", PriceAlert),
+                         ("financing_requests", FinancingRequest), ("notifications", Notification),
                          ("transaction_events", TransactionEvent)]
         }
 
