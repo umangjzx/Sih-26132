@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     # Login is passwordless / OTP-less in this build: /auth/login identifies by
     # phone and issues tokens directly (see git history to restore the OTP flow).
 
+    # v1.9: forgot-password OTP delivery (app/services/sms.py). Any Fast2SMS-
+    # compatible "quick SMS" key. Blank -> the OTP is logged server-side instead
+    # of texted, so /auth/forgot-password + /auth/reset-password still work
+    # end-to-end for local/offline demos without a paid SMS account.
+    sms_api_key: str = ""
+    sms_api_url: str = "https://www.fast2sms.com/dev/bulkV2"
+
     # v1.1: indicative road-freight cost, ₹ per quintal per km (shared-truck haulage).
     transport_cost_per_qtl_km: float = 0.4
 

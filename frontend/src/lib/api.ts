@@ -466,6 +466,18 @@ export function refreshTokens(
   return postJson("/api/auth/refresh", { refresh_token: refreshToken });
 }
 
+export function forgotPassword(phone: string): Promise<{ message: string }> {
+  return postJson("/api/auth/forgot-password", { phone });
+}
+
+export function resetPassword(
+  phone: string,
+  otp: string,
+  newPassword: string,
+): Promise<AuthPayload> {
+  return postJson("/api/auth/reset-password", { phone, otp, new_password: newPassword });
+}
+
 export type ProfilePatch = {
   name?: string;
   district?: string;

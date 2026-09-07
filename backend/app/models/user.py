@@ -40,8 +40,9 @@ class User(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verified_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # Phase 2: auth columns. otp_* are dormant (OTP flow removed); password_hash
-    # holds a PBKDF2-HMAC-SHA256 digest (see app/core/security.py).
+    # Phase 2: auth columns. password_hash holds a PBKDF2-HMAC-SHA256 digest
+    # (see app/core/security.py). otp_* aren't used at login — they back the
+    # v1.9 forgot-password flow (POST /api/auth/forgot-password + /reset-password).
     otp_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
     otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)

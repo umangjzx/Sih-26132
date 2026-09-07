@@ -344,6 +344,8 @@ ingest trigger — not just the location-resolve case called out below.
 | `OPENROUTER_API_KEY` | *(blank)* | Optional. Enables the plain-language advisor summary, Ask AgriLink chat, mandi-slip OCR, and live-string translation. Blank → all LLM features hidden; rule output / English shown |
 | `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Any vision-capable OpenRouter model. Used for both text and image (OCR) calls |
 | `TRANSPORT_COST_PER_QTL_KM` | `0.4` | Legacy flat fallback. Since v1.5 `markets/best` and deal-logistics cost use the **diesel-indexed** rate from `services/freight.py` instead (see [Diesel-indexed freight](#diesel-indexed-freight)) |
+| `SMS_API_KEY` | *(blank)* | Optional Fast2SMS-compatible "quick SMS" key for the forgot-password OTP (`services/sms.py`). Blank → the OTP is logged server-side instead of texted, so `/auth/forgot-password` + `/auth/reset-password` still work end-to-end for a local/offline demo |
+| `SMS_API_URL` | Fast2SMS bulk endpoint | Override to point at a different quick-SMS-compatible provider |
 | `REVERSE_GEOCODE_URL` | BigDataCloud | Free keyless reverse-geocoder |
 | `ARRIVALS_SOURCE_URL` | *(blank)* | Leave blank — no live daily-arrivals source exists (tracked as PRICE-07) |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins |
@@ -448,6 +450,8 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | POST | `/auth/register` | `{phone, name, role, password, district?, state?, latitude?, longitude?}` (password ≥ 6) — creates the account, 409 if phone taken |
 | POST | `/auth/login` | `{phone, password}` — verifies PBKDF2 hash; 401 on mismatch, 403 if inactive |
 | POST | `/auth/refresh` | `{refresh_token}` → new token pair |
+| POST | `/auth/forgot-password` | `{phone}` — issues a 6-digit, 10-minute OTP; always returns the same generic message so it can't be used to enumerate accounts |
+| POST | `/auth/reset-password` | `{phone, otp, new_password}` — verifies the OTP and signs in with the new password; 400 on a wrong/expired code, rate-limited |
 | GET | `/auth/me` | **Auth** — current user profile |
 | PATCH | `/auth/me` | **Auth** — `{name?, district?, state?, latitude?, longitude?}` — update trading location and display name |
 | POST | `/auth/me/request-verification` | **Auth** — `{note?, reference?}` — set `verification_status = pending`; admin reviews and approves/rejects |
@@ -939,7 +943,8 @@ Phone + password. Passwords are hashed with **PBKDF2-HMAC-SHA256** (600k
 iterations, per-user salt, `algo$iters$salt$hash` string) using only the Python
 stdlib — no `bcrypt` / `passlib` dependency, so the build stays offline-installable
 (`hash_password` / `verify_password` in `app/core/security.py`, constant-time
-compare). No OTP / SMS; the earlier OTP flow is in `git log`.
+compare). Sign-in itself has no OTP step; the `User.otp_code` / `otp_expires_at`
+columns back the forgot-password flow below instead.
 
 ```
 POST /api/auth/register  {phone, name, role, password, district?, state?, latitude?, longitude?}
@@ -954,6 +959,17 @@ PATCH /api/auth/me       {name?, district?, state?, latitude?, longitude?}  → 
 
 POST /api/auth/me/request-verification   {note?, reference?}  → user.verification_status = "pending"
 ```
+
+**Forgot password** (v1.9) — `POST /api/auth/forgot-password {phone}` issues a
+6-digit OTP valid for 10 minutes and always returns the same generic message,
+so the endpoint can't be used to check which phone numbers have accounts.
+Delivery is via `app/services/sms.py`: with `SMS_API_KEY` set it sends a real
+text through a Fast2SMS-compatible "quick SMS" route; blank (the default) logs
+the code to the server console instead, so the flow is still fully exercisable
+offline. `POST /api/auth/reset-password {phone, otp, new_password}` verifies
+the code (rate-limited, constant-time compare) and signs the user straight in
+with the new password. Existing sessions aren't revoked — there is no session
+table to invalidate (see [Known limitations](#known-limitations)).
 
 The frontend stores tokens in `localStorage` (`lib/auth.ts`), attaches the bearer
 header via `lib/api.ts`, and `AuthProvider` exposes `user` / `token` /
@@ -1064,9 +1080,12 @@ Both suites run **offline**.
 - **KYC / verification is admin-manual** — `verification_status` is admin-set after
   offline document review; there is no automated e-KYC integration (PM-Kisan API,
   Aadhaar UIDAI, etc.).
-- **Login is phone + password only** — no SMS OTP / second factor, no email
-  verification, and no password-reset flow (a forgotten password needs a DB edit).
-  PBKDF2 hashing is real; the rest is out of scope for the demo.
+- **Sign-in has no second factor and no email verification.** A forgotten
+  password is self-serviceable via OTP (`/auth/forgot-password` +
+  `/auth/reset-password`, v1.9), but resetting it doesn't revoke existing
+  sessions — there's no session table to invalidate. Without `SMS_API_KEY` the
+  OTP is logged server-side rather than texted (fine for local/offline demo,
+  not for production).
 - **Curated reference data** — MSP, the crop calendar, and the storage/FPO
   directory are curated samples with real geography, not live registries.
 - **Crop calendar is Maharashtra-tuned** — sowing/harvest/peak windows outside

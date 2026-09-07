@@ -14,10 +14,15 @@ import Link from "next/link";
 
 import { useAuth } from "@/components/AuthProvider";
 import { useLocation } from "@/lib/useLocation";
-import { login as loginRequest, register as registerRequest } from "@/lib/api";
+import {
+  login as loginRequest,
+  register as registerRequest,
+  forgotPassword as forgotPasswordRequest,
+  resetPassword as resetPasswordRequest,
+} from "@/lib/api";
 import { Icon } from "@/components/ui";
 
-type Mode = "signin" | "register";
+type Mode = "signin" | "register" | "forgot" | "reset";
 
 type DemoAccount = {
   role: "farmer" | "buyer" | "admin";
@@ -67,6 +72,8 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState<"farmer" | "buyer">("farmer");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
@@ -80,6 +87,8 @@ export default function LoginPage() {
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
+    setOtp("");
+    setNewPassword("");
   }
 
   async function signIn(p: string, pw: string) {
@@ -92,6 +101,36 @@ export default function LoginPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       setError(msg.includes("401") ? t("badCredentials") : t("loginError"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendResetCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await forgotPasswordRequest(phone.trim());
+      setMode("reset");
+    } catch {
+      setError(t("loginError"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitReset(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await resetPasswordRequest(phone.trim(), otp.trim(), newPassword);
+      login(data.access_token, data.refresh_token, data.user);
+      router.replace(destFor(data.user.role));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setError(msg.includes("400") ? t("resetError") : t("loginError"));
     } finally {
       setLoading(false);
     }
@@ -231,41 +270,58 @@ export default function LoginPage() {
           </Link>
 
           <h1 className="font-heading text-2xl font-extrabold text-[var(--ink)] sm:text-3xl">
-            {t("title")}
+            {mode === "forgot" || mode === "reset" ? t("forgotTitle") : t("title")}
           </h1>
           <p className="mt-1.5 text-sm text-[var(--ink-soft)]">
-            {mode === "signin"
-              ? "Sign in to access your dashboard"
-              : "Create a free account in seconds"}
+            {mode === "signin" && "Sign in to access your dashboard"}
+            {mode === "register" && "Create a free account in seconds"}
+            {mode === "forgot" && t("forgotIntro")}
+            {mode === "reset" && t("resetIntro", { phone: phone.trim() })}
           </p>
 
-          {/* Mode tabs */}
-          <div className="mt-6 flex rounded-xl border border-[var(--line)] bg-[var(--paper)] p-1">
+          {(mode === "signin" || mode === "register") && (
+            <>
+              {/* Mode tabs */}
+              <div className="mt-6 flex rounded-xl border border-[var(--line)] bg-[var(--paper)] p-1">
+                <button
+                  type="button"
+                  onClick={() => switchMode("signin")}
+                  className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-200 ${
+                    mode === "signin"
+                      ? "bg-[var(--green-700)] text-white shadow-md shadow-green-900/15"
+                      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  {t("signInTab")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode("register")}
+                  className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-200 ${
+                    mode === "register"
+                      ? "bg-[var(--green-700)] text-white shadow-md shadow-green-900/15"
+                      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  {t("registerTab")}
+                </button>
+              </div>
+            </>
+          )}
+
+          {(mode === "forgot" || mode === "reset") && (
             <button
               type="button"
               onClick={() => switchMode("signin")}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-200 ${
-                mode === "signin"
-                  ? "bg-[var(--green-700)] text-white shadow-md shadow-green-900/15"
-                  : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-              }`}
+              className="mt-6 flex items-center gap-1.5 text-sm font-semibold text-[var(--green-700)] hover:underline"
             >
-              {t("signInTab")}
+              <Icon name="arrowDown" size={12} className="rotate-90" />
+              {t("backToSignIn")}
             </button>
-            <button
-              type="button"
-              onClick={() => switchMode("register")}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-200 ${
-                mode === "register"
-                  ? "bg-[var(--green-700)] text-white shadow-md shadow-green-900/15"
-                  : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-              }`}
-            >
-              {t("registerTab")}
-            </button>
-          </div>
+          )}
 
           {/* Form */}
+          {(mode === "signin" || mode === "register") && (
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
             <label className="flex flex-col gap-1.5">
               <span className="al-label">{t("phoneLabel")}</span>
@@ -338,6 +394,15 @@ export default function LoginPage() {
               {mode === "register" && (
                 <span className="text-xs text-[var(--ink-mute)]">{t("passwordHint")}</span>
               )}
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={() => switchMode("forgot")}
+                  className="mt-1 self-start text-xs font-semibold text-[var(--green-700)] hover:underline"
+                >
+                  {t("forgotPasswordLink")}
+                </button>
+              )}
             </label>
 
             {error && (
@@ -364,8 +429,104 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+          )}
+
+          {/* Forgot password: request a code */}
+          {mode === "forgot" && (
+            <form onSubmit={sendResetCode} className="mt-6 flex flex-col gap-5">
+              <label className="flex flex-col gap-1.5">
+                <span className="al-label">{t("phoneLabel")}</span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={t("phonePlaceholder")}
+                  required
+                  autoComplete="username"
+                  className="al-input"
+                />
+              </label>
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--red-300)]/40 bg-[var(--red-50)] px-4 py-3 text-sm font-medium text-[var(--red-500)]">
+                  <Icon name="alert" size={16} />
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="al-btn-primary w-full py-3.5 text-base disabled:opacity-60"
+              >
+                {loading ? t("sendingCode") : t("sendCodeBtn")}
+              </button>
+            </form>
+          )}
+
+          {/* Forgot password: enter code + new password */}
+          {mode === "reset" && (
+            <form onSubmit={submitReset} className="mt-6 flex flex-col gap-5">
+              <p className="-mt-2 text-xs text-[var(--ink-soft)]">{t("codeSentNote")}</p>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="al-label">{t("otpLabel")}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder={t("otpPlaceholder")}
+                  required
+                  autoComplete="one-time-code"
+                  className="al-input tracking-[0.4em]"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="al-label">{t("newPasswordLabel")}</span>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={t("passwordPlaceholder")}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  className="al-input"
+                />
+                <span className="text-xs text-[var(--ink-mute)]">{t("newPasswordHint")}</span>
+              </label>
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--red-300)]/40 bg-[var(--red-50)] px-4 py-3 text-sm font-medium text-[var(--red-500)]">
+                  <Icon name="alert" size={16} />
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || otp.length !== 6}
+                className="al-btn-primary w-full py-3.5 text-base disabled:opacity-60"
+              >
+                {loading ? t("resettingPassword") : t("resetPasswordBtn")}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => switchMode("forgot")}
+                className="text-center text-xs font-semibold text-[var(--green-700)] hover:underline"
+              >
+                {t("resendCode")}
+              </button>
+            </form>
+          )}
 
           {/* Divider */}
+          {(mode === "signin" || mode === "register") && (
           <div className="mt-8 flex items-center gap-3">
             <div className="h-px flex-1 bg-[var(--line)]" />
             <span className="text-xs font-semibold uppercase tracking-widest text-[var(--ink-mute)]">
@@ -373,8 +534,10 @@ export default function LoginPage() {
             </span>
             <div className="h-px flex-1 bg-[var(--line)]" />
           </div>
+          )}
 
           {/* Demo Accounts */}
+          {(mode === "signin" || mode === "register") && (
           <div className="mt-6">
             <button
               type="button"
@@ -440,6 +603,7 @@ export default function LoginPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

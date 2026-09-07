@@ -67,6 +67,42 @@ class RefreshBody(BaseModel):
     refresh_token: str
 
 
+class ForgotPasswordBody(BaseModel):
+    """Request a password-reset OTP by phone."""
+
+    phone: str
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        return _clean_phone(v)
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+
+
+class ResetPasswordBody(BaseModel):
+    """Verify the OTP sent to ``phone`` and set ``new_password``."""
+
+    phone: str
+    otp: str
+    new_password: str = Field(min_length=6, max_length=128)
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        return _clean_phone(v)
+
+    @field_validator("otp")
+    @classmethod
+    def _otp(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not (v.isdigit() and len(v) == 6):
+            raise ValueError("Enter the 6-digit code")
+        return v
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

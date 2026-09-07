@@ -1,11 +1,14 @@
 """Auth router: password registration + login, token refresh, current user.
 
-Phone is the identity, a PBKDF2-hashed password is the credential (no SMS/OTP
-in this build). ``/register`` creates the account; ``/login`` verifies the
-password. Both return a JWT access + refresh pair.
+Phone is the identity, a PBKDF2-hashed password is the credential. ``/register``
+creates the account; ``/login`` verifies the password; both return a JWT access
++ refresh pair. Sign-in itself has no OTP step — the OTP columns on ``User``
+are used only by ``/forgot-password`` + ``/reset-password`` below.
 """
 
 import logging
+import secrets
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -24,6 +27,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
+from app.services.sms import send_otp_sms
 
 # A valid-but-wrong PBKDF2 hash. Verifying against this when the phone is unknown
 # keeps /login's response time constant, so it can't be used to enumerate which
@@ -43,17 +47,32 @@ def _mask_phone(phone: str) -> str:
     return f"***{phone[-4:]}" if len(phone) >= 4 else "***"
 from app.schemas.auth import (
     AuthResponse,
+    ForgotPasswordBody,
+    ForgotPasswordResponse,
     LoginBody,
     ProfileUpdate,
     RefreshBody,
     RegisterBody,
     RequestVerification,
+    ResetPasswordBody,
     TokenResponse,
     UserResponse,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
+
+_FORGOT_LIMIT, _FORGOT_WINDOW_S = 3, 3600        # 3 reset requests / hour per phone
+_FORGOT_IP_LIMIT, _FORGOT_IP_WINDOW_S = 10, 3600  # 10 / hour per client
+_RESET_LIMIT, _RESET_WINDOW_S = 6, 900           # 6 code-verify attempts / 15 min per phone
+_OTP_TTL_MINUTES = 10
+_GENERIC_FORGOT_MESSAGE = (
+    "If that phone number has an account, we've sent a 6-digit code to reset the password."
+)
+
+
+def _generate_otp() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def _tokens_for(user: User) -> AuthResponse:
@@ -189,6 +208,87 @@ def refresh_tokens(
         access_token=create_access_token(str(user.id), {"role": user.role}),
         refresh_token=create_refresh_token(str(user.id)),
     )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/auth/forgot-password
+# ---------------------------------------------------------------------------
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(
+    body: ForgotPasswordBody,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> ForgotPasswordResponse:
+    """Issue a 6-digit, 10-minute password-reset OTP by phone.
+
+    Always returns the same message whether or not the phone is registered,
+    so this endpoint can't be used to enumerate accounts. Delivery is via
+    ``services.sms`` — configure ``SMS_API_KEY`` for a real text, otherwise the
+    code is logged server-side (see that module's docstring).
+    """
+    if not ratelimit.check(f"forgot:{body.phone}", limit=_FORGOT_LIMIT, window_s=_FORGOT_WINDOW_S):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many reset requests for this number. Please try again later.",
+        )
+    if not ratelimit.check(f"forgot-ip:{_client_ip(request)}",
+                           limit=_FORGOT_IP_LIMIT, window_s=_FORGOT_IP_WINDOW_S):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many reset requests. Please try again later.",
+        )
+
+    user = db.execute(select(User).where(User.phone == body.phone)).scalar_one_or_none()
+    if user is not None and user.is_active:
+        otp = _generate_otp()
+        user.otp_code = otp
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=_OTP_TTL_MINUTES)
+        db.commit()
+        send_otp_sms(user.phone, otp)
+        logger.info("[AgriLink] password-reset OTP issued for %s", _mask_phone(body.phone))
+    return ForgotPasswordResponse(message=_GENERIC_FORGOT_MESSAGE)
+
+
+# ---------------------------------------------------------------------------
+# POST /api/auth/reset-password
+# ---------------------------------------------------------------------------
+
+@router.post("/reset-password", response_model=AuthResponse)
+def reset_password(
+    body: ResetPasswordBody,
+    db: Session = Depends(get_db),
+) -> AuthResponse:
+    """Verify the OTP from /forgot-password and set a new password.
+
+    Signs the user in immediately on success. Existing sessions aren't
+    revoked — there is no session table to invalidate (see Known limitations).
+    """
+    _400 = HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired code.")
+
+    if not ratelimit.check(f"reset:{body.phone}", limit=_RESET_LIMIT, window_s=_RESET_WINDOW_S):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many attempts. Please request a new code.",
+        )
+
+    user = db.execute(select(User).where(User.phone == body.phone)).scalar_one_or_none()
+    if user is None or not user.is_active or not user.otp_code or not user.otp_expires_at:
+        raise _400
+
+    expires_at = user.otp_expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) > expires_at or not secrets.compare_digest(user.otp_code, body.otp):
+        raise _400
+
+    user.password_hash = hash_password(body.new_password)
+    user.otp_code = None
+    user.otp_expires_at = None
+    db.commit()
+    db.refresh(user)
+    logger.info("[AgriLink] password reset completed for %s", _mask_phone(body.phone))
+    return _tokens_for(user)
 
 
 # ---------------------------------------------------------------------------

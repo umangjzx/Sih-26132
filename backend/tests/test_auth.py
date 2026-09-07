@@ -7,7 +7,10 @@ Covers:
 - Token refresh: valid refresh → new pair; bad token → 401
 - GET /me: valid token → user; no token → 401
 - require_role gating: wrong role → 403
+- Forgot/reset password: OTP issued + verified, doesn't leak account existence
 """
+
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
@@ -191,6 +194,105 @@ def test_refresh_inactive_user(auth_client, db, farmer_user):
     refresh_tok = create_refresh_token(str(farmer_user.id))
     resp = auth_client.post("/api/auth/refresh", json={"refresh_token": refresh_tok})
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Forgot / reset password
+# ---------------------------------------------------------------------------
+
+def test_forgot_password_issues_otp_for_known_phone(auth_client, db):
+    _register(auth_client, phone="+910000000040", password="original1")
+    resp = auth_client.post("/api/auth/forgot-password", json={"phone": "+910000000040"})
+    assert resp.status_code == 200
+    assert "6-digit code" in resp.json()["message"]
+
+    user = db.execute(select(User).where(User.phone == "+910000000040")).scalar_one()
+    assert user.otp_code is not None and len(user.otp_code) == 6
+    assert user.otp_expires_at is not None
+
+
+def test_forgot_password_unknown_phone_returns_same_generic_message(auth_client, db):
+    """Must not reveal whether the phone has an account."""
+    resp = auth_client.post("/api/auth/forgot-password", json={"phone": "+919999999998"})
+    assert resp.status_code == 200
+    assert "6-digit code" in resp.json()["message"]
+
+    user = db.execute(select(User).where(User.phone == "+919999999998")).scalar_one_or_none()
+    assert user is None  # no account was created as a side effect
+
+
+def test_reset_password_with_correct_otp_signs_in_with_new_password(auth_client, db):
+    _register(auth_client, phone="+910000000041", password="original1")
+    auth_client.post("/api/auth/forgot-password", json={"phone": "+910000000041"})
+    user = db.execute(select(User).where(User.phone == "+910000000041")).scalar_one()
+    otp = user.otp_code
+
+    resp = auth_client.post(
+        "/api/auth/reset-password",
+        json={"phone": "+910000000041", "otp": otp, "new_password": "brandnew1"},
+    )
+    assert resp.status_code == 200
+    assert "access_token" in resp.json()
+
+    db.refresh(user)
+    assert user.otp_code is None and user.otp_expires_at is None
+
+    # old password no longer works, new one does
+    assert auth_client.post(
+        "/api/auth/login", json={"phone": "+910000000041", "password": "original1"}
+    ).status_code == 401
+    assert auth_client.post(
+        "/api/auth/login", json={"phone": "+910000000041", "password": "brandnew1"}
+    ).status_code == 200
+
+
+def test_reset_password_rejects_wrong_otp(auth_client, db):
+    _register(auth_client, phone="+910000000042", password="original1")
+    auth_client.post("/api/auth/forgot-password", json={"phone": "+910000000042"})
+
+    resp = auth_client.post(
+        "/api/auth/reset-password",
+        json={"phone": "+910000000042", "otp": "000000", "new_password": "brandnew1"},
+    )
+    assert resp.status_code == 400
+    # the account is untouched — the original password still works
+    assert auth_client.post(
+        "/api/auth/login", json={"phone": "+910000000042", "password": "original1"}
+    ).status_code == 200
+
+
+def test_reset_password_rejects_expired_otp(auth_client, db):
+    _register(auth_client, phone="+910000000043", password="original1")
+    user = db.execute(select(User).where(User.phone == "+910000000043")).scalar_one()
+    user.otp_code = "123456"
+    user.otp_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db.commit()
+
+    resp = auth_client.post(
+        "/api/auth/reset-password",
+        json={"phone": "+910000000043", "otp": "123456", "new_password": "brandnew1"},
+    )
+    assert resp.status_code == 400
+
+
+def test_reset_password_without_a_pending_otp_is_rejected(auth_client, db):
+    _register(auth_client, phone="+910000000044", password="original1")
+    resp = auth_client.post(
+        "/api/auth/reset-password",
+        json={"phone": "+910000000044", "otp": "123456", "new_password": "brandnew1"},
+    )
+    assert resp.status_code == 400
+
+
+def test_reset_password_attempts_are_rate_limited(auth_client, db):
+    _register(auth_client, phone="+910000000045", password="original1")
+    last = None
+    for _ in range(8):
+        last = auth_client.post(
+            "/api/auth/reset-password",
+            json={"phone": "+910000000045", "otp": "000000", "new_password": "brandnew1"},
+        )
+    assert last.status_code == 429
 
 
 # ---------------------------------------------------------------------------
