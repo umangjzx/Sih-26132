@@ -156,8 +156,11 @@ def msp(crop: str, market: str | None = None, db: Session = Depends(get_db)) -> 
 # --------------------------------------------------------------------------- #
 
 @router.get("/calendar")
-def crop_calendar(crop: str) -> dict:
-    cal = ref.calendar_for(crop)
+def crop_calendar(crop: str, state: str | None = None) -> dict:
+    """v1.15 — state-aware: pass ``state`` for that state's real sowing/
+    harvest timing where curated; omitted or uncovered states fall back to
+    the Maharashtra baseline (``approximate: true`` in the response)."""
+    cal = ref.calendar_for(crop, state=state)
     if cal is None:
         raise HTTPException(status_code=404, detail=f"No crop calendar for '{crop}'")
     return cal
@@ -289,6 +292,26 @@ def decision_brief(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/satellite/ndvi")
+def satellite_ndvi(
+    market: str | None = None,
+    district: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Optional satellite crop-health (NDVI) reading for a point — see
+    app/services/satellite.py. ``available: false`` (with no error) when
+    Google Earth Engine isn't configured or the lookup finds no imagery."""
+    from app.services import satellite as satellite_svc
+
+    pt = _resolve_point(market, district, lat, lon, db)
+    reading = satellite_svc.get_ndvi(*pt)
+    if reading is None:
+        return {"available": False, "latitude": pt[0], "longitude": pt[1]}
+    return {"available": True, "latitude": pt[0], "longitude": pt[1], **reading}
 
 
 @router.get("/logistics/freight-rate")

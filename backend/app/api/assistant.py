@@ -73,7 +73,7 @@ def _context(db: Session, crop: str, market: str) -> dict:
         except Exception:  # noqa: BLE001
             wx = None
     msp = ref.msp_for(crop)
-    cal = ref.calendar_for(crop)
+    cal = ref.calendar_for(crop, state=ctx.get("state"))
 
     sig = compute_signal(rows, weather=wx, msp=msp) if len(rows) >= 7 else None
     if sig:

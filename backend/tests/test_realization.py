@@ -1,4 +1,4 @@
-"""Price-realisation tracker (v1.6 #1)."""
+"""Price-realisation tracker (v1.6 #1) + the public aggregate API (v1.13)."""
 
 from datetime import date, timedelta
 
@@ -7,14 +7,15 @@ from app.models.demand import Demand
 from app.models.lot import Lot
 from app.models.match import Match
 from app.models.price_cache import PriceCache
-from app.services.realization import farmer_realization
+from app.models.user import User
+from app.services.realization import farmer_realization, platform_realization
 
 
-def _seed_prices(db, crop, modal, *, around=None, state="Maharashtra", n=15):
+def _seed_prices(db, crop, modal, *, around=None, state="Maharashtra", market="Pune", n=15):
     around = around or date.today()
     for i in range(-n, n + 1):
         db.add(PriceCache(
-            crop=crop, variety="Local", market="Pune", district="Pune", state=state,
+            crop=crop, variety="Local", market=market, district="Pune", state=state,
             date=around + timedelta(days=i),
             min_price=modal - 50, max_price=modal + 50, modal_price=modal,
             arrival_volume=None,
@@ -128,3 +129,78 @@ def test_realization_endpoint_farmer(farmer_client, db, farmer_user):
 def test_realization_endpoint_farmer_cannot_inspect_others(farmer_client):
     resp = farmer_client.get("/api/history/realization", params={"farmer_id": 4242})
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# v1.13 — public, anonymised, platform-wide aggregate
+# ---------------------------------------------------------------------------
+
+def _second_farmer(db, state="Maharashtra"):
+    farmer = User(
+        role="farmer", name="Second Farmer", phone="+910000000099",
+        district="Nashik", taluka="Nashik", state=state, kyc_status="unverified",
+        is_active=True,
+    )
+    db.add(farmer)
+    db.commit()
+    db.refresh(farmer)
+    return farmer
+
+
+def test_platform_realization_aggregates_across_farmers_anonymously(db, farmer_user):
+    other = _second_farmer(db)
+    _seed_prices(db, "Onion", modal=1800)
+    _make_deal(db, farmer_user.id, crop="Onion", agreed_price=1980, qty_kg=1000)
+    _make_deal(db, other.id, crop="Onion", agreed_price=1980, qty_kg=1000)
+
+    out = platform_realization(db)
+    assert out["summary"]["deals_total"] == 2
+    assert out["summary"]["uplift_vs_mandi_pct"] == 10.0
+    # anonymised: no farmer id/name anywhere in the response
+    blob = str(out)
+    assert "farmer_id" not in blob and farmer_user.name not in blob and other.name not in blob
+
+
+def test_platform_realization_breaks_down_by_crop(db, farmer_user):
+    other = _second_farmer(db)
+    _seed_prices(db, "Onion", modal=1800)
+    _seed_prices(db, "Tomato", modal=1000)
+    _make_deal(db, farmer_user.id, crop="Onion", agreed_price=1980, qty_kg=1000)
+    _make_deal(db, other.id, crop="Tomato", agreed_price=1100, qty_kg=500)
+
+    out = platform_realization(db)
+    by_crop = {row["crop"]: row for row in out["by_crop"]}
+    assert set(by_crop) == {"Onion", "Tomato"}
+    assert by_crop["Onion"]["deals"] == 1 and by_crop["Tomato"]["deals"] == 1
+    assert by_crop["Onion"]["uplift_vs_mandi_pct"] == 10.0
+
+
+def test_platform_realization_only_counts_completed_deals(db, farmer_user):
+    _seed_prices(db, "Onion", modal=1800)
+    _make_deal(db, farmer_user.id, crop="Onion", agreed_price=1980, qty_kg=1000, status="matched")
+
+    out = platform_realization(db)
+    assert out["summary"]["deals_total"] == 0
+    assert out["by_crop"] == []
+
+
+def test_platform_realization_state_filter(db, farmer_user):
+    mh_farmer = farmer_user  # district=Pune, state defaults to "" unless set
+    db.query(User).filter(User.id == mh_farmer.id).update({"state": "Maharashtra"})
+    other = _second_farmer(db, state="Gujarat")
+    db.commit()
+
+    _seed_prices(db, "Onion", modal=1800, state="Maharashtra", market="Pune")
+    _seed_prices(db, "Onion", modal=1800, state="Gujarat", market="Ahmedabad")
+    _make_deal(db, mh_farmer.id, crop="Onion", agreed_price=1980, qty_kg=1000)
+    _make_deal(db, other.id, crop="Onion", agreed_price=1980, qty_kg=1000)
+
+    out = platform_realization(db, state="Gujarat")
+    assert out["summary"]["deals_total"] == 1
+
+
+def test_public_realization_endpoint_needs_no_auth(client):
+    resp = client.get("/api/public/realization")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "summary" in body and "by_crop" in body and body["scope"]["state"] is None

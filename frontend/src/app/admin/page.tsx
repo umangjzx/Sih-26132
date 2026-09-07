@@ -41,11 +41,14 @@ import {
   getAdminDashboard,
   getAdminEvents,
   getMatchingHealth,
+  listAllFinancingRequests,
+  reviewFinancingRequest,
   type AdminAnalytics,
   type AdminDashboardResponse,
   type AdminEvent,
   type DisputeOutcome,
   type DisputeSummary,
+  type FinancingRequest,
   type MatchingHealth,
 } from "@/lib/api";
 
@@ -252,6 +255,158 @@ function DisputeRow({
         </tr>
       )}
     </>
+  );
+}
+
+/** One row in the admin financing-request queue, with an inline approve/reject control. */
+function FinancingRow({
+  r,
+  token,
+  onResolved,
+}: {
+  r: FinancingRequest;
+  token: string | null;
+  onResolved: () => void;
+}) {
+  const t = useTranslations("admin");
+  const tf = useTranslations("financing");
+  const [open, setOpen] = useState(false);
+  const [decision, setDecision] = useState<"approved" | "rejected" | "">("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    if (!token || !decision) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await reviewFinancingRequest(r.id, { status: decision, admin_note: note.trim() || undefined }, token);
+      setOpen(false);
+      onResolved();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("loadError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <tr className="border-b border-[var(--color-border)] last:border-0">
+        <td className="py-2 align-top">
+          <span className="font-semibold">{r.farmer_name}</span>
+          <span className="opacity-55"> · {r.crop}</span>
+        </td>
+        <td className="py-2 align-top">₹{Math.round(r.requested_amount_inr).toLocaleString("en-IN")}</td>
+        <td className="py-2 align-top opacity-60">₹{Math.round(r.max_eligible_inr).toLocaleString("en-IN")}</td>
+        <td className="py-2 align-top opacity-60">{r.created_at.slice(0, 10)}</td>
+        <td className="py-2 text-right align-top">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--color-border)]/30"
+          >
+            {open ? t("resolveCancel") : t("resolveAction")}
+          </button>
+        </td>
+      </tr>
+      {open && (
+        <tr className="border-b border-[var(--color-border)]">
+          <td colSpan={5} className="py-3">
+            <div className="flex flex-col gap-2 rounded-xl bg-[var(--color-border)]/15 p-3">
+              {(r.warehouse_name || r.receipt_ref) && (
+                <p className="text-xs opacity-70">
+                  {r.warehouse_name}
+                  {r.receipt_ref ? ` · ${r.receipt_ref}` : ""}
+                </p>
+              )}
+              {r.note && <p className="text-xs opacity-70">{r.note}</p>}
+              <label className="flex flex-col gap-1 text-xs font-semibold">
+                {t("resolveOutcome")}
+                <select
+                  value={decision}
+                  onChange={(e) => setDecision(e.target.value as "approved" | "rejected")}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm"
+                >
+                  <option value="" disabled>{t("resolveOutcomeChoose")}</option>
+                  <option value="approved">{tf("status_approved")}</option>
+                  <option value="rejected">{tf("status_rejected")}</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold">
+                {t("resolveNote")}
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
+                  maxLength={1000}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm font-normal"
+                />
+              </label>
+              {err && <p className="text-xs font-semibold text-[var(--color-wait)]">{err}</p>}
+              <button
+                type="button"
+                onClick={submit}
+                disabled={busy || !decision}
+                className="self-start rounded-lg bg-[var(--color-brand)] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {t("resolveConfirm")}
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+/** Self-fetching panel of pending financing requests — not part of the dashboard payload. */
+function FinancingPanel({ token }: { token: string | null }) {
+  const t = useTranslations("admin");
+  const [rows, setRows] = useState<FinancingRequest[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    try {
+      setRows(await listAllFinancingRequests(token, "pending"));
+    } catch {
+      /* financing panel is optional */
+    } finally {
+      setLoaded(true);
+    }
+  }, [token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (!loaded) return null;
+
+  return (
+    <Card title={t("financingQueue")}>
+      {rows.length === 0 ? (
+        <p className="text-sm opacity-60">{t("noFinancing")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-left text-sm">
+            <thead className="border-b border-[var(--color-border)] text-xs uppercase opacity-55">
+              <tr>
+                <th className="py-2 font-semibold">{t("farmer")}</th>
+                <th className="py-2 font-semibold">{t("requested")}</th>
+                <th className="py-2 font-semibold">{t("eligible")}</th>
+                <th className="py-2 font-semibold">{t("date")}</th>
+                <th className="py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <FinancingRow key={r.id} r={r} token={token} onResolved={load} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -744,6 +899,9 @@ export default function AdminPage() {
           )}
         </Card>
       </div>
+
+      {/* ---- financing requests (v1.17) ---- */}
+      <FinancingPanel token={token} />
 
       {/* Activity ledger — the append-only transaction log */}
       <Card title={t("activityTitle")} hint={t("activityHint")}>

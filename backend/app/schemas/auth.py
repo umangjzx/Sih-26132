@@ -125,6 +125,7 @@ class UserResponse(BaseModel):
     verification_status: str = "unverified"
     verification_note: str | None = None
     is_active: bool
+    sms_digest_enabled: bool = False
 
 
 class ProfileUpdate(BaseModel):
@@ -137,6 +138,7 @@ class ProfileUpdate(BaseModel):
     state: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
+    sms_digest_enabled: bool | None = None
 
     @field_validator("name", "district", "taluka", "state")
     @classmethod

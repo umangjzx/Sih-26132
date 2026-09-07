@@ -128,6 +128,7 @@ export function Sidebar({
     tradeLinks.push({ href: "/browse",  labelKey: "browse",    icon: "globe"      });
     tradeLinks.push({ href: "/pools",   labelKey: "pools",     icon: "coins"      });
     tradeLinks.push({ href: "/forward", labelKey: "forward",   icon: "calendar"   });
+    tradeLinks.push({ href: "/financing", labelKey: "financing", icon: "warehouse" });
   }
   if (user?.role === "buyer") {
     tradeLinks.push({ href: "/buyer",   labelKey: "myDemands", icon: "handshake"  });

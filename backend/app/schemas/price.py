@@ -67,6 +67,15 @@ class ForecastPointOut(BaseModel):
     hi: float
 
 
+class SecondOpinionOut(BaseModel):
+    available: bool
+    method: str = ""
+    change_pct_7d: float | None = None
+    change_pct_30d: float | None = None
+    agrees_with_primary: bool | None = None
+    note: str = ""
+
+
 class PriceForecastResponse(BaseModel):
     available: bool
     crop: str
@@ -80,6 +89,8 @@ class PriceForecastResponse(BaseModel):
     change_pct_30d: float | None = None
     note: str = ""
     points: list[ForecastPointOut] = []
+    # v1.16 — Holt-smoothed second opinion, informational only.
+    second_opinion: SecondOpinionOut | None = None
 
 
 class IngestionResultResponse(BaseModel):

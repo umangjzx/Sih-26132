@@ -40,6 +40,7 @@ export default function ProfilePage() {
   const [vNote, setVNote] = useState("");
   const [vRef, setVRef] = useState("");
   const [pendingGps, setPendingGps] = useState(false);
+  const [smsDigest, setSmsDigest] = useState(false);
 
   useEffect(() => {
     if (ready && !isAuthenticated) router.replace("/login");
@@ -51,6 +52,7 @@ export default function ProfilePage() {
     setDistrict(user.district ?? "");
     setState(user.state ?? "");
     setCoords({ lat: user.latitude ?? null, lon: user.longitude ?? null });
+    setSmsDigest(user.sms_digest_enabled ?? false);
   }, [user]);
 
   // "Use my current location" only updated the shared header-chip context —
@@ -104,6 +106,19 @@ export default function ProfilePage() {
       flash(t("saveError"));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleSmsDigest(next: boolean) {
+    if (!token) return;
+    setSmsDigest(next);
+    try {
+      const updated = await updateProfile({ sms_digest_enabled: next }, token);
+      updateUser(updated);
+      flash(next ? t("smsDigestOn") : t("smsDigestOff"));
+    } catch {
+      setSmsDigest(!next);
+      flash(t("saveError"));
     }
   }
 
@@ -192,6 +207,21 @@ export default function ProfilePage() {
         >
           <Icon name="check" size={18} /> {saving ? t("saving") : t("save")}
         </button>
+      </section>
+
+      {/* Notifications */}
+      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <h2 className="mb-1 font-heading text-base font-bold text-[var(--ink)]">{t("notifications")}</h2>
+        <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("smsDigestWhy")}</p>
+        <label className="flex items-center gap-3 text-sm font-semibold text-[var(--ink)]">
+          <input
+            type="checkbox"
+            checked={smsDigest}
+            onChange={(e) => toggleSmsDigest(e.target.checked)}
+            className="h-4 w-4 accent-[var(--green-700)]"
+          />
+          {t("smsDigestLabel")}
+        </label>
       </section>
 
       {/* Verification */}

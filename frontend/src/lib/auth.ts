@@ -23,6 +23,7 @@ export type StoredUser = {
   verification_status?: "unverified" | "pending" | "verified" | "rejected";
   verification_note?: string | null;
   is_active: boolean;
+  sms_digest_enabled?: boolean;
 };
 
 export function saveAuth(

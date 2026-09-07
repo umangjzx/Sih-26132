@@ -31,6 +31,7 @@
     "users": "वपराशकर्ता",
     "browse": "ब्राउज़ करें",
     "forward": "फॉरवर्ड सौदे",
+    "financing": "वित्तपोषण",
     "more": "अधिक",
     "howItWorks": "यह कैसे काम करता है",
     "features": "विशेषताएँ",
@@ -53,7 +54,8 @@
     "maxPrice": "अधिकतम भाव",
     "perQuintal": "प्रति क्विंटल",
     "noData": "इस चयन के लिए कोई भाव उपलब्ध नहीं है",
-    "asOf": "दिनांक"
+    "asOf": "दिनांक",
+    "secondOpinion": "दूसरी राय"
   },
   "signal": {
     "title": "अभी बेचें या रुकें?",
@@ -398,7 +400,8 @@
     "noDeals": "अभी कोई सौदा नहीं",
     "viewDeal": "सौदा देखें",
     "loadError": "आपका इतिहास लोड नहीं हो सका",
-    "subtitle": "आपके सभी पिछले लॉट, मांग और अंतिम सौदे एक ही जगह।"
+    "subtitle": "आपके सभी पिछले लॉट, मांग और अंतिम सौदे एक ही जगह।",
+    "grade": "ग्रेड: {grade}"
   },
   "realization": {
     "title": "मूल्य प्राप्ति",
@@ -518,7 +521,12 @@
     "resolveApplyPenalty": "यह डील एक फॉरवर्ड कॉन्ट्रैक्ट से बनी थी — दोषी पक्ष पर ₹{amount} जुर्माना लगाएं",
     "resolveConfirm": "पुष्टि करें",
     "resolveCancel": "रद्द करें",
-    "resolvedToast": "विवाद निपटाया गया"
+    "resolvedToast": "विवाद निपटाया गया",
+    "financingQueue": "लंबित वित्तपोषण अनुरोध",
+    "noFinancing": "कोई लंबित वित्तपोषण अनुरोध नहीं",
+    "farmer": "किसान",
+    "requested": "अनुरोधित राशि",
+    "eligible": "इस तक पात्र"
   },
   "weather": {
     "title": "7-दिन का मौसम",
@@ -550,7 +558,8 @@
     "peak": "मुख्य आवक",
     "phase": "अभी",
     "glutWarning": "मुख्य आवक का समय - राज्यभर में भाव नरम हो सकते हैं",
-    "noCalendar": "इस फसल के लिए कैलेंडर नहीं"
+    "noCalendar": "इस फसल के लिए कैलेंडर नहीं",
+    "approximate": "अनुमानित — {state} का समय दिखाया जा रहा है; आपके राज्य के लिए यह फसल-कैलेंडर अभी तैयार नहीं है"
   },
   "bestmarket": {
     "title": "परिवहन के बाद सर्वोत्तम मंडी",
@@ -583,7 +592,18 @@
     "price": "औसत भाव",
     "change": "7-दिन बदलाव",
     "noData": "अभी राज्यव्यापी डेटा नहीं",
-    "showing": "दिखा रहे हैं"
+    "showing": "दिखा रहे हैं",
+    "gain": "बढ़त",
+    "loss": "गिरावट",
+    "realizationTitle": "मंडी की तुलना में मिली कीमत",
+    "realizationSubtitle": "हर पूर्ण हुए AgriLink सौदे का संकलित, गुमनाम आंकड़ा — कोई नाम या डील आईडी नहीं।",
+    "realizationHeadlineAbove": "{count} पूर्ण सौदों में खुली मंडी के औसत से {pct}% अधिक कीमत मिली",
+    "realizationHeadlineBelow": "{count} पूर्ण सौदों में खुली मंडी के औसत से {pct}% कम कीमत मिली",
+    "realizationNoData": "अभी कुल आंकड़ा देने लायक पर्याप्त पूर्ण सौदे नहीं हैं।",
+    "realizationByCrop": "फसल अनुसार",
+    "realizationDeals": "सौदे",
+    "realizationUplift": "मंडी की तुलना में",
+    "realizationBelowMsp": "MSP से नीचे"
   },
   "alerts": {
     "title": "भाव अलर्ट",
@@ -754,7 +774,12 @@
     "urgency_watch": "नजर रखें",
     "noActions": "अभी किसी कार्रवाई की आवश्यकता नहीं — अगले मूल्य अपडेट के बाद फिर देखें।",
     "loadError": "इस फसल और मंडी के लिए अभी कार्रवाई योजना नहीं बन सकी।",
-    "viewBuyers": "खरीदार देखें"
+    "viewBuyers": "खरीदार देखें",
+    "cropHealth": "सैटेलाइट फसल स्वास्थ्य: {health} (NDVI {ndvi}, {date})",
+    "health_poor": "कमज़ोर",
+    "health_fair": "औसत",
+    "health_good": "अच्छा",
+    "health_excellent": "उत्कृष्ट"
   },
   "dash": {
     "farmerTitle": "किसान डैशबोर्ड",
@@ -787,6 +812,35 @@
   },
   "forecast": {
     "label": "पूर्वानुमान"
+  },
+  "financing": {
+    "title": "वित्तपोषण अनुरोध",
+    "subtitle": "अग्रिम राशि के लिए संग्रहीत, ग्रेडेड लॉट को गिरवी रखें। हर अनुरोध की समीक्षा एक व्यवस्थापक करता है।",
+    "disclaimer": "AgriLink न तो उधार देता है और न ही पैसा रखता है — यह केवल आपके अनुरोध और व्यवस्थापक के अनुमोदन/अस्वीकृति निर्णय को दर्ज करता है। वास्तविक संवितरण बैंक, NBFC, या गोदाम भागीदार के साथ अलग से व्यवस्थित किया जाता है।",
+    "newRequest": "नया वित्तपोषण अनुरोध",
+    "cancel": "रद्द करें",
+    "lot": "लॉट",
+    "selectLot": "एक खुला लॉट चुनें…",
+    "grade": "ग्रेड",
+    "eligibleUpTo": "₹{amount} तक पात्र",
+    "amount": "अनुरोधित राशि (₹)",
+    "warehouseName": "गोदाम का नाम",
+    "receiptRef": "रसीद संदर्भ",
+    "note": "टिप्पणी (वैकल्पिक)",
+    "submit": "अनुरोध सबमिट करें",
+    "submitting": "सबमिट हो रहा है…",
+    "submitted": "वित्तपोषण अनुरोध सबमिट किया गया",
+    "submitFailed": "यह अनुरोध सबमिट नहीं हो सका। कृपया पुनः प्रयास करें।",
+    "noEligibleLots": "अभी गिरवी रखने के लिए कोई खुला, बिना-गिरवी लॉट उपलब्ध नहीं है।",
+    "noRequests": "अभी तक कोई वित्तपोषण अनुरोध नहीं।",
+    "myRequests": "मेरे अनुरोध",
+    "withdraw": "वापस लें",
+    "noWarehouse": "कोई गोदाम निर्दिष्ट नहीं",
+    "adminNote": "व्यवस्थापक टिप्पणी",
+    "status_pending": "लंबित",
+    "status_approved": "स्वीकृत",
+    "status_rejected": "अस्वीकृत",
+    "status_withdrawn": "वापस लिया गया"
   },
   "pools": {
     "title": "सामूहिक अनुरोध",
@@ -921,7 +975,12 @@
     "vRefPh": "e.g. GSTIN 27ABCDE1234F1Z5",
     "vNoteLabel": "Anything the reviewer should know (optional)",
     "vRequest": "सत्यापन का अनुरोध करें",
-    "vRequested": "Verification requested"
+    "vRequested": "Verification requested",
+    "notifications": "सूचनाएं",
+    "smsDigestWhy": "भरोसेमंद इंटरनेट नहीं है? कुछ नया होने पर — जैसे प्राइस अलर्ट या डील अपडेट — दिन में ज़्यादा से ज़्यादा एक बार SMS पाएं।",
+    "smsDigestLabel": "मुझे अपडेट का SMS भेजें",
+    "smsDigestOn": "SMS सूचना चालू की गई",
+    "smsDigestOff": "SMS सूचना बंद की गई"
   },
   "adminUsers": {
     "title": "वपराशकर्ता",

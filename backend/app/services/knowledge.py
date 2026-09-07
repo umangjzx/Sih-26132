@@ -346,7 +346,11 @@ def _generated_docs() -> list[Doc]:
                 tags=["msp", crop.lower(), "support price", str(entry["price"])],
             ))
 
-    for crop, c in CALENDAR.items():
+    for crop, by_state in CALENDAR.items():
+        # The knowledge base answers general "when is X grown" questions, not
+        # a per-state one — Maharashtra's entry is the baseline every crop
+        # here carries (see reference.py's CALENDAR docstring).
+        c = by_state.get("Maharashtra") or next(iter(by_state.values()))
         docs.append(Doc(
             id=f"cal-{crop.lower().replace(' ', '-')}",
             title=f"Crop calendar: {crop} (Maharashtra)",

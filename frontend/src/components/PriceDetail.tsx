@@ -115,6 +115,11 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
                   {forecast.note}
                 </p>
               )}
+              {forecast?.second_opinion?.available && forecast.second_opinion.note && (
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] text-[var(--ink-soft)]">
+                  {t("secondOpinion")}: {forecast.second_opinion.note}
+                </p>
+              )}
               <dl className="mt-4 grid grid-cols-3 gap-3 text-center">
                 <div>
                   <dt className="text-xs text-[var(--ink-soft)]">{t("minPrice")}</dt>

@@ -15,6 +15,7 @@ from app.api.auth import router as auth_router
 from app.api.deals import router as deals_router
 from app.api.demands import router as demands_router
 from app.api.disputes import router as disputes_router
+from app.api.financing import router as financing_router
 from app.api.history import router as history_router
 from app.api.intel import router as intel_router
 from app.api.assistant import router as assistant_router
@@ -46,6 +47,20 @@ def _run_ingestion_job() -> None:
         logger.info("Ingestion job finished: %s", result)
     except Exception:  # noqa: BLE001 — a failed cycle must not bubble out of the scheduler
         logger.exception("Scheduled ingestion job failed; will retry next interval")
+    finally:
+        db.close()
+
+
+def _run_sms_digest_job() -> None:
+    from app.services.digest import send_sms_digests
+
+    db = SessionLocal()
+    try:
+        n = send_sms_digests(db)
+        if n:
+            logger.info("SMS digest job sent %d digest(s)", n)
+    except Exception:  # noqa: BLE001 — a failed cycle must not bubble out of the scheduler
+        logger.exception("Scheduled SMS digest job failed; will retry next interval")
     finally:
         db.close()
 
@@ -91,6 +106,13 @@ async def lifespan(app: FastAPI):
         run_date=datetime.now() + timedelta(seconds=20),
         id="price_ingestion_boot", replace_existing=True,
     )
+    # Once a day, not every ingestion cycle — an opted-in user gets at most
+    # one text per _DIGEST_COOLDOWN regardless of how often this fires, but
+    # there's no reason to check more often than a day for an SMS digest.
+    scheduler.add_job(
+        _run_sms_digest_job, "interval", hours=24,
+        id="sms_digest", replace_existing=True, max_instances=1, coalesce=True,
+    )
     scheduler.start()
 
     yield
@@ -127,6 +149,7 @@ app.include_router(ocr_router)
 app.include_router(pools_router)
 app.include_router(prices_router)
 app.include_router(forward_router)
+app.include_router(financing_router)
 
 
 @app.get("/health")

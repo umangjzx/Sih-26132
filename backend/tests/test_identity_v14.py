@@ -56,6 +56,25 @@ def test_patch_me_rejects_half_a_coordinate(db, farmer_user):
         app.dependency_overrides.clear()
 
 
+def test_patch_me_toggles_sms_digest(db, farmer_user):
+    """v1.14 — off by default; explicit true/false both apply (a bool False
+    must not be treated as 'field not sent', unlike a blank string)."""
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        assert client.get("/api/auth/me").json()["sms_digest_enabled"] is False
+
+        r = client.patch("/api/auth/me", json={"sms_digest_enabled": True})
+        assert r.status_code == 200 and r.json()["sms_digest_enabled"] is True
+        db.refresh(farmer_user)
+        assert farmer_user.sms_digest_enabled is True
+
+        r2 = client.patch("/api/auth/me", json={"sms_digest_enabled": False})
+        assert r2.status_code == 200 and r2.json()["sms_digest_enabled"] is False
+    finally:
+        app.dependency_overrides.clear()
+
+
 # --------------------------------------------------------------------------- #
 # verification workflow
 # --------------------------------------------------------------------------- #

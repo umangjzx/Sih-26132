@@ -164,3 +164,99 @@ def farmer_realization(db: Session, farmer_id: int) -> dict:
         },
         "deals": deals,
     }
+
+
+def platform_realization(
+    db: Session, state: str | None = None, crop: str | None = None
+) -> dict:
+    """Aggregate, anonymised price-realisation stats across every *completed*
+    deal on the platform (v1.13) — no farmer/buyer names or deal IDs, just
+    volume-weighted uplift vs the mandi and MSP, overall and per crop. Powers
+    the public API so a researcher or a state government can measure whether
+    the platform's linkages actually beat the open market, independent of any
+    marketing claim.
+    """
+    stmt = (
+        select(Deal, Lot, User.state)
+        .join(Match, Deal.match_id == Match.id)
+        .join(Lot, Match.lot_id == Lot.id)
+        .join(User, Lot.farmer_id == User.id)
+        .where(Deal.pipeline_status.in_(_COMPLETED))
+    )
+    if crop:
+        stmt = stmt.where(Lot.crop.ilike(crop.strip()))
+    if state:
+        stmt = stmt.where(User.state.ilike(state.strip()))
+    rows = db.execute(stmt).all()
+
+    bench_memo: dict = {}
+    per_crop: dict[str, dict] = {}
+
+    for deal, lot, farmer_state in rows:
+        on_date = deal.created_at.date()
+        realized = float(deal.agreed_price)
+        qty_kg = float(deal.agreed_quantity)
+        mandi, _basis = _mandi_benchmark(db, lot.crop, on_date, farmer_state, bench_memo)
+        msp_entry = ref.msp_for(lot.crop)
+        msp = float(msp_entry["price"]) if msp_entry else None
+
+        bucket = per_crop.setdefault(lot.crop, {
+            "deals": 0, "qty_kg": 0.0, "realized_num": 0.0,
+            "mandi_num": 0.0, "mandi_qty": 0.0, "below_msp": 0,
+        })
+        bucket["deals"] += 1
+        bucket["qty_kg"] += qty_kg
+        bucket["realized_num"] += realized * qty_kg
+        if mandi:
+            bucket["mandi_num"] += mandi * qty_kg
+            bucket["mandi_qty"] += qty_kg
+        if msp is not None and realized < msp:
+            bucket["below_msp"] += 1
+
+    by_crop: list[dict] = []
+    total_deals = total_qty = 0.0
+    total_realized_num = total_mandi_num = total_mandi_qty = 0.0
+    total_below_msp = 0
+
+    for crop_name, b in sorted(per_crop.items()):
+        w_realized = round(b["realized_num"] / b["qty_kg"], 0) if b["qty_kg"] else None
+        w_mandi = round(b["mandi_num"] / b["mandi_qty"], 0) if b["mandi_qty"] else None
+        uplift = (
+            round((w_realized - w_mandi) / w_mandi * 100, 1)
+            if w_realized and w_mandi else None
+        )
+        by_crop.append({
+            "crop": crop_name,
+            "deals": b["deals"],
+            "quantity_kg": round(b["qty_kg"], 0),
+            "weighted_realized_per_qtl": w_realized,
+            "weighted_mandi_per_qtl": w_mandi,
+            "uplift_vs_mandi_pct": uplift,
+            "below_msp_deals": b["below_msp"],
+        })
+        total_deals += b["deals"]
+        total_qty += b["qty_kg"]
+        total_realized_num += b["realized_num"]
+        total_mandi_num += b["mandi_num"]
+        total_mandi_qty += b["mandi_qty"]
+        total_below_msp += b["below_msp"]
+
+    overall_realized = round(total_realized_num / total_qty, 0) if total_qty else None
+    overall_mandi = round(total_mandi_num / total_mandi_qty, 0) if total_mandi_qty else None
+    overall_uplift = (
+        round((overall_realized - overall_mandi) / overall_mandi * 100, 1)
+        if overall_realized and overall_mandi else None
+    )
+
+    return {
+        "scope": {"state": state, "crop": crop},
+        "summary": {
+            "deals_total": int(total_deals),
+            "total_quantity_kg": round(total_qty, 0),
+            "weighted_realized_per_qtl": overall_realized,
+            "weighted_mandi_per_qtl": overall_mandi,
+            "uplift_vs_mandi_pct": overall_uplift,
+            "below_msp_deals": total_below_msp,
+        },
+        "by_crop": by_crop,
+    }

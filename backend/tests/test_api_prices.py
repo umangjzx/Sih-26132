@@ -32,6 +32,20 @@ def test_signal_ok(client):
     assert resp.json()["recommendation"] in {"sell_now", "wait", "hold"}
 
 
+def test_forecast_includes_second_opinion(client):
+    """v1.16 — the primary trend+seasonality forecast ships with a Holt-
+    smoothed second opinion alongside it, not in place of it."""
+    resp = client.get("/api/prices/forecast", params={"crop": "Onion", "market": "Pune"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["method"] == "trend+weekly-seasonality"  # primary is untouched
+    so = body["second_opinion"]
+    assert so is not None
+    assert so["available"] is True
+    assert so["method"] == "holt-linear-smoothing"
+    assert so["agrees_with_primary"] in (True, False)
+
+
 def test_nearby_caps_and_limits(client):
     resp = client.get("/api/prices/nearby", params={"crop": "Onion", "district": "Pune"})
     assert resp.status_code == 200

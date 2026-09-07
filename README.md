@@ -59,6 +59,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 - [Database schema](#database-schema)
 - [The sell / wait / hold signal](#the-sell--wait--hold-signal)
 - [Decision Brief](#decision-brief)
+- [Satellite crop health](#satellite-crop-health)
 - [Diesel-indexed freight](#diesel-indexed-freight)
 - [Price forecast](#price-forecast)
 - [Match scoring](#match-scoring)
@@ -68,6 +69,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 - [Payments & audit ledger](#payments--audit-ledger)
 - [Price-realisation tracker](#price-realisation-tracker)
 - [Forward contracts](#forward-contracts)
+- [Warehouse-receipt financing](#warehouse-receipt-financing)
 - [FPO pools (collective bargaining)](#fpo-pools-collective-bargaining)
 - [Discovery board](#discovery-board)
 - [User profiles & verification](#user-profiles--verification)
@@ -132,10 +134,11 @@ aren't a client component top-to-bottom; see [Architecture](#architecture).
 | `/browse` | farmer/buyer | **Discovery board** — buyers browse open lots nearby; farmers browse open demands nearby. Radius filter (nearby / all-India), crop filter, verified-seller badge, and a one-tap "Express interest" that opens a match or explains why no match yet. |
 | `/pools` | farmer | **FPO-style pooled lots** — create or join a collective for one crop. The pool aggregates committed members into a single virtual lot (quantity-weighted price, floored at the organizer's floor price) and scores it against open buyer demands, showing ranked candidates. |
 | `/pools/[id]` | farmer | Pool detail: aggregate stats (fill %, effective price), member list, and — for the organizer — the ranked demand candidates to negotiate with. |
+| `/financing` | farmer | **Warehouse-receipt financing (v1.17)** — pledge an open, unsold lot as collateral and request a cash advance (capped at 75% of the lot's estimated value); track pending/approved/rejected requests and withdraw a pending one. No real money moves — an admin approves/rejects, same as account verification. |
 | `/profile` | any | **User profile & verification** — set trading location (GPS, header chip, or manual entry) so distance-aware matching and radius filters work accurately. Request admin verification (unverified → pending → verified), optionally citing a PM-Kisan ID / Aadhaar reference. |
 | `/history` | farmer/buyer | Your lots, demands, and deals. Farmers also get a **price-realisation scorecard** — realised ₹/qtl vs the AGMARKNET mandi average and MSP for every completed deal, with a volume-weighted uplift headline and a per-deal bar chart. |
 | `/deals/[id]` | farmer/buyer/admin | Advance the deal through its pipeline; view and update the **logistics plan** (mode, transporter from the directory, vehicle, pickup/drop points, diesel-indexed cost estimate); record **instalment payments**; see the append-only **transaction timeline**; open a printable **receipt**; raise or view disputes. |
-| `/admin` | admin | Dashboard: 30-day price trend, open-dispute queue, per-district (per-crop) price gaps, and price anomalies (>20% deviation from 7-day avg). **Analytics tab**: GMV, marketplace funnel, deal-pipeline breakdown, deal-success rate, payment-status split, avg hours to deal, price-realisation vs MSP per crop, supply vs demand, user activity. **Activity ledger**: the append-only `transaction_events` feed (viewable + CSV export). **User management**: list, search, filter by role/verification status, approve/reject verification requests, activate/deactivate accounts. |
+| `/admin` | admin | Dashboard: 30-day price trend, open-dispute queue, per-district (per-crop) price gaps, and price anomalies (>20% deviation from 7-day avg). **Analytics tab**: GMV, marketplace funnel, deal-pipeline breakdown, deal-success rate, payment-status split, avg hours to deal, price-realisation vs MSP per crop, supply vs demand, user activity. **Activity ledger**: the append-only `transaction_events` feed (viewable + CSV export). **User management**: list, search, filter by role/verification status, approve/reject verification requests, activate/deactivate accounts. **Financing queue (v1.17)**: review and approve/reject pending warehouse-receipt financing requests. |
 
 ---
 
@@ -176,6 +179,7 @@ flowchart LR
       NAGER["Nager.Date\nmandi holidays"]:::ext
       OR["OpenRouter\nLLM + embeddings, optional"]:::ext
       SMS["Fast2SMS-compatible\nOTP delivery, optional"]:::ext
+      GEE["Google Earth Engine\nNDVI, optional real credential"]:::ext
     end
 
     UI -->|"REST /api/*"| Routers
@@ -184,7 +188,7 @@ flowchart LR
     Brief --> Services
     Services --> DB
     Sched --> Services
-    Services -.->|"never blocks —\nfailure = neutral result"| AGMARKNET & OM & OWM & POWER & OSRM & BDC & NAGER & OR & SMS
+    Services -.->|"never blocks —\nfailure = neutral result"| AGMARKNET & OM & OWM & POWER & OSRM & BDC & NAGER & OR & SMS & GEE
 ```
 
 - **Frontend** is a client-rendered SPA — nearly every route is `"use client"`
@@ -367,11 +371,8 @@ ingest trigger — not just the location-resolve case called out below.
 | `SMS_API_URL` | Fast2SMS bulk endpoint | Override to point at a different quick-SMS-compatible provider |
 | `REVERSE_GEOCODE_URL` | BigDataCloud | Free keyless reverse-geocoder |
 | `ARRIVALS_SOURCE_URL` | *(blank)* | Leave blank — no live daily-arrivals source exists (tracked as PRICE-07) |
+| `GEE_PROJECT_ID`, `GEE_SERVICE_ACCOUNT`, `GEE_CREDENTIALS_PATH` | *(blank)* | Optional (v1.12) — a real Google Earth Engine service account enables the satellite crop-health (NDVI) overlay in `app/services/satellite.py`. `GEE_CREDENTIALS_PATH` is the downloaded key JSON, conventionally kept at the repo root (gitignored: `gee_service_account.json`, `*service_account*.json`, `*credentials*.json`) — resolved relative to the repo root if the bare filename doesn't exist relative to `backend/`. Blank or invalid → no crop-health data, nothing else affected |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins |
-
-`GEE_*` variables may exist in `.env` (Google Earth Engine service account) but
-are **not read** — satellite crop-health is deferred. `gee_service_account.json`
-and `*service_account*.json` / `*credentials*.json` are gitignored.
 
 ### `frontend/.env` (optional)
 
@@ -425,7 +426,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 |---|---|---|
 | GET | `/weather/forecast` | `market?` \| `district?` \| `lat?`+`lon?`, `include_anomaly?` |
 | GET | `/msp` | `crop`, `market?` |
-| GET | `/calendar` | `crop` |
+| GET | `/calendar` | `crop`, `state?` — v1.15: real curated timing for ~10 crops across 8 states beyond Maharashtra; an uncurated crop+state pair falls back to the Maharashtra baseline with `approximate: true` |
 | GET | `/storage/nearby` | `district?` \| `lat?`+`lon?`, `state?`, `max_km?`, `limit?` |
 | GET | `/fpo/nearby` | `district?` \| `lat?`+`lon?`, `crop?`, `state?`, `limit?` |
 | GET | `/markets/best` | `crop`, `market?` \| `district?` \| `lat?`+`lon?`, `state?`, `fast?`, `limit?` — response includes a `freight` block with the diesel-indexed rate and its working |
@@ -453,6 +454,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | Method | Path | Query |
 |---|---|---|
 | GET | `/public/overview` | `state?` — movers, 30-day trend, activity counters |
+| GET | `/public/realization` | `state?`, `crop?` — anonymised, platform-wide price-realisation aggregate (v1.13): volume-weighted uplift vs mandi/MSP, overall and per crop, no farmer/buyer names or deal IDs |
 
 ### Location — v1.2 (public)
 
@@ -472,7 +474,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | POST | `/auth/forgot-password` | `{phone}` — issues a 6-digit, 10-minute OTP; always returns the same generic message so it can't be used to enumerate accounts |
 | POST | `/auth/reset-password` | `{phone, otp, new_password}` — verifies the OTP and signs in with the new password; 400 on a wrong/expired code, rate-limited |
 | GET | `/auth/me` | **Auth** — current user profile |
-| PATCH | `/auth/me` | **Auth** — `{name?, district?, state?, latitude?, longitude?}` — update trading location and display name |
+| PATCH | `/auth/me` | **Auth** — `{name?, district?, state?, latitude?, longitude?, sms_digest_enabled?}` — update trading location, display name, and the v1.14 SMS-digest opt-in |
 | POST | `/auth/me/request-verification` | **Auth** — `{note?, reference?}` — set `verification_status = pending`; admin reviews and approves/rejects |
 
 ### Discovery — v1.4 (**Auth**)
@@ -508,6 +510,16 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | POST | `/forward/commitments/{id}/accept` | — | Buyer-owner accepts ⇒ materialises `Lot` + `Demand` + `Match` + `Offer` + `Deal` at `matched`; bid auto-`filled` when covered |
 | POST | `/forward/commitments/{id}/decline` | — | Buyer-owner declines a pending commitment |
 | POST | `/forward/commitments/{id}/withdraw` | — | Farmer withdraws their own pending commitment |
+
+### Warehouse-receipt financing — v1.17 (**Auth**)
+
+| Method | Path | Body / query | Notes |
+|---|---|---|---|
+| POST | `/financing/requests` | `{lot_id, requested_amount_inr, warehouse_name?, receipt_ref?, note?}` | **Farmer** pledges one of their own **open** lots; amount capped at 75% of the lot's estimated value (`quantity_kg × expected_price / 100 × 0.75`); one active (pending/approved) request per lot |
+| GET | `/financing/requests/mine` | — | Farmer's own requests, newest first, each enriched with `crop`, `farmer_name`, `max_eligible_inr` |
+| POST | `/financing/requests/{id}/withdraw` | — | Farmer withdraws their own `pending` request |
+| GET | `/financing/requests` | `status?` | **Admin** — all requests, optionally filtered by status |
+| PATCH | `/financing/requests/{id}` | `{status: "approved"\|"rejected", admin_note?}` | **Admin** decides a `pending` request; see [Warehouse-receipt financing](#warehouse-receipt-financing) |
 
 ### Trade (all **Auth**)
 
@@ -557,7 +569,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 ## Database schema
 
 PostgreSQL, managed **only** by Alembic (no `create_all`). `Base` carries a
-deterministic constraint-naming convention. 19 tables total; `price_cache`,
+deterministic constraint-naming convention. 20 tables total; `price_cache`,
 `geo_cache` and `transporters` are standalone/curated with no foreign keys, so
 they're omitted from the relationship graph below (full columns for every
 table, including those three, are in the reference table underneath it).
@@ -614,6 +626,8 @@ erDiagram
     USERS ||--o{ POOL_MEMBERS : "farmer_id"
     USERS ||--o{ FORWARD_BIDS : "buyer_id"
     USERS ||--o{ FORWARD_COMMITMENTS : "farmer_id"
+    USERS ||--o{ FINANCING_REQUESTS : "farmer_id"
+    LOTS ||--o{ FINANCING_REQUESTS : "lot_id"
     LOTS ||--o{ MATCHES : "lot_id"
     LOTS ||--o{ POOL_MEMBERS : "lot_id"
     DEMANDS ||--o{ MATCHES : "demand_id"
@@ -630,7 +644,7 @@ erDiagram
 | Table | Key columns | Status/enum values |
 |---|---|---|
 | `price_cache` | `crop, variety, market, district, state, date, min/max/modal_price, arrival_volume?` — unique `(market, crop, variety, date)` | — |
-| `users` | `role, name, phone` (unique), `district, taluka, state, kyc_status`, `latitude?, longitude?`, `verification_status, verification_note?, verification_ref?, verified_at?, verified_by?`, `password_hash?` (PBKDF2), `is_active`, `created_at` | role: `farmer` \| `buyer` \| `admin`; verification: `unverified` \| `pending` \| `verified` \| `rejected` |
+| `users` | `role, name, phone` (unique), `district, taluka, state, kyc_status`, `latitude?, longitude?`, `verification_status, verification_note?, verification_ref?, verified_at?, verified_by?`, `password_hash?` (PBKDF2), `is_active`, `created_at`, `sms_digest_enabled, sms_digest_sent_at?` (v1.14) | role: `farmer` \| `buyer` \| `admin`; verification: `unverified` \| `pending` \| `verified` \| `rejected` |
 | `lots` | `farmer_id→users`, `crop, quantity_kg, quality_grade, photo_url?, expected_price, available_from, location, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
 | `demands` | `buyer_id→users`, `crop, quantity_kg, quality_spec, price_band_min/max, delivery_window, delivery_district, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
 | `matches` | `lot_id→lots`, `demand_id→demands`, `score`, `score_detail` (JSON string) | status: `proposed` \| `offered` \| `accepted` \| `rejected` |
@@ -645,12 +659,13 @@ erDiagram
 | `pool_members` | `pool_id→pools`, `farmer_id→users`, `lot_id→lots?`, `quantity_kg, expected_price`, `status`, `created_at` | status: `committed` \| `withdrawn` |
 | `forward_bids` | `buyer_id→users`, `crop, quantity_kg, price_min, price_max, delivery_from, delivery_to, delivery_district, latitude?, longitude?, quality_grade_min?, notes?`, `status`, `created_at` | status: `open` \| `closed` \| `filled` \| `cancelled` |
 | `forward_commitments` | `bid_id→forward_bids`, `farmer_id→users`, `quantity_kg, price_per_qtl, expected_ready, note?`, `status`, `deal_id→deals?`, `created_at`, `settlement_due?, settlement_reminder_sent_at?` (v1.8), `breach_status?, penalty_inr?, breached_at?` (v1.11) | status: `pending` \| `accepted` \| `declined` \| `withdrawn` \| `breached` |
+| `financing_requests` | `farmer_id→users`, `lot_id→lots`, `requested_amount_inr, warehouse_name?, receipt_ref?, note?`, `status`, `admin_note?, reviewed_by→users?, reviewed_at?`, `created_at` (v1.17) | status: `pending` \| `approved` \| `rejected` \| `withdrawn` |
 | `geo_cache` | `query` (unique), `latitude, longitude, display_name, admin1/2/3`, `created_at` | reverse-geocode key = `@rev:{lat},{lon}` |
 | `price_alerts` | `user_id→users`, `crop, market, direction, threshold, active, last_triggered_at?` | direction: `above` \| `below` |
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
 
 **Migrations** (linear chain, in order):
-`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) · `a7d1e9c4b6f2_v1_8_forward_settlement` (`forward_commitments.settlement_due/settlement_reminder_sent_at`) · `b3f8e1a9c5d2_v1_9_lot_photo_storage` (widens `lots.photo_url` to `Text` for base64 data-URL photos) · `c8a4f2b7d9e1_v1_11_forward_breach_penalty` (`forward_commitments.breach_status/penalty_inr/breached_at`) — **head**.
+`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) · `a7d1e9c4b6f2_v1_8_forward_settlement` (`forward_commitments.settlement_due/settlement_reminder_sent_at`) · `b3f8e1a9c5d2_v1_9_lot_photo_storage` (widens `lots.photo_url` to `Text` for base64 data-URL photos) · `c8a4f2b7d9e1_v1_11_forward_breach_penalty` (`forward_commitments.breach_status/penalty_inr/breached_at`) · `d3e6a8b1c4f7_v1_14_sms_digest` (`users.sms_digest_enabled/sms_digest_sent_at`) · `e7f2a9c3b6d5_v1_17_financing_requests` (`financing_requests` table) — **head**.
 
 ---
 
@@ -725,6 +740,34 @@ reference. Rendered by `DecisionBrief.tsx` at the top of `/advisor`.
 
 ---
 
+## Satellite crop health
+
+`app/services/satellite.py` + `GET /api/satellite/ndvi` (v1.12) — an optional
+NDVI (vegetation-vigour) reading over a farmer's location, folded into the
+Decision Brief as `crop_health` and shown as a small chip on `/advisor`.
+
+- **Source**: `MODIS/061/MOD13Q1`, a free 16-day, 250m, cloud-gap-filled NDVI
+  composite from Google Earth Engine — chosen over raw Sentinel-2 because a
+  single farmer's few-km plot routinely has zero cloud-free Sentinel-2 passes
+  in a given month during the monsoon, while MODIS's compositing exists
+  specifically to paper over that gap.
+- **Reading**: mean NDVI over a ~3km buffer from the most recent composite in
+  the last 90 days, bucketed into `poor` (< 0.2) / `fair` (< 0.4) / `good`
+  (< 0.6) / `excellent` crop-vigour labels.
+- **Optional, like every other integration here**: needs a real Google Earth
+  Engine service account (`GEE_PROJECT_ID` + `GEE_SERVICE_ACCOUNT` +
+  `GEE_CREDENTIALS_PATH`, see the config table above). Blank, invalid, or any
+  Earth Engine failure (network, quota, no imagery in the window) degrades to
+  `crop_health: null` / `{"available": false}` — never blocks a request, and
+  the tests never make a real network call (the client is mocked at the
+  `_client()` boundary).
+- **Informational only** — this is a plain vigour reading, not disease/pest
+  detection, and nothing in the sell/wait signal or forecast reacts to it; it
+  exists to give a farmer one more independent data point, not a new decision
+  rule invented for the demo.
+
+---
+
 ## Diesel-indexed freight
 
 `app/services/freight.py` — replaces the flat `TRANSPORT_COST_PER_QTL_KM`
@@ -759,6 +802,18 @@ Requires ≥ 14 days of history. The method:
 4. Never projects below 40% of the last known price (implausibility guard).
 
 Returns `{trend_per_day, weekly_pattern, change_pct_7d, change_pct_30d, note, points[]}` — every number is inspectable. `note` gives a one-sentence human summary ("Prices trending up ~+4.2% over the next 7 days."). The frontend renders the forecast as a **dashed line with a shaded prediction band** overlaid on the trend chart.
+
+**Second opinion (v1.16)** — `GET /api/prices/forecast`'s response also carries
+a `second_opinion` block computed by **Holt's linear (double) exponential
+smoothing**: still pure arithmetic, still no ML library, but a genuinely
+different method — it carries a running level+trend forward with
+exponentially decaying weights instead of refitting one straight line to a
+fixed 45-day window, so it reacts to a recent turn the primary method can be
+slow to pick up on, at the cost of being noisier on a short or choppy series.
+`agrees_with_primary` says whether the two methods point the same direction.
+It's shown *alongside* the primary forecast (`/prices` shows its one-line
+note under the primary forecast note) — never replacing the auditable one,
+same principle as every other optional layer in this app.
 
 ---
 
@@ -906,6 +961,16 @@ there is no new model.
 `PriceRealizationCard.tsx` on `/history` (farmers) shows the headline uplift, a
 per-deal realised-vs-mandi-vs-MSP bar chart, and a table.
 
+**Public aggregate (v1.13)** — `GET /api/public/realization` (`?state=`, `?crop=`,
+no login) exposes the same volume-weighted uplift math across *every*
+completed deal on the platform, anonymised: no farmer/buyer names, no deal
+IDs, just deal counts, quantities, and uplift/MSP-gap stats overall and per
+crop. `app/services/realization.py`'s `platform_realization()` is the
+farmer-scoped `farmer_realization()`'s aggregate sibling — same benchmark
+logic, no new model. For a researcher, journalist, or state government
+measuring the platform's real-world impact rather than reading a marketing
+claim. Shown on the public `/explore` dashboard.
+
 ---
 
 ## Forward contracts
@@ -945,6 +1010,32 @@ Every step is written to `transaction_events`. `/forward` is role-aware: buyers
 post bids and review/accept commitments with a fill bar and see a breach badge
 with the penalty if one applies; farmers browse open bids (distance, harvest
 window, band) and commit inline with a midpoint prefill.
+
+---
+
+## Warehouse-receipt financing
+
+`app/models/financing.py` + `app/api/financing.py` + `/financing` route — v1.17.
+A farmer waiting for a better price can still raise cash against produce
+already stored, using the same self-reported, admin-manual pattern as account
+verification (`POST /auth/me/request-verification` →
+`PATCH /admin/users/{id}/verify`) rather than inventing a new workflow.
+
+1. A **farmer** pledges one of their own **open** (unsold) lots and requests an
+   amount, optionally citing a warehouse name and receipt reference. The
+   request is capped at 75% of the lot's estimated value
+   (`quantity_kg × expected_price / 100 × 0.75`) — a conventional WDRA/NABARD-
+   style pledge-finance loan-to-value ratio, so a price dip before the loan is
+   repaid doesn't leave the advance unsecured. Only one active
+   (`pending`/`approved`) request is allowed per lot at a time.
+2. An **admin** reviews the queue and approves or rejects, with an optional
+   note back to the farmer.
+3. The farmer can **withdraw** their own request while it's still `pending`.
+
+**This is a request tracker, not a lender** — AgriLink never disburses,
+transfers, or holds any money. Real disbursement needs a licensed bank/NBFC
+or warehouse partner integration (see [Known limitations](#known-limitations)).
+Every request and review is written to `transaction_events`.
 
 ---
 
@@ -1102,6 +1193,14 @@ header via `lib/api.ts`, and `AuthProvider` exposes `user` / `token` /
 `isAuthenticated` / `updateUser` to the tree. `kyc_status` mirrors
 `verification_status` for the legacy verified badge.
 
+**SMS digest (v1.14)** — `app/services/digest.py`, opt-in via `PATCH /api/auth/me
+{sms_digest_enabled: true}` (`/profile`'s Notifications section), off by
+default. A daily scheduled job (`sms_digest`, alongside the 6-hourly ingestion
+job) texts anyone opted in with at least one unread notification a one-line
+summary, debounced to once per 20h so it can't fire twice from the same daily
+tick. Same delivery path as the forgot-password OTP — degrades to a
+server-log line without `SMS_API_KEY` configured.
+
 ---
 
 ## Price ingestion pipeline
@@ -1140,9 +1239,12 @@ debounce per alert).
 - **Backend** — `/api/location/resolve` reverse-geocodes (BigDataCloud, cached in
   `geo_cache`; static `nearest_state` fallback) or forward-geocodes a place name,
   then optionally triggers `ensure_state_ingested` so that state's prices exist.
-- **What stays Maharashtra** — the crop **calendar** only (region-specific
-  agronomy). MSP is national; the storage/FPO **directory** carries a detailed
-  Maharashtra set plus a national sample across the major producing states.
+- **What's still Maharashtra-only** — nothing, fully; the crop **calendar**
+  (v1.15) now carries real curated timing for ~10 crops across 8 states
+  beyond Maharashtra, falling back to the Maharashtra baseline (flagged
+  `approximate: true`) elsewhere rather than a blanket "MH only" caveat. MSP
+  is national; the storage/FPO **directory** carries a detailed Maharashtra
+  set plus a national sample across the major producing states.
 
 ---
 
@@ -1214,8 +1316,13 @@ Both suites run **offline**.
   not for production).
 - **Curated reference data** — MSP, the crop calendar, and the storage/FPO
   directory are curated samples with real geography, not live registries.
-- **Crop calendar is Maharashtra-tuned** — sowing/harvest/peak windows outside
-  Maharashtra will be approximate.
+- **Crop calendar coverage is real but partial.** v1.15 added genuinely
+  curated (not guessed) sowing/harvest timing for ~10 crops across 8 states
+  beyond Maharashtra (Punjab, Haryana, UP, MP, Gujarat, Rajasthan, Karnataka,
+  Bihar, Andhra Pradesh) where real agronomic timing differs enough to
+  matter. Any crop+state combination not in that curated set still falls
+  back to the Maharashtra baseline — honestly flagged as `approximate: true`
+  in the API response rather than presented as exact.
 - **Price forecast is statistical, not ML** — the trend+seasonality model is fully
   transparent and offline-capable but won't capture sudden policy shocks or
   weather events.
@@ -1234,10 +1341,18 @@ Both suites run **offline**.
   but the platform holds no money or crop, so nothing is actually withheld or
   transferred; it's an auditable figure both parties and the admin can see, not
   an escrow. There's still no automated e-KYC-style enforcement or collection.
-- **Satellite crop-health (GEE) is deferred** — credentials may sit in `.env`
-  but nothing reads them.
+- **Satellite crop-health is informational only.** v1.12 wires up Google Earth
+  Engine (`app/services/satellite.py`) — a 250m, 16-day MODIS NDVI reading
+  folded into the Decision Brief when a real service account is configured —
+  but it's a plain vigour reading, not disease/pest detection, and nothing in
+  the sell/wait or forecast logic reacts to it.
 - **Cordova wrap (Phase 4) not built** — the frontend is structured for it
   (all-client routes) but there's no `cordova/` project yet.
+- **Warehouse-receipt financing disburses nothing.** v1.17's `/financing`
+  tracks a farmer's request and an admin's approve/reject decision only — the
+  platform is not a lender and never moves money. A real product needs a
+  licensed bank/NBFC or warehouse partner to actually advance funds and hold
+  the receipt as collateral; there is no such integration.
 
 ---
 

@@ -31,6 +31,7 @@ from app.services.freight import freight_rate
 from app.services.geo import _district_coord, haversine_km, nearest_state
 from app.services.market_towns import market_coords
 from app.services.signal import compute_signal
+from app.services import satellite as satellite_svc
 
 # ranked-action urgency ordering
 _URGENCY_RANK = {"now": 0, "soon": 1, "watch": 2}
@@ -236,7 +237,7 @@ def build_brief(
     except Exception:  # noqa: BLE001 — weather never blocks the brief
         wx = None
     msp = ref.msp_for(crop)
-    cal = ref.calendar_for(crop)
+    cal = ref.calendar_for(crop, state=state)
     fc = forecast_svc.forecast_prices([(r.date, r.modal_price) for r in rows], 30)
     sig = compute_signal(rows, weather=wx, msp=msp, forecast=fc)
 
@@ -256,6 +257,14 @@ def build_brief(
         holiday = hs[0]
 
     buyers = _verified_buyers_nearby(db, crop, origin, radius_km)
+
+    # v1.12: optional satellite crop-health context — informational only,
+    # never blocks the brief and never drives the sell/wait actions above.
+    crop_health = None
+    try:
+        crop_health = satellite_svc.get_ndvi(*origin)
+    except Exception:  # noqa: BLE001 — satellite data never blocks the brief
+        crop_health = None
 
     # --- build the ranked action list ---
     actions: list[dict] = []
@@ -409,6 +418,7 @@ def build_brief(
         ),
         "calendar": cal,
         "holiday": holiday,
+        "crop_health": crop_health,
         "buyers_nearby": {"count": len(buyers), "top": buyers[:5]},
         "storage_nearby": storage,
         "actions": actions,

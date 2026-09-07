@@ -66,6 +66,31 @@ def _reset_options_cache():
     invalidate_options_cache()
 
 
+# Every optional external-service credential the app reads from backend/.env.
+# A developer's real .env commonly carries real values for local manual
+# testing (that's the whole point of e.g. SMS_API_KEY or the GEE service
+# account) — but pydantic-settings loads that same .env for the test process
+# too, with nothing in between. Without this fixture, "no key configured"
+# tests silently behave differently (or, as with a real GEE credential, hang
+# for two real minutes making live network calls) purely based on whichever
+# machine happens to run them. A test that wants to simulate "key present"
+# already monkeypatches the specific setting itself; this only forces the
+# deterministic *absent* baseline every other test is written to assume.
+_EXTERNAL_CREDENTIAL_FIELDS = [
+    "data_gov_in_api_key", "ingest_trigger_secret", "openrouter_api_key",
+    "weather_api_key", "sms_api_key", "gee_project_id", "gee_service_account",
+    "gee_credentials_path",
+]
+
+
+@pytest.fixture(autouse=True)
+def _blank_external_credentials(monkeypatch):
+    from app.core.config import settings
+
+    for field in _EXTERNAL_CREDENTIAL_FIELDS:
+        monkeypatch.setattr(settings, field, "")
+
+
 @pytest.fixture()
 def seeded_db(db):
     db.add_all(PriceCache(**row) for row in generate_fixture_rows(days=40))

@@ -19,7 +19,7 @@ import {
 
 import { Card, EmptyState, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
-import { fetchPublicOverview, type PublicOverview } from "@/lib/api";
+import { fetchPublicOverview, fetchPublicRealization, type PublicOverview, type PublicRealization } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
 
 function MoverChart({
@@ -27,11 +27,15 @@ function MoverChart({
   icon,
   rows,
   isGainer,
+  gainLabel,
+  lossLabel,
 }: {
   title: string;
   icon: string;
   rows: { crop: string; avg_modal_price: number; change_7d_pct: number }[];
   isGainer: boolean;
+  gainLabel: string;
+  lossLabel: string;
 }) {
   return (
     <Card>
@@ -43,7 +47,7 @@ function MoverChart({
             <YAxis dataKey="crop" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 12, fill: "var(--ink-soft)", fontWeight: 500 }} />
             <Tooltip
               cursor={{ fill: "rgba(0,0,0,0.02)" }}
-              formatter={(value) => [`${Math.abs(Number(value))}%`, isGainer ? "Gain" : "Loss"]}
+              formatter={(value) => [`${Math.abs(Number(value))}%`, isGainer ? gainLabel : lossLabel]}
               contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "var(--shadow-md)" }}
             />
             <Bar dataKey="change_7d_pct" radius={4} barSize={20} isAnimationActive={false}>
@@ -58,10 +62,70 @@ function MoverChart({
   );
 }
 
+function RealizationCard({ data }: { data: PublicRealization }) {
+  const t = useTranslations("explore");
+  const { summary, by_crop } = data;
+  if (summary.deals_total === 0) {
+    return (
+      <Card>
+        <SectionHeader icon="handshake" title={t("realizationTitle")} />
+        <p className="mt-2 text-sm text-[var(--ink-soft)]">{t("realizationNoData")}</p>
+      </Card>
+    );
+  }
+  const pct = summary.uplift_vs_mandi_pct;
+  return (
+    <Card>
+      <SectionHeader icon="handshake" title={t("realizationTitle")} />
+      <p className="mt-1 text-xs text-[var(--ink-soft)]/70">{t("realizationSubtitle")}</p>
+      {pct != null && (
+        <p className="mt-3 text-sm font-semibold text-[var(--ink)]">
+          {t(pct >= 0 ? "realizationHeadlineAbove" : "realizationHeadlineBelow", {
+            count: summary.deals_total,
+            pct: Math.abs(pct),
+          })}
+        </p>
+      )}
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[420px] text-left text-sm">
+          <thead className="text-xs font-medium text-[var(--ink-soft)]">
+            <tr className="border-b border-[var(--line)]">
+              <th className="py-2 pr-3">{t("crop")}</th>
+              <th className="py-2 pr-3">{t("realizationDeals")}</th>
+              <th className="py-2 pr-3">{t("realizationUplift")}</th>
+              <th className="py-2">{t("realizationBelowMsp")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {by_crop.map((row) => (
+              <tr key={row.crop} className="border-b border-[var(--line)]/60">
+                <td className="py-2 pr-3 font-medium">{row.crop}</td>
+                <td className="py-2 pr-3">{row.deals}</td>
+                <td className="py-2 pr-3">
+                  {row.uplift_vs_mandi_pct == null ? (
+                    <span className="text-[var(--ink-soft)]/50">—</span>
+                  ) : (
+                    <span className={row.uplift_vs_mandi_pct >= 0 ? "text-[var(--green-600)]" : "text-[var(--red-500)]"}>
+                      {row.uplift_vs_mandi_pct >= 0 ? "+" : ""}
+                      {row.uplift_vs_mandi_pct}%
+                    </span>
+                  )}
+                </td>
+                <td className="py-2">{row.below_msp_deals}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 export default function ExplorePage() {
   const t = useTranslations("explore");
   const { location, warmTick } = useLocation();
   const [data, setData] = useState<PublicOverview | null>(null);
+  const [realization, setRealization] = useState<PublicRealization | null>(null);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
@@ -70,6 +134,11 @@ export default function ExplorePage() {
       setData(await fetchPublicOverview(location?.state));
     } catch {
       setError(true);
+    }
+    try {
+      setRealization(await fetchPublicRealization(location?.state));
+    } catch {
+      setRealization(null); // optional card — never blocks the rest of the page
     }
   }, [location?.state, warmTick]);
 
@@ -149,10 +218,12 @@ export default function ExplorePage() {
 
       {(data.gainers.length > 0 || data.losers.length > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <MoverChart title={t("gainers")} icon="arrowUp" rows={data.gainers} isGainer={true} />
-          <MoverChart title={t("losers")} icon="arrowDown" rows={data.losers.map(r => ({ ...r, change_7d_pct: Math.abs(r.change_7d_pct) }))} isGainer={false} />
+          <MoverChart title={t("gainers")} icon="arrowUp" rows={data.gainers} isGainer={true} gainLabel={t("gain")} lossLabel={t("loss")} />
+          <MoverChart title={t("losers")} icon="arrowDown" rows={data.losers.map(r => ({ ...r, change_7d_pct: Math.abs(r.change_7d_pct) }))} isGainer={false} gainLabel={t("gain")} lossLabel={t("loss")} />
         </div>
       )}
+
+      {realization && <RealizationCard data={realization} />}
 
       <Card>
         <SectionHeader icon="scale" title={t("allCrops")} />

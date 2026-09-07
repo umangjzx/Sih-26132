@@ -105,6 +105,26 @@ def test_dominant_reason_falls_back_to_first_when_no_factors():
     assert _dominant_reason(sig) == "Only reason available."
 
 
+def test_brief_crop_health_is_none_without_gee_credentials(seeded_db):
+    """No GEE key configured (the default in tests) -> crop_health is None,
+    the brief still builds normally."""
+    b = build_brief(seeded_db, crop="Onion", market="Pune")
+    assert b["crop_health"] is None
+
+
+def test_brief_includes_crop_health_when_satellite_data_available(seeded_db, monkeypatch):
+    from app.services import brief as brief_module
+
+    monkeypatch.setattr(
+        brief_module.satellite_svc, "get_ndvi",
+        lambda lat, lon: {"ndvi": 0.55, "as_of": "2026-08-13", "health": "good", "source": "MODIS/061/MOD13Q1"},
+    )
+    b = build_brief(seeded_db, crop="Onion", market="Pune")
+    assert b["crop_health"] == {
+        "ndvi": 0.55, "as_of": "2026-08-13", "health": "good", "source": "MODIS/061/MOD13Q1",
+    }
+
+
 def test_brief_endpoint_ok(client):
     resp = client.get("/api/brief", params={"crop": "Onion", "market": "Pune"})
     assert resp.status_code == 200

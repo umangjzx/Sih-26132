@@ -18,6 +18,7 @@ import {
   type WeatherForecast,
 } from "@/lib/api";
 import type { CropMarketState } from "@/lib/useCropMarket";
+import { useLocation } from "@/lib/useLocation";
 import { CalendarChip, MspBanner, WeatherStrip } from "./intel";
 import { SignalGaugeChart } from "./SignalGaugeChart";
 import { Icon, Skeleton } from "./ui";
@@ -170,6 +171,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
   const ts = useTranslations("signal");
   const ta = useTranslations("advisor");
   const { locale } = useAppLocale();
+  const { location } = useLocation();
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [signal, setSignal] = useState<SellWaitSignalResponse | null>(null);
   const [weather, setWeather] = useState<WeatherForecast | null>(null);
@@ -189,7 +191,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       const [w, m, c, h] = await Promise.allSettled([
         fetchWeather({ market: cm.market, district: cm.district, includeAnomaly: true, lang: locale }),
         fetchMsp(cm.crop, cm.market),
-        fetchCalendar(cm.crop),
+        fetchCalendar(cm.crop, location?.state ?? undefined),
         fetchHolidays(45),
       ]);
       setWeather(w.status === "fulfilled" ? w.value : null);
@@ -206,7 +208,7 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
     } finally {
       setLoading(false);
     }
-  }, [cm.crop, cm.market, cm.district, locale]);
+  }, [cm.crop, cm.market, cm.district, locale, location?.state]);
 
   useEffect(() => { load(); }, [load]);
 

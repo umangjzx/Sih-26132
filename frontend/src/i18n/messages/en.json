@@ -31,6 +31,7 @@
     "users": "Users",
     "browse": "Browse",
     "forward": "Forward deals",
+    "financing": "Financing",
     "more": "More",
     "howItWorks": "How it works",
     "features": "Features",
@@ -53,7 +54,8 @@
     "maxPrice": "Max Price",
     "perQuintal": "per quintal",
     "noData": "No price data available for this selection",
-    "asOf": "As of"
+    "asOf": "As of",
+    "secondOpinion": "Second opinion"
   },
   "signal": {
     "title": "Sell Now or Wait?",
@@ -398,7 +400,8 @@
     "noDeals": "No deals yet",
     "viewDeal": "View Deal",
     "loadError": "Could not load your history",
-    "subtitle": "All your past lots, demands, and finalised deals in one place."
+    "subtitle": "All your past lots, demands, and finalised deals in one place.",
+    "grade": "Grade: {grade}"
   },
   "realization": {
     "title": "Price realisation",
@@ -518,7 +521,12 @@
     "resolveApplyPenalty": "This deal came from a forward contract — apply a ₹{amount} penalty to the party at fault",
     "resolveConfirm": "Confirm",
     "resolveCancel": "Cancel",
-    "resolvedToast": "Dispute resolved"
+    "resolvedToast": "Dispute resolved",
+    "financingQueue": "Pending Financing Requests",
+    "noFinancing": "No pending financing requests",
+    "farmer": "Farmer",
+    "requested": "Requested",
+    "eligible": "Eligible up to"
   },
   "weather": {
     "title": "7-Day Weather",
@@ -550,7 +558,8 @@
     "peak": "Peak arrivals",
     "phase": "Right now",
     "glutWarning": "Peak-arrival window - expect statewide price softening",
-    "noCalendar": "No crop calendar for this crop"
+    "noCalendar": "No crop calendar for this crop",
+    "approximate": "Approximate — showing {state}'s timing; this crop's calendar isn't curated for your state yet"
   },
   "bestmarket": {
     "title": "Best Market After Transport",
@@ -583,7 +592,18 @@
     "price": "Avg price",
     "change": "7-day change",
     "noData": "No statewide data yet",
-    "showing": "Showing"
+    "showing": "Showing",
+    "gain": "Gain",
+    "loss": "Loss",
+    "realizationTitle": "Price realisation vs the mandi",
+    "realizationSubtitle": "Aggregated, anonymised across every completed AgriLink deal — no names, no deal IDs.",
+    "realizationHeadlineAbove": "{count} completed deals realised {pct}% above the open mandi average",
+    "realizationHeadlineBelow": "{count} completed deals realised {pct}% below the open mandi average",
+    "realizationNoData": "Not enough completed deals yet to report an aggregate.",
+    "realizationByCrop": "By crop",
+    "realizationDeals": "Deals",
+    "realizationUplift": "Vs mandi",
+    "realizationBelowMsp": "Below MSP"
   },
   "alerts": {
     "title": "Price Alerts",
@@ -754,7 +774,12 @@
     "urgency_watch": "Keep watching",
     "noActions": "No action needed right now — check back after the next price update.",
     "loadError": "Could not build an action plan for this crop and market yet.",
-    "viewBuyers": "View buyers"
+    "viewBuyers": "View buyers",
+    "cropHealth": "Satellite crop health: {health} (NDVI {ndvi}, {date})",
+    "health_poor": "poor",
+    "health_fair": "fair",
+    "health_good": "good",
+    "health_excellent": "excellent"
   },
   "dash": {
     "farmerTitle": "Farmer dashboard",
@@ -787,6 +812,35 @@
   },
   "forecast": {
     "label": "Forecast"
+  },
+  "financing": {
+    "title": "Financing Requests",
+    "subtitle": "Pledge a stored, graded lot as collateral for a cash advance. An admin reviews every request.",
+    "disclaimer": "AgriLink does not lend or hold money — this only tracks your request and an admin's approve/reject decision. Actual disbursement is arranged separately with a bank, NBFC, or warehouse partner.",
+    "newRequest": "New financing request",
+    "cancel": "Cancel",
+    "lot": "Lot",
+    "selectLot": "Select an open lot…",
+    "grade": "Grade",
+    "eligibleUpTo": "Eligible up to ₹{amount}",
+    "amount": "Requested amount (₹)",
+    "warehouseName": "Warehouse name",
+    "receiptRef": "Receipt reference",
+    "note": "Note (optional)",
+    "submit": "Submit request",
+    "submitting": "Submitting…",
+    "submitted": "Financing request submitted",
+    "submitFailed": "Could not submit this request. Please try again.",
+    "noEligibleLots": "No open, unpledged lots available to pledge right now.",
+    "noRequests": "No financing requests yet.",
+    "myRequests": "My requests",
+    "withdraw": "Withdraw",
+    "noWarehouse": "No warehouse specified",
+    "adminNote": "Admin note",
+    "status_pending": "Pending",
+    "status_approved": "Approved",
+    "status_rejected": "Rejected",
+    "status_withdrawn": "Withdrawn"
   },
   "pools": {
     "title": "Pooled Requests",
@@ -921,7 +975,12 @@
     "vRefPh": "e.g. GSTIN 27ABCDE1234F1Z5",
     "vNoteLabel": "Anything the reviewer should know (optional)",
     "vRequest": "Request verification",
-    "vRequested": "Verification requested"
+    "vRequested": "Verification requested",
+    "notifications": "Notifications",
+    "smsDigestWhy": "No reliable data connection? Get a text when there's something new — a price alert firing, a deal update — at most once a day.",
+    "smsDigestLabel": "Send me an SMS digest of updates",
+    "smsDigestOn": "SMS digest turned on",
+    "smsDigestOff": "SMS digest turned off"
   },
   "adminUsers": {
     "title": "Users",

@@ -65,6 +65,15 @@ class Settings(BaseSettings):
     embedding_model: str = "openai/text-embedding-3-small"
     embedding_url: str = "https://openrouter.ai/api/v1/embeddings"
 
+    # v1.12: optional satellite crop-health (NDVI) overlay via Google Earth
+    # Engine (app/services/satellite.py). Needs a real GEE service account —
+    # GEE_PROJECT_ID + GEE_SERVICE_ACCOUNT + GEE_CREDENTIALS_PATH pointing at
+    # the downloaded JSON key. Blank/missing/invalid -> no crop-health data;
+    # the Decision Brief and everything else are unaffected.
+    gee_project_id: str = ""
+    gee_service_account: str = ""
+    gee_credentials_path: str = ""
+
     # v1.2: which AGMARKNET states the scheduled ingestion pulls. "ALL" pulls the
     # whole national feed in one shot (~10 pages, real prices for every state);
     # or comma-separate specific states (e.g. "Maharashtra,Karnataka").

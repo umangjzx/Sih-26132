@@ -41,6 +41,20 @@ class Forecast:
     note: str = ""
 
 
+@dataclass
+class SecondOpinion:
+    """A second, independently-computed forecast (v1.16) shown *alongside*
+    the primary trend+seasonality one above — never replacing it. See
+    `second_opinion()`'s docstring for why Holt smoothing and not a real ML
+    model."""
+    available: bool
+    method: str = "holt-linear-smoothing"
+    change_pct_7d: float | None = None
+    change_pct_30d: float | None = None
+    agrees_with_primary: bool | None = None
+    note: str = ""
+
+
 def _linfit(xs: list[float], ys: list[float]) -> tuple[float, float]:
     """Least-squares slope, intercept for y = slope*x + intercept."""
     n = len(xs)
@@ -114,5 +128,84 @@ def forecast_prices(series: list[tuple[date, float]], horizon: int = 30) -> Fore
         points=pts,
         change_pct_7d=c7,
         change_pct_30d=c30,
+        note=note,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# v1.16 — a second opinion, shown alongside the primary forecast above.
+#
+# The codebase deliberately avoids heavy ML dependencies everywhere else
+# (PBKDF2 over bcrypt, TF-IDF over sentence-transformers, no forecast
+# library here either) — so the "second opinion" is Holt's linear (double)
+# exponential smoothing, not a real ML model. It's a genuinely different
+# *method*, not just a restatement: the primary forecast fits one straight
+# line to a fixed 45-day window and refits it fresh on every call, while Holt
+# smoothing carries a running level+trend forward with exponentially decaying
+# weights, so it reacts to a recent turn a fixed-window OLS fit can miss, at
+# the cost of being noisier on a short or choppy series. Comparing the two
+# is more informative than either alone — hence "second opinion", not
+# "replacement".
+# --------------------------------------------------------------------------- #
+
+def _holt_linear(values: list[float], alpha: float = 0.3, beta: float = 0.15) -> tuple[float, float]:
+    """Fit Holt's linear trend method to `values` (chronological order).
+    Returns the final (level, trend). alpha/beta are the standard smoothing
+    constants (higher = more weight on recent observations)."""
+    level = values[0]
+    trend = values[1] - values[0] if len(values) > 1 else 0.0
+    for v in values[1:]:
+        prev_level = level
+        level = alpha * v + (1 - alpha) * (level + trend)
+        trend = beta * (level - prev_level) + (1 - beta) * trend
+    return level, trend
+
+
+def second_opinion(
+    series: list[tuple[date, float]], horizon: int = 30, primary: Forecast | None = None
+) -> SecondOpinion:
+    """Holt-smoothed second opinion for the same series `forecast_prices`
+    used. `primary`, if given, lets the note say whether the two methods
+    agree on direction."""
+    series = [(d, float(p)) for d, p in series if p and p > 0]
+    if len(series) < MIN_POINTS:
+        return SecondOpinion(available=False, note="Not enough history to forecast.")
+
+    series.sort(key=lambda t: t[0])
+    values = [p for _, p in series[-TREND_WINDOW:]]
+    level, trend = _holt_linear(values)
+    last_price = values[-1]
+
+    def _yhat(h: int) -> float:
+        return max(level + trend * h, last_price * 0.4)  # same implausibility guard as the primary
+
+    def _chg(h: int) -> float | None:
+        if not last_price:
+            return None
+        return round((_yhat(h) - last_price) / last_price * 100, 1)
+
+    c7 = _chg(min(7, horizon))
+    c30 = _chg(min(30, horizon)) if horizon >= 30 else None
+
+    agrees: bool | None = None
+    if primary is not None and primary.available and primary.change_pct_7d is not None and c7 is not None:
+        agrees = (primary.change_pct_7d >= 0) == (c7 >= 0)
+
+    if c7 is None:
+        note = ""
+    elif agrees is False:
+        note = f"Diverges from the primary forecast — recent momentum alone points {c7:+.1f}% over 7 days."
+    elif c7 >= 3:
+        note = f"Recent momentum agrees — also pointing up, about +{c7:.1f}% over 7 days."
+    elif c7 <= -3:
+        note = f"Recent momentum agrees — also pointing down, about {c7:.1f}% over 7 days."
+    else:
+        note = f"Recent momentum looks flat too ({c7:+.1f}%)."
+
+    return SecondOpinion(
+        available=True,
+        change_pct_7d=c7,
+        change_pct_30d=c30,
+        agrees_with_primary=agrees,
         note=note,
     )

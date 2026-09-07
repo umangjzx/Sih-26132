@@ -143,6 +143,11 @@ export function CalendarChip({ data }: { data: CropCalendar | null }) {
         {t("sow")}: {data.sow_months} · {t("harvest")}: {data.harvest_months} · {t("peak")}: {data.peak_arrival_months}
       </p>
       <p className="mt-1 text-xs text-[var(--ink-soft)]/85">{data.note}</p>
+      {data.approximate && (
+        <p className="mt-1.5 flex items-center gap-1 text-[11px] text-[var(--amber-700)]">
+          <Icon name="alert" size={11} /> {t("approximate", { state: data.source_state })}
+        </p>
+      )}
     </div>
   );
 }

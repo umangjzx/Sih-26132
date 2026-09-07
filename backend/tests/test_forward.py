@@ -176,6 +176,30 @@ def test_calendar_warning_on_off_season_ready_date(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_calendar_warning_uses_bids_own_state_timing(db, farmer_user, buyer_user):
+    """v1.15 — a Punjab-located wheat bid must use Punjab's curated harvest
+    window (Apr-May), not the Maharashtra default (Feb-Mar)."""
+    c = _client(db)
+    try:
+        delivery_from = (date.today() + timedelta(days=200)).isoformat()
+        delivery_to = (date.today() + timedelta(days=260)).isoformat()
+        bid = _make_bid(
+            c, buyer_user, crop="Wheat", quantity_kg=2000, price_min=2000, price_max=2500,
+            delivery_from=delivery_from, delivery_to=delivery_to,
+            latitude=30.9010, longitude=75.8573,  # Ludhiana, Punjab
+        )
+        _as(farmer_user)
+        # March is Maharashtra's wheat harvest window but not Punjab's (Apr-May)
+        march = date(date.today().year + 1, 3, 15)
+        cm = c.post(f"/api/forward/bids/{bid['id']}/commitments", json={
+            "quantity_kg": 1000, "price_per_qtl": 2200,
+            "expected_ready": march.isoformat(),
+        }).json()
+        assert cm["calendar_warning"] and "Apr" in cm["calendar_warning"]
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_accept_second_commitment_that_would_overfill_is_blocked(db, farmer_user, buyer_user, admin_user):
     c = _client(db)
     try:

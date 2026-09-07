@@ -48,3 +48,9 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # v1.14: opt-in SMS digest for farmers/buyers without a reliable data plan
+    # (app/services/digest.py). Off by default — nothing is ever texted without
+    # this being explicitly turned on via PATCH /api/auth/me.
+    sms_digest_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    sms_digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

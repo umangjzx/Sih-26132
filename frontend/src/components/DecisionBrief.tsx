@@ -174,6 +174,18 @@ export function DecisionBrief({ cm }: { cm: CropMarketState }) {
         })}
       </ol>
 
+      {brief.crop_health && (
+        <p className="mt-3 flex items-center gap-1.5 rounded-lg bg-[var(--green-50)] px-3 py-1.5 text-xs font-semibold text-[var(--green-800)]">
+          <Icon name="leaf" size={13} className="shrink-0" />
+          {t("cropHealth", {
+            health: t(`health_${brief.crop_health.health}` as
+              | "health_poor" | "health_fair" | "health_good" | "health_excellent"),
+            ndvi: brief.crop_health.ndvi.toFixed(2),
+            date: brief.crop_health.as_of,
+          })}
+        </p>
+      )}
+
       <p className="mt-3 flex items-start gap-1.5 border-t border-[var(--line)]/60 pt-2 text-xs text-[var(--ink-soft)]">
         <Icon name="shield" size={13} className="mt-0.5 shrink-0" />
         {t("asOf", { date: brief.as_of, market: brief.reference_market })}. {t("basis")}

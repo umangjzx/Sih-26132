@@ -74,6 +74,16 @@ export type PriceForecast = {
   change_pct_30d: number | null;
   note: string;
   points: ForecastPoint[];
+  /** v1.16 — a second, independently-computed forecast shown alongside this
+   * one, never replacing it. */
+  second_opinion: {
+    available: boolean;
+    method: string;
+    change_pct_7d: number | null;
+    change_pct_30d: number | null;
+    agrees_with_primary: boolean | null;
+    note: string;
+  } | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -496,6 +506,7 @@ export type ProfilePatch = {
   taluka?: string;
   latitude?: number | null;
   longitude?: number | null;
+  sms_digest_enabled?: boolean;
 };
 
 export function updateProfile(
@@ -1014,6 +1025,59 @@ export function actOnCommitment(
 }
 
 // ---------------------------------------------------------------------------
+// Warehouse-receipt-backed financing requests (v1.17)
+//
+// The platform holds no money — this tracks a request and its admin
+// approve/reject outcome, not an actual disbursed loan.
+// ---------------------------------------------------------------------------
+
+export type FinancingRequest = {
+  id: number;
+  farmer_id: number;
+  lot_id: number;
+  requested_amount_inr: number;
+  warehouse_name: string | null;
+  receipt_ref: string | null;
+  note: string | null;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
+  admin_note: string | null;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  created_at: string;
+  crop: string;
+  farmer_name: string;
+  max_eligible_inr: number;
+};
+
+export type FinancingRequestCreate = {
+  lot_id: number;
+  requested_amount_inr: number;
+  warehouse_name?: string | null;
+  receipt_ref?: string | null;
+  note?: string | null;
+};
+
+export function createFinancingRequest(body: FinancingRequestCreate, token: string): Promise<FinancingRequest> {
+  return postJson("/api/financing/requests", body, token);
+}
+export function listMyFinancingRequests(token: string): Promise<FinancingRequest[]> {
+  return getJson("/api/financing/requests/mine", token);
+}
+export function withdrawFinancingRequest(id: number, token: string): Promise<FinancingRequest> {
+  return postJson(`/api/financing/requests/${id}/withdraw`, {}, token);
+}
+export function listAllFinancingRequests(token: string, status?: string): Promise<FinancingRequest[]> {
+  return getJson(`/api/financing/requests?${qs({ status })}`, token);
+}
+export function reviewFinancingRequest(
+  id: number,
+  body: { status: "approved" | "rejected"; admin_note?: string },
+  token: string,
+): Promise<FinancingRequest> {
+  return patchJson(`/api/financing/requests/${id}`, body, token);
+}
+
+// ---------------------------------------------------------------------------
 // Phase 3 fetch functions
 // ---------------------------------------------------------------------------
 
@@ -1358,6 +1422,10 @@ export type CropCalendar = {
   current_phase: string;
   glut_risk: boolean;
   note: string;
+  /** v1.15 — which state's curated timing this actually is, and whether that's
+   * a real match for the requested state or a Maharashtra-baseline fallback. */
+  source_state: string;
+  approximate: boolean;
 };
 
 export type ColdStorage = {
@@ -1422,6 +1490,32 @@ export type PublicOverview = {
   price_trend: { date: string; avg_modal_price: number }[];
   activity: Record<string, number> & { state?: string };
 };
+
+/** v1.13 — public, anonymised, platform-wide price-realisation aggregate. */
+export type PublicRealization = {
+  scope: { state: string | null; crop: string | null };
+  summary: {
+    deals_total: number;
+    total_quantity_kg: number;
+    weighted_realized_per_qtl: number | null;
+    weighted_mandi_per_qtl: number | null;
+    uplift_vs_mandi_pct: number | null;
+    below_msp_deals: number;
+  };
+  by_crop: {
+    crop: string;
+    deals: number;
+    quantity_kg: number;
+    weighted_realized_per_qtl: number | null;
+    weighted_mandi_per_qtl: number | null;
+    uplift_vs_mandi_pct: number | null;
+    below_msp_deals: number;
+  }[];
+};
+
+export function fetchPublicRealization(state?: string, crop?: string): Promise<PublicRealization> {
+  return getJson(`/api/public/realization?${qs({ state, crop })}`);
+}
 
 export type PriceAlert = {
   id: number;
@@ -1512,8 +1606,8 @@ export function fetchWeather(
 export function fetchMsp(crop: string, market?: string): Promise<MspInfo> {
   return getJson(`/api/msp?${qs({ crop, market })}`);
 }
-export function fetchCalendar(crop: string): Promise<CropCalendar> {
-  return getJson(`/api/calendar?${qs({ crop })}`);
+export function fetchCalendar(crop: string, state?: string): Promise<CropCalendar> {
+  return getJson(`/api/calendar?${qs({ crop, state })}`);
 }
 export function fetchStorageNearby(
   district: string,
@@ -1572,6 +1666,10 @@ export type DecisionBrief = {
   weather: { note: string | null; next3_rain_mm: number | null; sell_bias: number | null } | null;
   calendar: CropCalendar | null;
   holiday: HolidayInfo | null;
+  /** v1.12 — optional satellite crop-health reading (Google Earth Engine
+   * NDVI). null when GEE isn't configured or no recent imagery was found;
+   * informational only, never part of the sell/wait recommendation itself. */
+  crop_health: { ndvi: number; as_of: string; health: "poor" | "fair" | "good" | "excellent"; source: string } | null;
   buyers_nearby: {
     count: number;
     top: {

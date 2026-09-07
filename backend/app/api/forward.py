@@ -94,20 +94,33 @@ def _fills(db: Session, bid_ids: list[int]) -> dict[int, tuple[float, float]]:
     return out
 
 
-def _calendar_warning(crop: str, ready: date, bid: ForwardBid) -> str | None:
-    cal = ref.calendar_for(crop)
-    if cal is None:
-        return None
-    entry = None
-    # calendar_for returns labels; re-read raw months for the month check
-    from app.services.reference import CALENDAR
+def _bid_state(bid: ForwardBid) -> str | None:
+    """Best-effort state for a bid's delivery point, for a state-aware crop
+    calendar (v1.15) — falls back to None (Maharashtra baseline) when neither
+    coordinates nor a resolvable district are set."""
+    from app.services.geo import _district_coord, nearest_state
 
-    raw = CALENDAR.get(crop.strip()) or CALENDAR.get(crop.strip().title())
-    if raw and ready.month not in raw["harvest"]:
-        entry = (
-            f"{crop} is usually harvested in {cal['harvest_months']}; a ready date in "
-            f"{ready.strftime('%B')} may not line up."
-        )
+    if bid.latitude is not None and bid.longitude is not None:
+        return nearest_state(bid.latitude, bid.longitude)
+    if bid.delivery_district:
+        coord = _district_coord(bid.delivery_district)
+        if coord:
+            return nearest_state(*coord)
+    return None
+
+
+def _calendar_warning(crop: str, ready: date, bid: ForwardBid) -> str | None:
+    from app.services.reference import _calendar_entry, _months_label
+
+    found = _calendar_entry(crop, _bid_state(bid))
+    entry = None
+    if found is not None:
+        raw, _source_state = found
+        if ready.month not in raw["harvest"]:
+            entry = (
+                f"{crop} is usually harvested in {_months_label(raw['harvest'])}; a ready "
+                f"date in {ready.strftime('%B')} may not line up."
+            )
     if ready > bid.delivery_to or ready < bid.delivery_from - timedelta(days=21):
         w = "Ready date sits outside the buyer's delivery window."
         entry = f"{entry} {w}" if entry else w
@@ -157,7 +170,7 @@ def _enrich_bid(
     out.remaining_kg = round(max(bid.quantity_kg - accepted, 0.0), 1)
     out.fill_pct = round(accepted / bid.quantity_kg * 100, 1) if bid.quantity_kg else 0.0
 
-    cal = ref.calendar_for(bid.crop)
+    cal = ref.calendar_for(bid.crop, state=_bid_state(bid))
     out.harvest_window = cal["harvest_months"] if cal else None
 
     coords = (

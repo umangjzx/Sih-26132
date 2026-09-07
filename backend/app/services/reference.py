@@ -74,33 +74,108 @@ def msp_for(crop: str) -> dict | None:
 
 
 # --------------------------------------------------------------------------- #
-# Crop calendar — month numbers (1-12).
+# Crop calendar — month numbers (1-12), per crop per state (v1.15).
+#
+# Every crop always carries a "Maharashtra" entry (the original, unchanged
+# baseline). A state gets its own entry only where real sowing/harvest timing
+# differs meaningfully from Maharashtra's — a state not listed for a crop it
+# genuinely grows falls back to the Maharashtra window, which stays an
+# explicit approximation for that combination (surfaced as `approximate` in
+# calendar_for()'s return, not silently presented as exact).
 # --------------------------------------------------------------------------- #
 
-CALENDAR: dict[str, dict] = {
-    "Onion": {"sow": [6, 7, 11, 12], "harvest": [10, 11, 12, 3, 4], "peak_arrival": [11, 12, 1, 2],
-              "note": "Rabi onion (Nov-Dec sown, Mar-May harvest) is the storage crop; kharif is sold fresh."},
-    "Tur": {"sow": [6, 7], "harvest": [11, 12, 1], "peak_arrival": [12, 1, 2],
-            "note": "Single kharif season; arrivals concentrate Dec-Feb."},
-    "Cotton": {"sow": [6, 7], "harvest": [10, 11, 12, 1], "peak_arrival": [11, 12, 1, 2],
-               "note": "Picking runs Oct-Jan; ginning-season arrivals peak Nov-Feb."},
-    "Soybean": {"sow": [6, 7], "harvest": [9, 10], "peak_arrival": [10, 11],
-                "note": "Short kharif crop; the market floods Oct-Nov right after harvest."},
-    "Tomato": {"sow": [6, 7, 10, 11, 1, 2], "harvest": [9, 10, 11, 1, 2, 3, 4, 5, 6],
-               "peak_arrival": [12, 1, 2], "note": "Grown in staggered batches year-round; prices swing hard."},
-    "Wheat": {"sow": [11, 12], "harvest": [2, 3], "peak_arrival": [3, 4],
-              "note": "Rabi crop; arrivals peak at harvest in Mar-Apr."},
-    "Maize": {"sow": [6, 7, 10, 11], "harvest": [9, 10, 2, 3], "peak_arrival": [10, 11, 3],
-              "note": "Both kharif and rabi maize are grown in Maharashtra."},
-    "Gram": {"sow": [10, 11], "harvest": [2, 3], "peak_arrival": [3, 4],
-             "note": "Rabi pulse; arrivals peak Mar-Apr."},
-    "Bajra": {"sow": [6, 7], "harvest": [9, 10], "peak_arrival": [10, 11], "note": "Rain-fed kharif millet."},
-    "Jowar": {"sow": [6, 7, 9, 10], "harvest": [10, 11, 1, 2], "peak_arrival": [11, 1, 2],
-              "note": "Rabi jowar (Sep-Oct sown) is the main Maharashtra crop."},
-    "Groundnut": {"sow": [6, 7, 1, 2], "harvest": [10, 11, 5, 6], "peak_arrival": [11, 6],
-                  "note": "Kharif and summer crops both grown."},
-    "Sugarcane": {"sow": [10, 11, 12, 1, 2, 3], "harvest": [10, 11, 12, 1, 2, 3],
-                  "peak_arrival": [12, 1, 2], "note": "Crushing season Oct-Mar; paid on FRP, not MSP."},
+CALENDAR: dict[str, dict[str, dict]] = {
+    "Onion": {
+        "Maharashtra": {"sow": [6, 7, 11, 12], "harvest": [10, 11, 12, 3, 4], "peak_arrival": [11, 12, 1, 2],
+                        "note": "Rabi onion (Nov-Dec sown, Mar-May harvest) is the storage crop; kharif is sold fresh."},
+        "Karnataka": {"sow": [6, 7, 12, 1], "harvest": [10, 11, 4, 5], "peak_arrival": [11, 4, 5],
+                      "note": "Kharif (Kolar belt) plus a rabi crop sown Dec-Jan, harvested Apr-May."},
+        "Gujarat": {"sow": [10, 11], "harvest": [2, 3, 4], "peak_arrival": [3, 4],
+                    "note": "Mostly a single rabi crop; arrivals concentrate Mar-Apr, later than Maharashtra's kharif."},
+    },
+    "Tur": {
+        "Maharashtra": {"sow": [6, 7], "harvest": [11, 12, 1], "peak_arrival": [12, 1, 2],
+                        "note": "Single kharif season; arrivals concentrate Dec-Feb."},
+        "Karnataka": {"sow": [6, 7], "harvest": [12, 1, 2], "peak_arrival": [1, 2],
+                      "note": "Same kharif sowing as Maharashtra; harvest runs about a month later."},
+        "Uttar Pradesh": {"sow": [6, 7], "harvest": [1, 2, 3], "peak_arrival": [2, 3],
+                          "note": "Cooler autumn slows maturity; harvest/arrivals land Feb-Mar, later than the Deccan."},
+    },
+    "Cotton": {
+        "Maharashtra": {"sow": [6, 7], "harvest": [10, 11, 12, 1], "peak_arrival": [11, 12, 1, 2],
+                        "note": "Picking runs Oct-Jan; ginning-season arrivals peak Nov-Feb."},
+        "Gujarat": {"sow": [5, 6], "harvest": [10, 11, 12, 1], "peak_arrival": [11, 12, 1],
+                    "note": "Irrigated tracts sow a few weeks earlier than rain-fed Maharashtra; harvest window is similar."},
+        "Punjab": {"sow": [4, 5], "harvest": [10, 11], "peak_arrival": [10, 11],
+                   "note": "Irrigated, sown Apr-May; cooler winters end the picking season by Nov, shorter than the Deccan."},
+    },
+    "Soybean": {
+        "Maharashtra": {"sow": [6, 7], "harvest": [9, 10], "peak_arrival": [10, 11],
+                        "note": "Short kharif crop; the market floods Oct-Nov right after harvest."},
+        "Madhya Pradesh": {"sow": [6, 7], "harvest": [9, 10], "peak_arrival": [10, 11],
+                           "note": "India's largest soybean state; timing tracks Maharashtra's kharif window closely."},
+    },
+    "Tomato": {
+        "Maharashtra": {"sow": [6, 7, 10, 11, 1, 2], "harvest": [9, 10, 11, 1, 2, 3, 4, 5, 6],
+                        "peak_arrival": [12, 1, 2], "note": "Grown in staggered batches year-round; prices swing hard."},
+        "Karnataka": {"sow": [6, 7, 9, 10, 1, 2], "harvest": [9, 10, 12, 1, 4, 5],
+                      "peak_arrival": [12, 1, 4], "note": "Kolar belt runs three staggered crops a year, peaking slightly earlier than Maharashtra's."},
+    },
+    "Wheat": {
+        "Maharashtra": {"sow": [11, 12], "harvest": [2, 3], "peak_arrival": [3, 4],
+                        "note": "Rabi crop; arrivals peak at harvest in Mar-Apr."},
+        "Punjab": {"sow": [10, 11], "harvest": [4, 5], "peak_arrival": [4, 5],
+                   "note": "Sown earlier and harvested later than Maharashtra — cooler winters extend the growing season a full month."},
+        "Haryana": {"sow": [10, 11], "harvest": [4, 5], "peak_arrival": [4, 5],
+                    "note": "Same irrigated rabi timing as neighbouring Punjab."},
+        "Uttar Pradesh": {"sow": [11, 12], "harvest": [3, 4], "peak_arrival": [4],
+                          "note": "Harvest and arrivals land about a month later than Maharashtra's."},
+        "Madhya Pradesh": {"sow": [10, 11], "harvest": [2, 3, 4], "peak_arrival": [3],
+                          "note": "Sowing starts earlier than Maharashtra; harvest window is similar."},
+        "Rajasthan": {"sow": [10, 11], "harvest": [3, 4], "peak_arrival": [3, 4],
+                     "note": "Irrigated tracts (Sri Ganganagar, Kota) sow Oct-Nov, harvest Mar-Apr."},
+    },
+    "Maize": {
+        "Maharashtra": {"sow": [6, 7, 10, 11], "harvest": [9, 10, 2, 3], "peak_arrival": [10, 11, 3],
+                        "note": "Both kharif and rabi maize are grown in Maharashtra."},
+        "Karnataka": {"sow": [6, 7, 10, 11], "harvest": [9, 10, 2, 3], "peak_arrival": [10, 3],
+                      "note": "A major maize state with the same two-season pattern as Maharashtra."},
+        "Bihar": {"sow": [6, 7, 10, 11], "harvest": [9, 10, 2, 3], "peak_arrival": [10, 2, 3],
+                 "note": "India's rabi-maize hub — the winter crop (Oct-Nov sown) is the bigger of the two seasons here."},
+    },
+    "Gram": {
+        "Maharashtra": {"sow": [10, 11], "harvest": [2, 3], "peak_arrival": [3, 4],
+                        "note": "Rabi pulse; arrivals peak Mar-Apr."},
+        "Madhya Pradesh": {"sow": [10, 11], "harvest": [2, 3], "peak_arrival": [3],
+                          "note": "India's largest chana producer; timing matches Maharashtra's rabi window."},
+        "Rajasthan": {"sow": [10, 11], "harvest": [3, 4], "peak_arrival": [3, 4],
+                     "note": "Cooler winters push harvest and arrivals about a fortnight later than Maharashtra."},
+    },
+    "Bajra": {
+        "Maharashtra": {"sow": [6, 7], "harvest": [9, 10], "peak_arrival": [10, 11], "note": "Rain-fed kharif millet."},
+        "Rajasthan": {"sow": [6, 7], "harvest": [9, 10], "peak_arrival": [10],
+                     "note": "India's largest bajra producer; monsoon-driven timing matches Maharashtra's."},
+    },
+    "Jowar": {
+        "Maharashtra": {"sow": [6, 7, 9, 10], "harvest": [10, 11, 1, 2], "peak_arrival": [11, 1, 2],
+                        "note": "Rabi jowar (Sep-Oct sown) is the main Maharashtra crop."},
+        "Karnataka": {"sow": [6, 7, 9, 10], "harvest": [9, 10, 12, 1], "peak_arrival": [10, 1],
+                     "note": "Grows both kharif and rabi jowar like Maharashtra, on a similar calendar."},
+    },
+    "Groundnut": {
+        "Maharashtra": {"sow": [6, 7, 1, 2], "harvest": [10, 11, 5, 6], "peak_arrival": [11, 6],
+                        "note": "Kharif and summer crops both grown."},
+        "Gujarat": {"sow": [6, 7], "harvest": [10, 11], "peak_arrival": [10, 11],
+                   "note": "India's largest groundnut producer; the kharif window matches Maharashtra's."},
+        "Andhra Pradesh": {"sow": [6, 7, 12, 1], "harvest": [10, 11, 4, 5], "peak_arrival": [11, 4],
+                          "note": "Kharif plus an irrigated rabi crop (Dec-Jan sown, Apr-May harvest) that Maharashtra doesn't run at scale."},
+    },
+    "Sugarcane": {
+        "Maharashtra": {"sow": [10, 11, 12, 1, 2, 3], "harvest": [10, 11, 12, 1, 2, 3],
+                        "peak_arrival": [12, 1, 2], "note": "Crushing season Oct-Mar; paid on FRP, not MSP."},
+        "Uttar Pradesh": {"sow": [2, 3, 9, 10], "harvest": [11, 12, 1, 2, 3, 4],
+                         "peak_arrival": [12, 1, 2], "note": "India's largest cane state; cooler climate runs the crushing season into Apr, a month longer than Maharashtra's."},
+    },
 }
 
 _MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -111,10 +186,29 @@ def _months_label(months: list[int]) -> str:
     return ", ".join(_MONTHS[m] for m in months)
 
 
-def calendar_for(crop: str, today: date | None = None) -> dict | None:
-    entry = CALENDAR.get(crop.strip()) or CALENDAR.get(crop.strip().title())
-    if not entry:
+def _calendar_entry(crop: str, state: str | None) -> tuple[dict, str] | None:
+    """(entry, source_state) for ``crop``, preferring an exact match for
+    ``state``; falls back to the Maharashtra baseline (or, for the rare crop
+    with no Maharashtra entry, whichever state is curated) when the requested
+    state has no dedicated entry of its own."""
+    by_state = CALENDAR.get(crop.strip()) or CALENDAR.get(crop.strip().title())
+    if not by_state:
         return None
+    if state:
+        for k, v in by_state.items():
+            if k.lower() == state.strip().lower():
+                return v, k
+    if "Maharashtra" in by_state:
+        return by_state["Maharashtra"], "Maharashtra"
+    fallback_state, fallback_entry = next(iter(by_state.items()))
+    return fallback_entry, fallback_state
+
+
+def calendar_for(crop: str, state: str | None = None, today: date | None = None) -> dict | None:
+    found = _calendar_entry(crop, state)
+    if found is None:
+        return None
+    entry, source_state = found
     today = today or date.today()
     m = today.month
     phase = "off-season"
@@ -135,6 +229,11 @@ def calendar_for(crop: str, today: date | None = None) -> dict | None:
         "current_phase": phase,
         "glut_risk": glut_risk,
         "note": entry["note"],
+        # v1.15 — which state's timing this actually is, and whether that's a
+        # same-state match or a Maharashtra-baseline approximation because the
+        # requested state (if any) has no dedicated entry for this crop yet.
+        "source_state": source_state,
+        "approximate": bool(state) and state.strip().lower() != source_state.lower(),
     }
 
 

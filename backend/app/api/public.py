@@ -121,3 +121,26 @@ def public_overview(
         "price_trend": price_trend,
         "activity": activity,
     }
+
+
+@router.get("/realization")
+def public_realization(
+    request: Request,
+    state: str | None = Query(None, max_length=80),
+    crop: str | None = Query(None, max_length=120),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Aggregate, anonymised price-realisation stats (v1.13) — no farmer/buyer
+    names or deal IDs, just volume-weighted uplift vs the mandi and MSP across
+    every completed deal, overall and per crop. For researchers, journalists,
+    or a state government measuring the platform's actual impact.
+    """
+    ip = request.client.host if request.client else "unknown"
+    if not ratelimit.check(f"public_realization:{ip}", limit=_OVERVIEW_LIMIT, window_s=_OVERVIEW_WINDOW_S):
+        raise HTTPException(status_code=429, detail="Too many requests — please slow down.")
+
+    from app.services.realization import platform_realization
+
+    return platform_realization(
+        db, state=(state or "").strip() or None, crop=(crop or "").strip() or None
+    )

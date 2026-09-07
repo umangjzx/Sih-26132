@@ -33,6 +33,49 @@ def test_calendar_for():
     assert ref.calendar_for("Nonesuch") is None
 
 
+# --------------------------------------------------------------------------- #
+# v1.15 — state-aware crop calendar
+# --------------------------------------------------------------------------- #
+
+def test_calendar_for_no_state_defaults_to_maharashtra():
+    cal = ref.calendar_for("Wheat")
+    assert cal["source_state"] == "Maharashtra"
+    assert cal["approximate"] is False
+
+
+def test_calendar_for_curated_state_uses_its_own_timing():
+    """Punjab wheat is sown/harvested a full month later than Maharashtra's —
+    a real, curated difference, not the Maharashtra fallback."""
+    mh = ref.calendar_for("Wheat", state="Maharashtra")
+    pb = ref.calendar_for("Wheat", state="Punjab")
+    assert pb["source_state"] == "Punjab"
+    assert pb["approximate"] is False
+    assert pb["harvest_months"] != mh["harvest_months"]
+
+
+def test_calendar_for_uncurated_state_falls_back_and_flags_approximate():
+    # Kerala isn't curated for Wheat (barely grown there) — falls back to the
+    # Maharashtra baseline, but says so rather than presenting it as exact.
+    cal = ref.calendar_for("Wheat", state="Kerala")
+    assert cal["source_state"] == "Maharashtra"
+    assert cal["approximate"] is True
+
+
+def test_calendar_endpoint_state_aware(db):
+    client = _client(db)
+    try:
+        r = client.get("/api/calendar", params={"crop": "Wheat", "state": "Punjab"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["source_state"] == "Punjab"
+        assert body["approximate"] is False
+
+        r2 = client.get("/api/calendar", params={"crop": "Wheat", "state": "Kerala"})
+        assert r2.json()["approximate"] is True
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_nearby_cold_storage_sorted_and_capped():
     out = ref.nearby_cold_storage(district="Pune", max_km=200, limit=5)
     assert 1 <= len(out) <= 5
@@ -169,6 +212,20 @@ def test_storage_and_fpo_endpoints(db):
     try:
         assert client.get("/api/storage/nearby", params={"district": "Nashik"}).status_code == 200
         assert client.get("/api/fpo/nearby", params={"district": "Pune", "crop": "Onion"}).status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_satellite_ndvi_endpoint_degrades_without_gee_credentials(db):
+    """No GEE key configured (the default in every test) -> available: false,
+    never an error, never blocks the request."""
+    client = _client(db)
+    try:
+        resp = client.get("/api/satellite/ndvi", params={"district": "Pune"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["available"] is False
+        assert body["latitude"] and body["longitude"]
     finally:
         app.dependency_overrides.clear()
 

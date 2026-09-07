@@ -19,6 +19,7 @@ from app.schemas.price import (
     PriceForecastResponse,
     PricePoint,
     PriceTrendResponse,
+    SecondOpinionOut,
     SellWaitSignalResponse,
 )
 from app.services import forecast as forecast_svc
@@ -280,13 +281,21 @@ def price_forecast(
     horizon: int = Query(30, ge=3, le=45),
     db: Session = Depends(get_db),
 ) -> PriceForecastResponse:
-    f = _forecast_for(db, crop, market, horizon)
+    rows = _fetch_series(db, crop, market, days=120)
+    series = [(r.date, r.modal_price) for r in rows]
+    f = forecast_svc.forecast_prices(series, horizon)
+    so = forecast_svc.second_opinion(series, horizon, primary=f)
     return PriceForecastResponse(
         available=f.available, crop=crop, market=market, method=f.method,
         horizon_days=f.horizon_days, last_price=f.last_price, trend_per_day=f.trend_per_day,
         weekly_pattern=f.weekly_pattern, change_pct_7d=f.change_pct_7d,
         change_pct_30d=f.change_pct_30d, note=f.note,
         points=[ForecastPointOut(date=p.date, yhat=p.yhat, lo=p.lo, hi=p.hi) for p in f.points],
+        second_opinion=SecondOpinionOut(
+            available=so.available, method=so.method, change_pct_7d=so.change_pct_7d,
+            change_pct_30d=so.change_pct_30d, agrees_with_primary=so.agrees_with_primary,
+            note=so.note,
+        ),
     )
 
 
