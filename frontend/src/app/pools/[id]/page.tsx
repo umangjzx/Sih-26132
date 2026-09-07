@@ -84,9 +84,11 @@ export default function PoolDetailPage() {
   const { isAuthenticated, ready, user, token } = useAuth();
   const router = useRouter();
   const t = useTranslations("pools");
+  const tc = useTranslations("common");
 
   const [pool, setPool] = useState<PoolDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
   const [qty, setQty] = useState("");
   const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -107,6 +109,7 @@ export default function PoolDetailPage() {
 
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(poolId)) return;
+    setLoadErr(false);
     try {
       const p = await getPool(poolId, token);
       setPool(p);
@@ -116,8 +119,12 @@ export default function PoolDetailPage() {
       } else if (!price) {
         setPrice(String(Math.round(p.floor_price)));
       }
-    } catch {
+    } catch (e) {
       setPool(null);
+      // A real 404 (pool doesn't exist / isn't yours to see) is a genuine
+      // empty state; anything else (network blip, 500) is a load failure the
+      // user should be able to retry, not a dead end styled the same way.
+      if (!(e instanceof ApiError && e.status === 404)) setLoadErr(true);
     } finally {
       setLoading(false);
     }
@@ -190,6 +197,24 @@ export default function PoolDetailPage() {
 
   if (loading) {
     return <div className="h-64 w-full animate-pulse rounded-2xl bg-white/50" />;
+  }
+  if (!pool && loadErr) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Link href="/pools" className="text-sm font-semibold text-[var(--green-700)] hover:underline">← {t("backToPools")}</Link>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
+          <Icon name="close" size={26} className="text-[var(--red-600)]" />
+          <p className="text-sm font-semibold text-[var(--red-700)]">{tc("error")}</p>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); load(); }}
+            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      </div>
+    );
   }
   if (!pool) {
     return (

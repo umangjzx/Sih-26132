@@ -4,11 +4,17 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.services.grading import GRADE_CODES
+
 # Absolute sanity ceilings — mirror app.schemas.offer so pool-materialised deals
 # can never carry a value the 1:1 path would have rejected.
 _MAX_QTY = 10_000_000      # kg
 _MAX_PRICE = 5_000_000     # ₹/quintal
-_GRADES = {"A", "B", "C"}
+# Same canonical grade vocabulary as lots/demands/forward contracts (v1.4's
+# app.services.grading) — pools used to offer only A/B/C, so a farmer pooling
+# produce couldn't mark it "FAQ" (Fair Average Quality), the most common grade
+# term the rest of the app already supports.
+_GRADES = set(GRADE_CODES)
 
 
 def _pos_qty(v: float) -> float:

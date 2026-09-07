@@ -160,7 +160,7 @@ def admin_dashboard(
     # --- v1.1: price anomalies (latest modal vs its own trailing 7-day avg) ---
     price_anomalies: list[PriceAnomaly] = []
     if latest_date is not None:
-        since7 = latest_date - timedelta(days=8)
+        since7 = latest_date - timedelta(days=7)
         avg_rows = db.execute(
             select(
                 PriceCache.crop,
@@ -369,7 +369,7 @@ def admin_analytics(
         since = latest_date - timedelta(days=30)
         avg_rows = db.execute(
             select(PriceCache.crop, func.avg(PriceCache.modal_price))
-            .where(PriceCache.date >= since)
+            .where(PriceCache.date >= since, PriceCache.date < latest_date)
             .group_by(PriceCache.crop)
         ).all()
         latest_rows = db.execute(

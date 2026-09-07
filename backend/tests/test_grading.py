@@ -15,6 +15,22 @@ def test_normalize_grade():
     assert set(GRADE_CODES) == {"A", "B", "FAQ", "C"}
 
 
+def test_normalize_grade_rejects_d():
+    # GRADE_RANK used to carry a vestigial "D" with no matching GRADES entry,
+    # which let normalize_grade (and therefore every schema's quality_grade
+    # validator) silently accept "D" despite it never being an offered grade.
+    assert normalize_grade("D") is None
+    assert normalize_grade("grade d") is None
+
+
+def test_lot_create_rejects_grade_d(farmer_client):
+    r = farmer_client.post("/api/lots/", json={
+        "crop": "Onion", "quantity_kg": 500, "quality_grade": "D",
+        "expected_price": 2400, "available_from": "2026-10-01", "location": "Pune",
+    })
+    assert r.status_code == 422
+
+
 def test_quality_factor_uses_canonical_codes():
     # lot meets/exceeds the buyer's minimum -> no penalty
     assert quality_factor("A", "B") == 1.0

@@ -112,7 +112,7 @@ export default function HistoryPage() {
                       <div className="flex items-center gap-4 text-xs font-medium text-[var(--ink-soft)]">
                         <span className="flex items-center gap-1"><Icon name="chart" size={14} className="text-[var(--green-600)]" /> {lot.quantity_kg} kg</span>
                         <span className="flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--amber-600)]" /> ₹{lot.expected_price}/qtl</span>
-                        <span className="flex items-center gap-1"><Icon name="check" size={14} className="text-[var(--ink-soft)]" /> Grade: {lot.quality_grade}</span>
+                        <span className="flex items-center gap-1"><Icon name="check" size={14} className="text-[var(--ink-soft)]" /> {t("grade", { grade: lot.quality_grade })}</span>
                       </div>
                     </li>
                   ))}

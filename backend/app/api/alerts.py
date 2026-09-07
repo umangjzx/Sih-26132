@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.models.notification import Notification
@@ -18,6 +19,10 @@ from app.schemas.alert import (
 router = APIRouter(prefix="/api", tags=["alerts"])
 
 _MAX_ALERTS_PER_USER = 50
+# Same per-user write-rate pattern as lots/demands/forward/pools — alerts was
+# the one write endpoint left unthrottled, and `create_alert` runs an ILIKE
+# scan before the cap check, so an unthrottled caller could hammer it freely.
+_WRITE_LIMIT, _WRITE_WINDOW_S = 30, 600
 
 
 def _has_price_history(db: Session, crop: str, market: str) -> bool:
@@ -42,6 +47,11 @@ def create_alert(
     current_user: CurrentUser,
     db: Session = Depends(get_db),
 ) -> PriceAlert:
+    if not ratelimit.check(f"alert_write:{current_user.id}",
+                           limit=_WRITE_LIMIT, window_s=_WRITE_WINDOW_S):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many alert changes in a short time. Please slow down.")
+
     crop, market = body.crop.strip(), body.market.strip()
 
     if not _has_price_history(db, crop, market):
@@ -109,6 +119,10 @@ def _owned_alert(alert_id: int, user_id: int, db: Session) -> PriceAlert:
 def toggle_alert(
     alert_id: int, current_user: CurrentUser, db: Session = Depends(get_db)
 ) -> PriceAlert:
+    if not ratelimit.check(f"alert_write:{current_user.id}",
+                           limit=_WRITE_LIMIT, window_s=_WRITE_WINDOW_S):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many alert changes in a short time. Please slow down.")
     alert = _owned_alert(alert_id, current_user.id, db)
     alert.active = not alert.active
     db.commit()
@@ -120,6 +134,10 @@ def toggle_alert(
 def delete_alert(
     alert_id: int, current_user: CurrentUser, db: Session = Depends(get_db)
 ) -> None:
+    if not ratelimit.check(f"alert_write:{current_user.id}",
+                           limit=_WRITE_LIMIT, window_s=_WRITE_WINDOW_S):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many alert changes in a short time. Please slow down.")
     alert = _owned_alert(alert_id, current_user.id, db)
     db.delete(alert)
     db.commit()

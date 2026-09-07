@@ -142,6 +142,7 @@ export default function AlertsPage() {
               onChange={(e) => setCrop(e.target.value)}
               required
               placeholder={t("cropPlaceholder")}
+              aria-label={t("cropPlaceholder")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
             <span className="font-semibold text-[var(--ink-soft)]">{t("builderAt")}</span>
@@ -150,12 +151,14 @@ export default function AlertsPage() {
               onChange={(e) => setMarket(e.target.value)}
               required
               placeholder={t("marketPlaceholder")}
+              aria-label={t("marketPlaceholder")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
             <span className="font-semibold text-[var(--ink-soft)]">{t("builderGoes")}</span>
             <select
               value={direction}
               onChange={(e) => setDirection(e.target.value as "above" | "below")}
+              aria-label={t("builderGoes")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             >
               <option value="above">{t("above")}</option>
@@ -171,6 +174,7 @@ export default function AlertsPage() {
                 onChange={(e) => setThreshold(e.target.value)}
                 required
                 placeholder={t("thresholdShort")}
+                aria-label={t("thresholdShort")}
                 className="w-24 text-sm font-semibold focus:outline-none"
               />
             </div>

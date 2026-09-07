@@ -91,14 +91,28 @@ def test_ensure_state_ingested_falls_back_to_demo_fixture(db, monkeypatch):
     assert r2["reason"] == "already cached"
 
 
-def test_ensure_state_ingested_rate_limits(db, monkeypatch):
-    """A state with no fixture and an empty live feed is rate-limited on retry."""
+def test_ensure_state_ingested_falls_back_to_default_mix_outside_state_fixtures(db, monkeypatch):
+    """A real state/UT with no hand-curated STATE_FIXTURES entry (e.g. Sikkim)
+    still lands on the generic default-crop-mix fixture rather than being
+    permanently stranded with zero prices."""
     locations._LAST_TRY.clear()
     monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
     monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", lambda *a, **k: [])
     r1 = locations.ensure_state_ingested(db, "Sikkim")  # not in STATE_FIXTURES
-    assert r1["ingested"] is False and r1["reason"] == "no-live-data"
+    assert r1["ingested"] is True and r1["reason"] == "demo-fixture" and r1["rows_upserted"] > 0
     r2 = locations.ensure_state_ingested(db, "Sikkim")
+    assert r2["reason"] == "already cached"
+
+
+def test_ensure_state_ingested_rate_limits(db, monkeypatch):
+    """A state name that isn't real geography at all (not in STATE_CENTROIDS)
+    has no fixture fallback either, so it's rate-limited on retry."""
+    locations._LAST_TRY.clear()
+    monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
+    monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", lambda *a, **k: [])
+    r1 = locations.ensure_state_ingested(db, "Narnia")
+    assert r1["ingested"] is False and r1["reason"] == "no-live-data"
+    r2 = locations.ensure_state_ingested(db, "Narnia")
     assert r2["reason"] == "rate-limited"
 
 

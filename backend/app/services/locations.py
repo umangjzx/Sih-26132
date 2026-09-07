@@ -79,8 +79,11 @@ def state_has_prices(db: Session, state: str) -> bool:
 
 def ensure_state_ingested(db: Session, state: str) -> dict:
     """If we have no cached prices for ``state``, pull *just that state* from the
-    live AGMARKNET feed — no snapshot/fixture fallback (those are Maharashtra
-    only, and re-seeding them here would churn the DB for nothing).
+    live AGMARKNET feed. If that comes back empty, fall back to
+    ``generate_state_fixture_rows`` — a hand-curated market/crop mix for major
+    producing states, or a generic national mix for any other real state/UT —
+    so no state resolvable via ``STATE_CENTROIDS`` is permanently stranded
+    with zero prices.
 
     Returns {'ingested': bool, 'reason': str, 'rows_upserted': int}.
     """

@@ -129,6 +129,7 @@ export default function BrowsePage() {
           value={crop}
           onChange={(e) => setCrop(e.target.value)}
           placeholder={t("cropFilter")}
+          aria-label={t("cropFilter")}
           className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm focus:border-[var(--green-600)] focus:outline-none"
         />
         <button

@@ -8,6 +8,8 @@ and the sell/wait signal have something meaningful to show.
 import random
 from datetime import date, timedelta
 
+from app.services.geo import STATE_CENTROIDS
+
 MARKETS: list[tuple[str, str]] = [
     ("Pune", "Pune"),
     ("Lasalgaon", "Nashik"),
@@ -132,13 +134,37 @@ STATE_FIXTURES: dict[str, tuple[list[tuple[str, str]], list[tuple[str, str, tupl
 }
 
 
+# National crop mix used for any resolvable state/UT with no hand-curated
+# market list above (mostly smaller states/UTs) — keeps `ensure_state_ingested`
+# honest about "the location switch always lands on something": every state in
+# `STATE_CENTROIDS` gets *some* series, even if it isn't a curated real market.
+_DEFAULT_CROPS: list[tuple[str, str, tuple[float, float]]] = [
+    ("Wheat", "Dara", (2000, 2650)),
+    ("Paddy", "Common", (1800, 2450)),
+    ("Maize", "Local", (1700, 2400)),
+    ("Potato", "Local", (500, 1600)),
+    ("Onion", "Local", (1000, 2400)),
+]
+
+
 def generate_state_fixture_rows(state: str, days: int = 90) -> list[dict]:
     """Synthetic-but-plausible price series for one state — the demo fallback
-    when the live per-state feed is unavailable. Deterministic per state."""
+    when the live per-state feed is unavailable. Deterministic per state.
+
+    Uses a hand-curated market/crop mix from ``STATE_FIXTURES`` where one
+    exists; otherwise falls back to a generic national crop mix under the
+    state's own name so no *real* state/UT (one in ``STATE_CENTROIDS``) is
+    left with zero fallback data. An unrecognised state name still yields
+    nothing — this is a demo fallback for real geography, not a way to seed
+    arbitrary garbage into the price cache.
+    """
     spec = STATE_FIXTURES.get(state)
-    if spec is None:
+    if spec is not None:
+        markets, crops = spec
+    elif state in STATE_CENTROIDS:
+        markets, crops = [(state, state)], _DEFAULT_CROPS
+    else:
         return []
-    markets, crops = spec
     rng = random.Random(hash(state) & 0xFFFFFFFF)  # nosec B311 - deterministic demo-data generation, not cryptographic
     rows: list[dict] = []
     for market, district in markets:

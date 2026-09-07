@@ -224,6 +224,7 @@ export default function PoolsPage() {
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none">
                 <option value="A">A</option>
                 <option value="B">B</option>
+                <option value="FAQ">FAQ</option>
                 <option value="C">C</option>
               </select>
             </label>

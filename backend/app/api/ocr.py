@@ -83,10 +83,15 @@ def _parse(raw: str) -> dict:
 
 
 @router.post("/lot-slip", response_model=OcrLotDraft)
-async def read_lot_slip(
+def read_lot_slip(
     file: UploadFile = File(...),
     user: Annotated[User, require_role("farmer")] = None,  # type: ignore[assignment]
 ) -> OcrLotDraft:
+    # Plain `def`, not `async def` — like every other route in this package —
+    # so FastAPI dispatches it to its threadpool instead of the event loop.
+    # llm.vision() below makes a synchronous, ~45s HTTP call; on this app's
+    # single-worker deployment an `async def` here would freeze every other
+    # concurrent request for the duration of each scan.
     if not llm.available():
         return OcrLotDraft(available=False, note="OCR assist is not configured on this server.")
 
@@ -95,7 +100,7 @@ async def read_lot_slip(
 
     if file.content_type not in _OK_TYPES:
         raise HTTPException(415, "Upload a JPEG, PNG, or WebP photo.")
-    blob = await file.read()
+    blob = file.file.read()
     if not blob:
         raise HTTPException(400, "The uploaded file is empty.")
     if len(blob) > _MAX_BYTES:

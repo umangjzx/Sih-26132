@@ -346,6 +346,26 @@ def test_pool_create_rejects_blank_title(farmer_client):
     assert r.status_code == 422
 
 
+def test_pool_create_accepts_faq_grade(farmer_client):
+    # Pools used to only accept A/B/C, unlike lots/demands/forward contracts
+    # which also support "FAQ" (Fair Average Quality) via the same canonical
+    # grading.GRADE_CODES vocabulary.
+    r = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 1000, "floor_price": 2000,
+        "grade": "faq",
+    })
+    assert r.status_code == 201, r.text
+    assert r.json()["grade"] == "FAQ"
+
+
+def test_pool_create_rejects_grade_d(farmer_client):
+    r = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 1000, "floor_price": 2000,
+        "grade": "D",
+    })
+    assert r.status_code == 422
+
+
 def test_pool_accept_demand_is_farmer_only(buyer_client):
     # role gate fires before anything else — a buyer is 403 regardless of the pool
     assert buyer_client.post("/api/pools/1/accept-demand", json={"demand_id": 1}).status_code == 403

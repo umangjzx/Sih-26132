@@ -21,20 +21,27 @@ GRADES: list[dict] = [
 GRADE_CODES: list[str] = [g["code"] for g in GRADES]
 
 # rank used by matching.quality_factor (lower = better; FAQ ~ B)
-GRADE_RANK: dict[str, int] = {"A": 0, "B": 1, "FAQ": 1, "C": 2, "D": 3}
+GRADE_RANK: dict[str, int] = {"A": 0, "B": 1, "FAQ": 1, "C": 2}
 
 
 def normalize_grade(value: str | None) -> str | None:
-    """Map a free-text grade to a canonical code, or None if unrecognised."""
+    """Map a free-text grade to a canonical code, or None if unrecognised.
+
+    Checked against ``GRADE_CODES`` (the actual whitelist every lot/demand/
+    forward schema validator relies on) rather than ``GRADE_RANK`` — the two
+    used to differ (``GRADE_RANK`` carried a vestigial ``"D"`` with no matching
+    ``GRADES`` entry), which let ``quality_grade: "D"`` silently pass schema
+    validation despite never being an offered or documented grade.
+    """
     if not value:
         return None
     t = value.strip().upper()
-    if t in GRADE_RANK:
+    if t in GRADE_CODES:
         return "FAQ" if t == "FAQ" else t
     for token in ("GRADE ", "GRADE-", "GRADE"):
         if t.startswith(token):
             rest = t[len(token):].strip()
-            if rest in GRADE_RANK:
+            if rest in GRADE_CODES:
                 return rest
     if "FAIR AVERAGE" in t or "FAQ" in t:
         return "FAQ"
