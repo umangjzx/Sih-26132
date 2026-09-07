@@ -27,6 +27,19 @@ _OK_TYPES = {"image/jpeg", "image/png", "image/webp"}
 _GRADES = {"A", "B", "C", "FAQ"}
 _OCR_LIMIT, _OCR_WINDOW_S = 12, 300  # vision calls per user / 5 min (uncached, ~45s each)
 
+
+def _sniff_image_type(blob: bytes) -> str | None:
+    """Identify the real format from the file's own magic bytes, not the
+    client-supplied Content-Type header — that header is just a string the
+    caller chose and doesn't have to match what's actually in the body."""
+    if blob.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if blob.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if blob[:4] == b"RIFF" and blob[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
 _SYS = (
     "You read a single photo of an Indian agricultural mandi slip, sale receipt, "
     "or a farmer's handwritten note about a crop lot. Extract ONLY what is "
@@ -106,7 +119,11 @@ def read_lot_slip(
     if len(blob) > _MAX_BYTES:
         raise HTTPException(413, "Photo is larger than 6 MB — please compress it.")
 
-    data_url = f"data:{file.content_type};base64,{base64.b64encode(blob).decode()}"
+    sniffed_type = _sniff_image_type(blob)
+    if sniffed_type is None:
+        raise HTTPException(415, "That file doesn't look like a JPEG, PNG, or WebP photo.")
+
+    data_url = f"data:{sniffed_type};base64,{base64.b64encode(blob).decode()}"
     reply = llm.vision(_SYS, "Extract the lot details from this slip.", data_url)
     if not reply:
         return OcrLotDraft(available=False, note="Could not read the photo. Enter the details by hand.")

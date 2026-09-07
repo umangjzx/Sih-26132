@@ -43,6 +43,17 @@ def test_rejects_non_image(farmer_client, monkeypatch):
     assert r.status_code == 415
 
 
+def test_rejects_spoofed_content_type(farmer_client, monkeypatch):
+    """v1.21 audit fix — a client claiming Content-Type: image/png on bytes
+    that aren't actually a PNG used to sail through on the header alone."""
+    monkeypatch.setattr(ocr.llm, "available", lambda: True)
+    r = farmer_client.post(
+        "/api/ocr/lot-slip",
+        files={"file": ("fake.png", io.BytesIO(b"not actually an image"), "image/png")},
+    )
+    assert r.status_code == 415
+
+
 def test_parses_and_normalises_fields(farmer_client, monkeypatch):
     monkeypatch.setattr(ocr.llm, "available", lambda: True)
     monkeypatch.setattr(

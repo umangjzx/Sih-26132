@@ -328,9 +328,26 @@ def accept_offer(
 
     # match.status was already flipped atomically above. Take the lot + demand
     # off the open market so the matcher and discovery board stop offering an
-    # already-committed lot.
-    lot.status = "matched"
-    demand.status = "matched"
+    # already-committed lot — atomically, same reasoning as the match/offer
+    # claim: a sibling match on this same lot or demand (including one
+    # materialised by a pool's accept-demand, which doesn't go through this
+    # function's own match at all) could be getting accepted at the same
+    # instant, and both would otherwise pass a plain status != "matched"
+    # check before either commits.
+    claimed_lot = db.execute(
+        update(Lot).where(Lot.id == lot.id, Lot.status == "open").values(status="matched")
+    ).rowcount
+    claimed_demand = db.execute(
+        update(Demand).where(Demand.id == demand.id, Demand.status == "open").values(status="matched")
+    ).rowcount
+    if not claimed_lot or not claimed_demand:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This lot or demand was just committed elsewhere — refresh and try again.",
+        )
+    db.refresh(lot)
+    db.refresh(demand)
 
     # Any other still-open matches for this lot or demand are now moot.
     siblings = db.execute(

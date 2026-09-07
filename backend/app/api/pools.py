@@ -10,7 +10,7 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -408,10 +408,31 @@ def accept_demand_for_pool(
     # orphaning whatever quantity the pool didn't cover: it can't be browsed or
     # matched again because the demand is no longer 'open'. Instead, shrink the
     # demand by what this deal now covers and leave the remainder open.
+    #
+    # Both branches are atomic conditional UPDATEs, not a plain attribute
+    # assignment: the normal 1:1 matcher's own accept_offer() could be
+    # closing this exact demand at the same instant (a completely separate
+    # Match this function never sees), and a plain "if demand.status ==
+    # 'open'" check here would let both sides pass before either commits.
     if qty >= demand.quantity_kg - 1e-6:
-        demand.status = "matched"
+        claimed_demand = db.execute(
+            update(Demand).where(Demand.id == demand.id, Demand.status == "open")
+            .values(status="matched")
+        ).rowcount
     else:
-        demand.quantity_kg -= qty
+        claimed_demand = db.execute(
+            update(Demand)
+            .where(Demand.id == demand.id, Demand.status == "open",
+                   Demand.quantity_kg >= qty - 1e-6)
+            .values(quantity_kg=Demand.quantity_kg - qty)
+        ).rowcount
+    if not claimed_demand:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This demand was just matched elsewhere — refresh and try again.",
+        )
+    db.refresh(demand)
 
     # the 1:1 matcher may already have queued matches against this demand — they
     # are moot now that the pool has consumed it.
