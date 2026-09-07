@@ -17,6 +17,17 @@ def _clean_phone(v: str) -> str:
     return s
 
 
+def _valid_password(v: str) -> str:
+    """Length over character-class rules (NIST 800-63B) — this app's users
+    are farmers/buyers typing on phone keypads, so a demanded mix of
+    symbols/uppercase is friction without much real benefit. The one rule
+    worth enforcing: not a pure run of the same digit repeated or a short
+    numeric PIN reused as a password (e.g. "111111", "123456")."""
+    if v.isdigit():
+        raise ValueError("Password can't be all digits — add at least one letter")
+    return v
+
+
 class RegisterBody(BaseModel):
     """Create an account: phone is the identity, password is the credential.
 
@@ -27,7 +38,7 @@ class RegisterBody(BaseModel):
     phone: str
     name: str = Field(min_length=1, max_length=200)
     role: Literal["farmer", "buyer"] = "farmer"
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=8, max_length=128)
     # Optional trading location, captured from the browser at sign-up.
     district: str | None = Field(default=None, max_length=120)
     state: str | None = Field(default=None, max_length=120)
@@ -46,6 +57,11 @@ class RegisterBody(BaseModel):
         if not v:
             raise ValueError("Name is required")
         return v
+
+    @field_validator("password")
+    @classmethod
+    def _password(cls, v: str) -> str:
+        return _valid_password(v)
 
 
 class LoginBody(BaseModel):
@@ -87,7 +103,7 @@ class ResetPasswordBody(BaseModel):
 
     phone: str
     otp: str
-    new_password: str = Field(min_length=6, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
     @field_validator("phone")
     @classmethod
@@ -101,6 +117,11 @@ class ResetPasswordBody(BaseModel):
         if not (v.isdigit() and len(v) == 6):
             raise ValueError("Enter the 6-digit code")
         return v
+
+    @field_validator("new_password")
+    @classmethod
+    def _password(cls, v: str) -> str:
+        return _valid_password(v)
 
 
 class TokenResponse(BaseModel):

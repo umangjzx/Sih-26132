@@ -387,7 +387,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("passwordPlaceholder")}
                 required
-                minLength={mode === "register" ? 6 : undefined}
+                minLength={mode === "register" ? 8 : undefined}
                 autoComplete={mode === "register" ? "new-password" : "current-password"}
                 className="al-input"
               />
@@ -493,7 +493,7 @@ export default function LoginPage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder={t("passwordPlaceholder")}
                   required
-                  minLength={6}
+                  minLength={8}
                   autoComplete="new-password"
                   className="al-input"
                 />

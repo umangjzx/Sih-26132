@@ -62,6 +62,13 @@ def _valid_price(v: float) -> float:
 
 
 def _valid_avail_date(v: date) -> date:
+    # Produce already harvested can reasonably be listed a while after it was
+    # ready — unlike a forward contract's expected_ready (a future promise,
+    # which forward.py correctly rejects if it's in the past at all), this
+    # just needs a floor to catch a fat-fingered date like "1900-01-01"
+    # rather than reject a genuinely late listing.
+    if v < date.today() - timedelta(days=365):
+        raise ValueError("available_from is too far in the past")
     if v > date.today() + timedelta(days=550):
         raise ValueError("available_from is too far in the future")
     return v
