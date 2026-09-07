@@ -420,7 +420,7 @@ flowchart LR
       direction TB
       Routers["19 routers: prices · intel · public · location · auth ·\nlots · demands · matching · offers · deals · disputes ·\nhistory · alerts · admin · assistant · ocr · pools · forward · financing"]:::backend
       Brief["★ Decision Brief\nfuses every signal into one ranked action\n(see Decision Brief diagram below)"]:::brief
-      Services["32 services, grouped by role —\ndata: ingestion · snapshot · fixtures\ndecision: signal · forecast · best_market · freight · realization\nmarketplace: matching · discovery · pools · grading\nlocation: geo · geocode · locations · routing\nknowledge: reference · holidays · knowledge · embeddings\ntrust: audit · alerts · llm · sms · digest · satellite · forward_settlement"]:::backend
+      Services["33 services, grouped by role —\ndata: ingestion · snapshot · fixtures\ndecision: signal · forecast · best_market · freight · realization\nmarketplace: matching · discovery · pools · grading\nlocation: geo · geocode · locations · routing\nknowledge: reference · holidays · knowledge · embeddings\ntrust: audit · alerts · llm · sms · digest · satellite · forward_settlement · financing_link"]:::backend
       Sched["APScheduler\n6-hourly price re-ingestion + alert eval + daily SMS digest"]:::backend
     end
 

@@ -12,14 +12,14 @@ const CHECKLIST: { item: string; done: boolean; note: string }[] = [
   { item: "Request validation at the boundary (Pydantic)", done: true, note: "Every POST/PATCH body is schema-validated before touching business logic" },
   { item: "Parameterized database queries", done: true, note: "SQLAlchemy ORM throughout — zero raw f-string/format-string SQL found in a full-codebase grep" },
   { item: "CORS allowlist (not wildcard)", done: true, note: "Explicit origin list from CORS_ORIGINS, credentials enabled only for those origins" },
-  { item: "Per-route rate limiting", done: true, note: "In-process sliding-window limiter, 19 call sites across 12 route files — register, login, lots, demands, forward, pools, OCR, and more" },
+  { item: "Per-route rate limiting", done: true, note: "In-process sliding-window limiter, 27 call sites across 14 route files — register, login, lots, demands, forward, pools, OCR, financing, and more" },
   { item: "Output escaping on generated HTML", done: true, note: "The printable deal receipt escapes every user-supplied field before rendering" },
   { item: "Append-only audit trail", done: true, note: "transaction_events rows are only ever inserted, never updated" },
   { item: "No secrets committed to the repo", done: true, note: ".env, credentials.json, service-account JSON are all gitignored" },
-  { item: "Static application security testing (bandit)", done: true, note: "Full backend scan, 2026-09-04: 1 High + 6 Low findings, all fixed (usedforsecurity=False on a non-cryptographic MD5 use, targeted # nosec on 3 reviewed false-positives). Re-scan: 0 issues" },
-  { item: "Dependency vulnerability scanning (pip-audit)", done: true, note: "2026-09-04, two rounds: first 11 known CVEs across fastapi/starlette/python-dotenv/python-jose→ecdsa, fixed by upgrading fastapi to 0.141.1, starlette to 1.6.0, python-dotenv to 1.2.2, and replacing python-jose+ecdsa with PyJWT (only HS256 is used, so the EC-signing dependency was dead weight). That swap's initial PyJWT 2.10.1 itself carried known CVEs, caught by a second scan and fixed by upgrading to PyJWT 2.13.0. Final re-scan: 0 known vulnerabilities" },
+  { item: "Static application security testing (bandit)", done: true, note: "Full backend scan, 2026-09-04: 1 High + 6 Low findings, all fixed (usedforsecurity=False on a non-cryptographic MD5 use, targeted # nosec on 3 reviewed false-positives). Re-run again 2026-09-07 against all the v1.18-v1.21 feature work since — still 0 issues" },
+  { item: "Dependency vulnerability scanning (pip-audit)", done: true, note: "2026-09-04, two rounds: first 11 known CVEs across fastapi/starlette/python-dotenv/python-jose→ecdsa, fixed by upgrading fastapi to 0.141.1, starlette to 1.6.0, python-dotenv to 1.2.2, and replacing python-jose+ecdsa with PyJWT (only HS256 is used, so the EC-signing dependency was dead weight). That swap's initial PyJWT 2.10.1 itself carried known CVEs, caught by a second scan and fixed by upgrading to PyJWT 2.13.0. Re-run again 2026-09-07 — still 0 known vulnerabilities" },
   { item: "Security response headers (CSP/HSTS/X-Frame-Options)", done: false, note: "Not configured — Caddy in the deployment terminates TLS but no additional header middleware is set" },
-  { item: "Automated dependency/vulnerability scanning wired into CI", done: false, note: "bandit and pip-audit were run manually this session, not on a schedule — no Dependabot/Snyk-equivalent or CI gate wired in yet" },
+  { item: "Automated dependency/vulnerability scanning wired into CI", done: false, note: "bandit and pip-audit were run manually (2026-09-04 and again 2026-09-07), not on a schedule — no Dependabot/Snyk-equivalent or CI gate wired in yet" },
   { item: "Distributed rate limiting (multi-instance safe)", done: false, note: "Deliberate single-worker design choice, documented in code — would need Redis to scale past one Uvicorn worker" },
 ];
 
@@ -49,7 +49,7 @@ export function SecuritySection() {
       id="security"
       eyebrow="Trust & access"
       title="Security, privacy & role-based access"
-      quickAnswer="Two dedicated scanners were run against the backend on 2026-09-04 — bandit (static analysis) and pip-audit (dependency CVEs) — and every finding from both was fixed, not just logged; both now report clean. Every access-control, hashing, and injection-prevention claim below is a direct code citation, verified by grep the same day."
+      quickAnswer="Two dedicated scanners were run against the backend on 2026-09-04 — bandit (static analysis) and pip-audit (dependency CVEs) — and every finding from both was fixed, not just logged; both now report clean. Re-run again on 2026-09-07 after a further round of feature work — still clean. Every access-control, hashing, and injection-prevention claim below is a direct code citation, re-verified by grep on 2026-09-07."
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="al-card-plain p-5">
@@ -82,7 +82,7 @@ export function SecuritySection() {
             <li>Pydantic validates and rejects malformed input before it reaches business logic</li>
             <li>SQLAlchemy ORM parameterizes every query — zero raw SQL string interpolation in the codebase</li>
             <li>React escapes rendered text by default; the one hand-built HTML surface (the deal receipt) explicitly escapes every field</li>
-            <li>19 rate-limited call sites guard against brute-force and scraping</li>
+            <li>27 rate-limited call sites guard against brute-force and scraping</li>
           </ul>
         </div>
       </div>

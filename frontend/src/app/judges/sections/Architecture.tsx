@@ -11,7 +11,7 @@ const CHART = `flowchart LR
 
     subgraph API["Backend — FastAPI (111 endpoints / 19 routers)"]
       Routers["prices · intel · public · location · auth\\nlots · demands · matching · offers · deals\\ndisputes · history · alerts · admin\\nassistant · ocr · pools · forward · financing"]
-      Services["32 services: ingestion · signal · forecast\\nmatching · weather · routing · best_market\\nfreight · brief · geo · geocode · locations\\nreference · holidays · alerts · audit\\nknowledge · realization · pools · discovery\\ngrading · llm · transporters · satellite · sms · ..."]
+      Services["33 services: ingestion · signal · forecast\\nmatching · weather · routing · best_market\\nfreight · brief · geo · geocode · locations\\nreference · holidays · alerts · audit\\nknowledge · realization · pools · discovery\\ngrading · llm · transporters · satellite · sms\\nfinancing_link · forward_settlement · digest · ..."]
       Sched["APScheduler — 6-hourly ingestion + alert eval"]
     end
 
@@ -96,11 +96,11 @@ const LAYERS = [
       },
       {
         title: "Notification system",
-        purpose: "Price-alert evaluation + in-app notification feed",
-        tech: "APScheduler background job (alerts.py) + notifications table",
-        input: "Active price_alerts, ingestion results",
+        purpose: "In-app notification feed — price alerts, forward-settlement risk, plus offer/financing/deal/dispute events",
+        tech: "Synchronous creation in offers.py, financing.py, deals.py, disputes.py (v1.20) + an APScheduler job (alerts.py) for the two ingestion-driven kinds",
+        input: "The triggering action itself, or active price_alerts + ingestion results",
         output: "Notification rows, unread-count badge",
-        deps: "6-hourly scheduler, 20-hour debounce per alert",
+        deps: "6-hourly scheduler + 20-hour debounce for price alerts; direct writes for everything else",
       },
       {
         title: "Analytics engine",

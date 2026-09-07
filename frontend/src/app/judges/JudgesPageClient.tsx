@@ -4,7 +4,8 @@
  * /judges — Project Evidence, Validation & Technical Documentation Hub.
  *
  * Every number on this page traces to a fact verified directly against the
- * codebase on 2026-09-04 (see the audit citations inline). Where no hard
+ * codebase, most recently re-checked in full on 2026-09-07 (see the audit
+ * citations inline). Where no hard
  * evidence exists, the page says so explicitly — see EvidenceBadge — rather
  * than inventing a metric. This page is judge-facing, not farmer/buyer-facing,
  * so it intentionally does not carry the trilingual (en/hi/mr) requirement
@@ -175,7 +176,7 @@ function Hero() {
         <div className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <MetricCard value="111" label="Live API endpoints, across 19 routers" evidence="verified" />
           <MetricCard value="20" label="Database tables, 18 linear migrations" evidence="verified" />
-          <MetricCard value="32" label="Backend services (one file, one job each)" evidence="verified" />
+          <MetricCard value="33" label="Backend services (one file, one job each)" evidence="verified" />
           <MetricCard value="515 / 515" label="Automated tests passing (471 backend + 44 frontend)" evidence="verified" />
           <MetricCard value="11" label="Real external data sources, every one with an offline fallback" evidence="verified" />
           <MetricCard value="3" label="Languages at 100% parity — en / hi / mr, ~1,400 keys each" evidence="verified" />
@@ -397,7 +398,7 @@ export default function JudgesPageClient() {
 
       <section className="border-t border-[var(--line)] bg-[var(--paper)] py-10 text-center">
         <p className="text-xs text-[var(--ink-soft)]">
-          Every figure on this page was verified against the codebase on 2026-09-04.
+          Every figure on this page was verified against the codebase, most recently on 2026-09-07.
           Source: {" "}
           <Link href="https://github.com/umangjzx/Sih-26132" className="font-semibold text-[var(--green-700)] hover:underline">
             github.com/umangjzx/Sih-26132

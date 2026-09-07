@@ -12,7 +12,7 @@ const SCORES = [
   {
     label: "Functional completeness",
     pct: 92,
-    evidence: "Calculated: 18 of 19 planned modules are shipped and tested (see Core Modules). The Cordova Android wrap is explicitly Planned, not silently missing.",
+    evidence: "Calculated: 19 of 20 planned modules are shipped and tested (see Core Modules). The Cordova Android wrap is explicitly Planned, not silently missing.",
   },
   {
     label: "Validation coverage",
@@ -22,7 +22,7 @@ const SCORES = [
   {
     label: "Security readiness",
     pct: 82,
-    evidence: "Manually assessed from: PBKDF2/JWT/RBAC/rate-limiting/input-validation all verified in code, plus a bandit static-analysis scan (7 findings, all fixed) and two rounds of pip-audit dependency scanning run 2026-09-04 — the second round surfaced after replacing python-jose+ecdsa with PyJWT, whose initial version itself had known CVEs, resolved by upgrading to PyJWT 2.13.0. Both scanners now report clean — docked for no security-response headers and no dynamic scanner (OWASP ZAP) against a live deployment.",
+    evidence: "Manually assessed from: PBKDF2/JWT/RBAC/rate-limiting/input-validation all verified in code, plus a bandit static-analysis scan (7 findings, all fixed) and two rounds of pip-audit dependency scanning run 2026-09-04 — the second round surfaced after replacing python-jose+ecdsa with PyJWT, whose initial version itself had known CVEs, resolved by upgrading to PyJWT 2.13.0. Both scanners re-run 2026-09-07 against the newer feature work and still report clean — docked for no security-response headers and no dynamic scanner (OWASP ZAP) against a live deployment.",
   },
   {
     label: "Scalability readiness",

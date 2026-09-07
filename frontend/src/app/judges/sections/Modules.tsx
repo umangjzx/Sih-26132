@@ -187,6 +187,20 @@ const MODULES: Module[] = [
     validation: "calendar_warning returned when the ready date misses the crop's harvest months",
   },
   {
+    name: "Warehouse-Receipt Financing",
+    status: "production",
+    purpose: "Let a farmer pledge a stored, unsold lot for a cash advance while they wait for a better price",
+    users: "Farmers (request), admins (approve/reject)",
+    features: "75% loan-to-value cap against a lot's estimated value, one active request per lot, deal_id auto-linked once the pledged lot actually sells (v1.21)",
+    input: "lot_id, requested_amount_inr, warehouse_name?, receipt_ref?",
+    output: "A tracked request + admin decision — the platform holds no money and disburses nothing",
+    processing: "Caps the request at 75% of (expected_price/100 × quantity_kg); financing_link.py stamps deal_id when the same lot's offer is accepted or its pool sells",
+    tech: "financing.py, financing_link.py",
+    db: "financing_requests",
+    apis: "POST /api/financing/requests, GET /requests/mine, PATCH /requests/{id}",
+    validation: "Only an open, unpledged lot can be pledged; rejects amounts above the loan-to-value cap",
+  },
+  {
     name: "Price-Realisation Tracker",
     status: "production",
     purpose: "Prove, per deal, whether AgriLink actually beat the open mandi",
@@ -292,7 +306,7 @@ export function ModulesSection() {
       id="modules"
       eyebrow="Implementation evidence"
       title="Module-by-module explorer"
-      quickAnswer="19 modules, individually expandable. 18 are shipped and tested; the one remaining gap (the Cordova Android wrap) is explicitly marked Planned, not silently omitted."
+      quickAnswer="20 modules, individually expandable. 19 are shipped and tested; the one remaining gap (the Cordova Android wrap) is explicitly marked Planned, not silently omitted."
     >
       <div className="flex flex-col gap-2.5">
         {MODULES.map((m) => (

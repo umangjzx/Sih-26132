@@ -12,7 +12,7 @@ const DOCS = [
   { icon: "warehouse", name: "Backend documentation", desc: "Run, migrations & DB reset, tests, env vars, data sources, known data limitations", href: `${REPO}/backend/README.md` },
   { icon: "truck", name: "Deployment guide", desc: "Single-VM Docker Compose + Caddy, env checklist, demo-user seeder, backup/restore", href: `${REPO}/DEPLOYMENT.md` },
   { icon: "calendar", name: "Roadmap, research & phase plans", desc: "The .planning/ directory — per-phase research notes and summaries from v1.1 through v1.7", href: `${REPO}/.planning` },
-  { icon: "shield", name: "Database migrations (source of truth for schema history)", desc: "12 Alembic revisions, browsable in order", href: `${REPO}/backend/alembic/versions` },
+  { icon: "shield", name: "Database migrations (source of truth for schema history)", desc: "18 Alembic revisions, browsable in order", href: `${REPO}/backend/alembic/versions` },
 ];
 
 export function DocumentationSection() {

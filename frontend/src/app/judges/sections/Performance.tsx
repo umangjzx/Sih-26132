@@ -4,21 +4,21 @@ import { Icon } from "@/components/ui";
 import { EvidenceBadge, JudgeSection } from "./shared";
 
 const METRICS = [
-  { metric: "API average response time", value: "39–81ms median across 5 read endpoints (trend/forecast/signal/nearby/options), single request, real seeded Postgres data", kind: "verified" as const },
-  { metric: "API latency under load", value: "200 requests / 20 concurrent workers per endpoint: p50 40–190ms, p99 74–457ms (scripts/perf_bench.py, run 2026-09-04)", kind: "verified" as const },
+  { metric: "API average response time", value: "189–316ms median across 5 read endpoints (trend/forecast/signal/nearby/options), single request, real seeded Postgres data (re-measured 2026-09-07; the dataset has grown to 23,598 crop/market combos, up from 20,901 on 2026-09-04)", kind: "verified" as const },
+  { metric: "API latency under load", value: "200 requests / 20 concurrent workers per endpoint: p50 127–579ms, p99 177–886ms (scripts/perf_bench.py, re-run 2026-09-07 — /api/options excluded, see the dedicated callout below)", kind: "verified" as const },
   { metric: "Frontend page load time", value: "Not benchmarked", kind: "pending" as const },
   { metric: "Database query performance", value: "Not profiled with EXPLAIN ANALYZE, but one real bottleneck was found and fixed this run (see below)", kind: "verified" as const },
   { metric: "Concurrent users tested", value: "20 concurrent workers, 200 requests/endpoint, local benchmark — not a production-scale load test", kind: "verified" as const },
   { metric: "Error rate", value: "0 failures across 515 automated test runs (not the same as a production error rate)", kind: "verified" as const },
   { metric: "Uptime", value: "Not applicable — no long-running production deployment with an SLA yet", kind: "pending" as const },
-  { metric: "Backend test-suite runtime", value: "471 tests in 34.1s (in-memory SQLite, run 2026-09-07)", kind: "verified" as const },
-  { metric: "Frontend test-suite runtime", value: "44 tests in ~7.5s (run 2026-09-07)", kind: "verified" as const },
+  { metric: "Backend test-suite runtime", value: "471 tests in 58.4s (in-memory SQLite, run 2026-09-07 alongside a live dev server — runtime varies with what else is running on the machine)", kind: "verified" as const },
+  { metric: "Frontend test-suite runtime", value: "44 tests in ~8.6s (run 2026-09-07)", kind: "verified" as const },
   { metric: "Frontend production build", value: "Compiles cleanly, 31 routes prerendered/server-rendered correctly (this run)", kind: "verified" as const },
 ];
 
 const FOUND_AND_FIXED = {
   before: {
-    label: "Before — every request re-scanned the table",
+    label: "Before — every request re-scanned the table (2026-09-04)",
     rows: [
       ["p50 latency", "4,426ms"],
       ["p99 latency", "7,499ms"],
@@ -26,11 +26,11 @@ const FOUND_AND_FIXED = {
     ],
   },
   after: {
-    label: "After — 15-minute in-process cache",
+    label: "After the fix, current (2026-09-07)",
     rows: [
-      ["p50 latency", "359ms (20ms uncontended, single request)"],
-      ["p99 latency", "457ms"],
-      ["Throughput", "53.5 req/s"],
+      ["p50 latency", "1,347ms (316ms uncontended, single request)"],
+      ["p99 latency", "1,664ms"],
+      ["Throughput", "14.9 req/s"],
     ],
   },
 };
@@ -48,7 +48,7 @@ export function PerformanceSection() {
       id="performance"
       eyebrow="Honest numbers only"
       title="Performance metrics"
-      quickAnswer="A real local benchmark (scripts/perf_bench.py) was run against the live app on real seeded data on 2026-09-04. It surfaced one genuine bottleneck — GET /api/options was re-scanning the full price table and re-sorting 20,900+ rows on every call — which was fixed with a 15-minute in-process cache and re-measured. What still isn't measured (frontend load time, a dedicated DB profiler, production uptime) is labeled as such below, not filled in with an invented number."
+      quickAnswer="A real local benchmark (scripts/perf_bench.py) was run against the live app on real seeded data on 2026-09-04, and re-run again on 2026-09-07 after further feature work to confirm the numbers still hold. It surfaced one genuine bottleneck — GET /api/options was re-scanning the full price table and re-sorting 20,900+ rows on every call — which was fixed with a 15-minute in-process cache. The 2026-09-07 re-run shows that endpoint noticeably slower under concurrency than the day the fix landed, and that's disclosed honestly below rather than quietly re-using the old number. What still isn't measured (frontend load time, a dedicated DB profiler, production uptime) is labeled as such, not filled in with an invented number."
     >
       <div className="al-card-plain mb-6 flex items-start gap-2.5 !bg-[var(--amber-50)] !border-[var(--amber-200)] p-4">
         <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-[var(--amber-700)]" />
@@ -78,15 +78,23 @@ export function PerformanceSection() {
       <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">
         The crop/market picker endpoint ran an unindexed <code>SELECT DISTINCT</code> across
         the whole price table (20,901 distinct crop/market/district/state combinations in the
-        seeded dataset) and re-sorted all of them in Python on every single call — with no
-        caching. At 20 concurrent callers this measured {FOUND_AND_FIXED.before.rows[0][1]} median
+        seeded dataset on 2026-09-04) and re-sorted all of them in Python on every single call —
+        with no caching. At 20 concurrent callers this measured {FOUND_AND_FIXED.before.rows[0][1]} median
         latency and {FOUND_AND_FIXED.before.rows[2][1]} throughput. Fixed with a 15-minute
         in-process TTL cache (same single-process design as the existing rate limiter — no new
-        infrastructure), invalidated on every ingestion run. Re-measured after the fix:{" "}
-        {FOUND_AND_FIXED.after.rows[0][1]} median, {FOUND_AND_FIXED.after.rows[2][1]} throughput —
-        a ~12x improvement. The endpoint still returns an unpaginated 20k+ row list, which is why
-        concurrent latency doesn&apos;t drop to single-digit milliseconds even from cache — that
-        remaining cost is JSON serialization, not the database.
+        infrastructure), invalidated on every ingestion run — that fix is still in place and
+        still verified working (the cache hits correctly on repeated calls; see
+        <code> app/api/prices.py:_cached_base_options</code>). Re-run on 2026-09-07, with the
+        seeded dataset now 13% larger (23,598 combos): {FOUND_AND_FIXED.after.rows[0][1]} median,{" "}
+        {FOUND_AND_FIXED.after.rows[2][1]} throughput — still a real improvement over the
+        unfixed baseline, but noticeably higher than the 359ms/53.5 req/s measured the day the
+        fix landed. The endpoint still returns an unpaginated 20k+ row list under a cache hit,
+        and serializing that list to JSON for 20 concurrent callers at once is CPU-bound Python
+        work that queues up behind the interpreter&apos;s GIL — that queuing, not the database,
+        is the dominant remaining cost, and it scales with dataset size and how many other
+        processes are competing for CPU on the machine at benchmark time. Pagination on this
+        endpoint would fix it properly; it hasn&apos;t been done yet, so the honest current
+        number is shown here instead of the faster one from three days ago.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {[FOUND_AND_FIXED.before, FOUND_AND_FIXED.after].map((col) => (

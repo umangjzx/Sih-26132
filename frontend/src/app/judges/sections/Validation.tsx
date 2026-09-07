@@ -190,8 +190,8 @@ export function ValidationSection() {
           { name: "Integration testing", detail: "Full request→DB round trips against an in-memory SQLite DB for every domain (auth, lots, deals, pools, forward, admin…)", evidence: "verified" as const },
           { name: "Frontend component/smoke tests", detail: "PriceDetail, SellWaitSignalCard, LanguageSwitcher, plus a smoke test per authed page", evidence: "verified" as const },
           { name: "User acceptance testing", detail: "No formal UAT script or sign-off log exists — the demo walkthrough below is the closest equivalent", evidence: "pending" as const },
-          { name: "Performance testing", detail: "No production-scale load-testing tool (k6/Locust/etc.) has been run; a local concurrent benchmark (scripts/perf_bench.py, 2026-09-04) has, and it found and fixed one real bottleneck — see Performance", evidence: "verified" as const },
-          { name: "Dedicated security testing", detail: "No dynamic scanner (e.g. OWASP ZAP) has been run against a live deployment, but static analysis (bandit) and dependency-CVE scanning (pip-audit) have — both clean as of 2026-09-04, see Security", evidence: "verified" as const },
+          { name: "Performance testing", detail: "No production-scale load-testing tool (k6/Locust/etc.) has been run; a local concurrent benchmark (scripts/perf_bench.py) has, most recently re-run 2026-09-07, and it found and fixed one real bottleneck — see Performance", evidence: "verified" as const },
+          { name: "Dedicated security testing", detail: "No dynamic scanner (e.g. OWASP ZAP) has been run against a live deployment, but static analysis (bandit) and dependency-CVE scanning (pip-audit) have — both clean as of 2026-09-07, see Security", evidence: "verified" as const },
         ].map((c) => (
           <div key={c.name} className="al-card-plain p-4">
             <p className="text-sm font-bold text-[var(--ink)]">{c.name}</p>
