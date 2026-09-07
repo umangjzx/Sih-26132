@@ -515,6 +515,7 @@
     "resolveOutcome": "परिणाम",
     "resolveOutcomeChoose": "एक परिणाम निवडा…",
     "resolveNote": "टीप (ऐच्छिक)",
+    "resolveApplyPenalty": "हा व्यवहार फॉरवर्ड कॉन्ट्रॅक्टमधून आला — दोषी पक्षावर ₹{amount} दंड लावा",
     "resolveConfirm": "निश्चित करा",
     "resolveCancel": "रद्द करा",
     "resolvedToast": "वाद निकाली काढला"
@@ -884,7 +885,9 @@
     "actionError": "काहीतरी चूक झाली. कृपया पुन्हा प्रयत्न करा.",
     "confirmAccept": "ही वचनबद्धता स्वीकारायची? यातून एक बंधनकारक व्यवहार तयार होतो जो पूर्ववत करता येणार नाही.",
     "settlementOverdue": "विलंबित — ठरलेली निपटारा तारीख उलटून गेली आहे",
-    "settlementOnTrack": "निपटारा वेळेवर आहे"
+    "settlementOnTrack": "निपटारा वेळेवर आहे",
+    "breachFarmerFault": "शेतकरी दोषी आढळला — ₹{amount} दंड",
+    "breachBuyerFault": "खरेदीदार दोषी आढळला — ₹{amount} दंड"
   },
   "profile": {
     "title": "प्रोफाइल आणि पडताळणी",

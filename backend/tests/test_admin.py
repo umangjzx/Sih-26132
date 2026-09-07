@@ -108,6 +108,54 @@ def test_dashboard_no_auth(db):
         app.dependency_overrides.clear()
 
 
+# ---------------------------------------------------------------------------
+# v1.11 — dispute queue flags forward-contract-linked disputes for the admin
+# ---------------------------------------------------------------------------
+
+def test_dispute_queue_flags_forward_linked_dispute_with_penalty_preview(
+    db, admin_user, farmer_user, buyer_user,
+):
+    from datetime import timedelta
+
+    client = _client(db)
+    try:
+        _seed_lot_demand_deal(db, farmer_user, buyer_user)  # a plain, non-forward deal
+        _as(buyer_user)
+        plain_deal_id = client.get("/api/history").json()["deals"][0]["id"]
+        client.post(f"/api/deals/{plain_deal_id}/disputes", json={"reason": "Quality issue"})
+
+        # a forward-contract-originated deal, via the real forward API
+        _from = (date.today() + timedelta(days=40)).isoformat()
+        _to = (date.today() + timedelta(days=70)).isoformat()
+        bid = client.post("/api/forward/bids", json={
+            "crop": "Tur", "quantity_kg": 2000, "price_min": 7000, "price_max": 7800,
+            "delivery_from": _from, "delivery_to": _to,
+        }).json()
+        _as(farmer_user)
+        cm = client.post(f"/api/forward/bids/{bid['id']}/commitments", json={
+            "quantity_kg": 2000, "price_per_qtl": 7400,
+            "expected_ready": (date.today() + timedelta(days=55)).isoformat(),
+        }).json()
+        _as(buyer_user)
+        accepted = client.post(f"/api/forward/commitments/{cm['id']}/accept").json()
+        forward_deal_id = accepted["deal_id"]
+        client.post(f"/api/deals/{forward_deal_id}/disputes", json={"reason": "Non-delivery"})
+
+        _as(admin_user)
+        queue = client.get("/api/admin/dashboard").json()["dispute_queue"]
+        by_deal = {row["deal_id"]: row for row in queue}
+
+        assert by_deal[plain_deal_id]["is_forward"] is False
+        assert by_deal[plain_deal_id]["forward_penalty_preview_inr"] is None
+
+        forward_row = by_deal[forward_deal_id]
+        assert forward_row["is_forward"] is True
+        assert forward_row["forward_commitment_id"] == cm["id"]
+        assert forward_row["forward_penalty_preview_inr"] == round(2000 / 100 * 7400 * 0.1, 2)
+    finally:
+        app.dependency_overrides.clear()
+
+
 # --------------------------------------------------------------------------- #
 # GET /api/admin/analytics (v1.3)
 # --------------------------------------------------------------------------- #

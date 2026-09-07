@@ -138,15 +138,24 @@ function DisputeRow({
   // dropdown, silently recording "dismissed" instead of what they wrote.
   const [outcome, setOutcome] = useState<DisputeOutcome | "">("");
   const [note, setNote] = useState("");
+  const [applyPenalty, setApplyPenalty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // A penalty needs a clear-fault ruling — favour_farmer/favour_buyer — so the
+  // checkbox is only ever offered (and only ever submitted) alongside one.
+  const canApplyPenalty = d.is_forward && (outcome === "favour_farmer" || outcome === "favour_buyer");
 
   async function submit() {
     if (!token || !outcome) return;
     setBusy(true);
     setErr(null);
     try {
-      await closeDispute(d.id, token, { outcome, resolution: note.trim() || undefined });
+      await closeDispute(d.id, token, {
+        outcome,
+        resolution: note.trim() || undefined,
+        apply_forward_penalty: canApplyPenalty && applyPenalty,
+      });
       setOpen(false);
       onResolved();
     } catch (e) {
@@ -210,6 +219,25 @@ function DisputeRow({
                   className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm font-normal"
                 />
               </label>
+              {d.is_forward && (
+                <label
+                  className={`flex items-center gap-2 rounded-lg border border-dashed px-2 py-1.5 text-xs font-semibold ${
+                    canApplyPenalty
+                      ? "border-[var(--color-wait)] text-[var(--color-wait)]"
+                      : "border-[var(--color-border)] text-[var(--ink-mute,inherit)] opacity-60"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={applyPenalty}
+                    disabled={!canApplyPenalty}
+                    onChange={(e) => setApplyPenalty(e.target.checked)}
+                  />
+                  {t("resolveApplyPenalty", {
+                    amount: Math.round(d.forward_penalty_preview_inr ?? 0),
+                  })}
+                </label>
+              )}
               {err && <p className="text-xs font-semibold text-[var(--color-wait)]">{err}</p>}
               <button
                 type="button"

@@ -509,7 +509,7 @@ Base URL `http://localhost:8000`. All paths are prefixed `/api` unless noted.
 | GET | `/deals/{id}/receipt` | Printable HTML receipt — parties, agreed terms, transporter, route, confirmed payment reference |
 | GET | `/transporters/nearby` | Curated transporter directory near a point |
 | POST / GET | `/deals/{id}/disputes` | raise / list disputes (one open dispute per deal) |
-| PATCH | `/disputes/{id}/close` | resolve a dispute — v1.7 adds `{outcome, resolution, evidence_url?}`, sets `resolved_by`/`resolved_at`, status → `resolved` |
+| PATCH | `/disputes/{id}/close` | resolve a dispute — v1.7 adds `{outcome, resolution, evidence_url?}`, sets `resolved_by`/`resolved_at`, status → `resolved`. v1.11 adds `apply_forward_penalty` — when the deal came from a forward-contract commitment and outcome is `favour_farmer`/`favour_buyer`, marks that commitment `breached` and records a computed penalty (see [Forward contracts](#forward-contracts)) |
 | PATCH | `/disputes/{id}/withdraw` | raiser withdraws their own dispute — status → `withdrawn` |
 | GET | `/history` | caller's lots + demands + deals |
 | GET | `/history/realization` | **Auth** — per-deal realised price vs the AGMARKNET mandi average and MSP, with a volume-weighted uplift summary. Farmer sees own; admin may pass `farmer_id` |
@@ -603,7 +603,7 @@ erDiagram
 | `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
 
 **Migrations** (linear chain, in order):
-`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) — **head**.
+`0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) · `a7d1e9c4b6f2_v1_8_forward_settlement` (`forward_commitments.settlement_due/settlement_reminder_sent_at`) · `b3f8e1a9c5d2_v1_9_lot_photo_storage` (widens `lots.photo_url` to `Text` for base64 data-URL photos) · `c8a4f2b7d9e1_v1_11_forward_breach_penalty` (`forward_commitments.breach_status/penalty_inr/breached_at`) — **head**.
 
 ---
 
@@ -825,10 +825,26 @@ market linkage.
    and a `Deal` at `pipeline_status = matched` — so logistics, payments,
    disputes and the audit ledger all work unchanged. A forward deal legitimately
    sits at `matched` until harvest. The bid auto-flips to `filled` when covered.
+4. **v1.8** — `check_settlement_risk()` flags an accepted commitment whose
+   `settlement_due` (the later of the farmer's ready date and the buyer's
+   delivery window) has passed with no delivery, and notifies both parties.
+   Visibility only — it holds no money or crop.
+5. **v1.11 — breach & penalty.** Either party can raise the ordinary dispute on
+   the materialised deal (`POST /api/deals/{deal_id}/disputes` — nothing forward-
+   specific to call). If an admin resolving it passes `apply_forward_penalty:
+   true` alongside a clear-fault `outcome` (`favour_farmer` → the buyer defaulted,
+   `favour_buyer` → the farmer did), the commitment moves to `status: breached`
+   and gets a computed `penalty_inr` (`forward_penalty_pct` — default 10% — of
+   contract value). Rejected with 422 for `split`/`dismissed`/`no_fault` (no
+   single party to blame) or a deal that isn't forward-linked, and 409 if the
+   commitment isn't still `accepted` (e.g. already breached). This is **not**
+   real escrow — the platform never holds or transfers money — but it gives
+   both parties and the admin an auditable number instead of "dismissed".
 
 Every step is written to `transaction_events`. `/forward` is role-aware: buyers
-post bids and review/accept commitments with a fill bar; farmers browse open
-bids (distance, harvest window, band) and commit inline with a midpoint prefill.
+post bids and review/accept commitments with a fill bar and see a breach badge
+with the penalty if one applies; farmers browse open bids (distance, harvest
+window, band) and commit inline with a midpoint prefill.
 
 ---
 
@@ -1112,10 +1128,12 @@ Both suites run **offline**.
   surface the right chunk — but without a key, or if the configured model
   doesn't serve embeddings, retrieval is exactly the offline keyword+fuzzy
   scoring it always was.
-- **Forward contracts have no settlement enforcement** — an accepted commitment
-  becomes a normal `matched` deal; honouring it at harvest still runs through the
-  ordinary deal pipeline, disputes included. There is no escrow or penalty
-  mechanism.
+- **Forward-contract breach penalties are computed, not collected.** v1.11 lets
+  an admin resolving a dispute on a forward-originated deal mark the commitment
+  `breached` and record a penalty (`forward_penalty_pct` of contract value) —
+  but the platform holds no money or crop, so nothing is actually withheld or
+  transferred; it's an auditable figure both parties and the admin can see, not
+  an escrow. There's still no automated e-KYC-style enforcement or collection.
 - **Satellite crop-health (GEE) is deferred** — credentials may sit in `.env`
   but nothing reads them.
 - **Cordova wrap (Phase 4) not built** — the frontend is structured for it

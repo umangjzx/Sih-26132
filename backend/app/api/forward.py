@@ -52,15 +52,21 @@ _COMMIT_LIMIT, _COMMIT_WINDOW_S = 40, 3600
 # --------------------------------------------------------------------------- #
 
 def _fill(db: Session, bid_id: int) -> tuple[float, float]:
-    """(committed_kg incl. pending, accepted_kg) for a bid."""
+    """(committed_kg incl. pending, accepted_kg) for a bid.
+
+    A ``breached`` commitment still counts as "accepted" for fill purposes —
+    the bid's capacity was already spoken for and materialised into a deal;
+    a later dispute finding doesn't reopen that slot for another farmer.
+    """
     rows = db.execute(
         select(ForwardCommitment.status, func.coalesce(func.sum(ForwardCommitment.quantity_kg), 0.0))
         .where(ForwardCommitment.bid_id == bid_id)
         .group_by(ForwardCommitment.status)
     ).all()
     by = {s: float(q) for s, q in rows}
-    committed = by.get("pending", 0.0) + by.get("accepted", 0.0)
-    return round(committed, 1), round(by.get("accepted", 0.0), 1)
+    accepted = by.get("accepted", 0.0) + by.get("breached", 0.0)
+    committed = by.get("pending", 0.0) + accepted
+    return round(committed, 1), round(accepted, 1)
 
 
 def _fills(db: Session, bid_ids: list[int]) -> dict[int, tuple[float, float]]:
@@ -82,8 +88,9 @@ def _fills(db: Session, bid_ids: list[int]) -> dict[int, tuple[float, float]]:
     out: dict[int, tuple[float, float]] = {}
     for bid_id in bid_ids:
         by = acc.get(bid_id, {})
-        committed = by.get("pending", 0.0) + by.get("accepted", 0.0)
-        out[bid_id] = (round(committed, 1), round(by.get("accepted", 0.0), 1))
+        accepted = by.get("accepted", 0.0) + by.get("breached", 0.0)
+        committed = by.get("pending", 0.0) + accepted
+        out[bid_id] = (round(committed, 1), round(accepted, 1))
     return out
 
 
@@ -119,7 +126,9 @@ def _enrich_commitment(db: Session, c: ForwardCommitment, bid: ForwardBid) -> Fo
         out.farmer_verified = getattr(farmer, "verification_status", "") == "verified"
     out.calendar_warning = _calendar_warning(bid.crop, c.expected_ready, bid)
 
-    if c.deal_id is not None and c.settlement_due is not None:
+    if c.status == "breached":
+        out.settlement_status = "breached"
+    elif c.deal_id is not None and c.settlement_due is not None:
         deal = db.get(Deal, c.deal_id)
         if deal is not None and deal.pipeline_status in _SETTLED_STAGES:
             out.settlement_status = "settled"

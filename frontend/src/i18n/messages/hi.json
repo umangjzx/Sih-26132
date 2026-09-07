@@ -515,6 +515,7 @@
     "resolveOutcome": "परिणाम",
     "resolveOutcomeChoose": "एक परिणाम चुनें…",
     "resolveNote": "टिप्पणी (वैकल्पिक)",
+    "resolveApplyPenalty": "यह डील एक फॉरवर्ड कॉन्ट्रैक्ट से बनी थी — दोषी पक्ष पर ₹{amount} जुर्माना लगाएं",
     "resolveConfirm": "पुष्टि करें",
     "resolveCancel": "रद्द करें",
     "resolvedToast": "विवाद निपटाया गया"
@@ -884,7 +885,9 @@
     "actionError": "कुछ गड़बड़ हो गई। कृपया फिर से प्रयास करें।",
     "confirmAccept": "यह प्रतिबद्धता स्वीकार करें? इससे एक बाध्यकारी सौदा बनेगा जिसे पूर्ववत नहीं किया जा सकता।",
     "settlementOverdue": "विलंबित — तय निपटान तिथि निकल चुकी है",
-    "settlementOnTrack": "निपटान समय पर है"
+    "settlementOnTrack": "निपटान समय पर है",
+    "breachFarmerFault": "किसान दोषी पाया गया — ₹{amount} जुर्माना",
+    "breachBuyerFault": "खरीदार दोषी पाया गया — ₹{amount} जुर्माना"
   },
   "profile": {
     "title": "प्रोफ़ाइल और सत्यापन",

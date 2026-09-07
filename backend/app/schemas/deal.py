@@ -62,6 +62,11 @@ class DisputeResolve(BaseModel):
 
     outcome: str = Field(description="one of: " + ", ".join(_OUTCOMES))
     resolution: str | None = Field(default=None, max_length=1000)
+    # v1.11 — only meaningful when this dispute's deal originated from a
+    # forward-contract commitment. Requires outcome to be favour_farmer or
+    # favour_buyer (a clear ruling); computes and records a penalty against
+    # whichever party the outcome found at fault. See disputes.close_dispute.
+    apply_forward_penalty: bool = False
 
     @field_validator("outcome")
     @classmethod
@@ -116,6 +121,12 @@ class DisputeSummary(BaseModel):
     reason: str
     status: str
     created_at: datetime
+    # v1.11 — set by admin_dashboard() when this dispute's deal is linked to an
+    # accepted forward-contract commitment, so the admin UI can offer to apply
+    # a forward penalty and preview the amount before the admin resolves it.
+    is_forward: bool = False
+    forward_commitment_id: int | None = None
+    forward_penalty_preview_inr: float | None = None
 
 
 class DistrictPriceGap(BaseModel):

@@ -128,9 +128,15 @@ class ForwardCommitmentOut(BaseModel):
     farmer_verified: bool = False
     calendar_warning: str | None = None
     # "settled" once the linked deal reaches delivered/paid/closed, "overdue" if
-    # settlement_due has passed and it hasn't, "on_track" otherwise, None if this
+    # settlement_due has passed and it hasn't, "breached" once an admin has
+    # applied a forward-penalty ruling, "on_track" otherwise, None if this
     # commitment was never accepted (no settlement clock started).
     settlement_status: str | None = None
+    # v1.11 — set only once a dispute on this commitment's deal is resolved
+    # with apply_forward_penalty=true. See ForwardCommitment's docstring.
+    breach_status: str | None = None
+    penalty_inr: float | None = None
+    breached_at: datetime | None = None
 
 
 class ForwardBidOut(BaseModel):

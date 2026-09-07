@@ -22,6 +22,7 @@ import {
   listForwardBids,
   setForwardBidStatus,
   type ForwardBid,
+  type ForwardCommitment,
 } from "@/lib/api";
 
 function pctBar(pct: number) {
@@ -45,11 +46,28 @@ function StatusChip({ status }: { status: string }) {
     accepted: "bg-[var(--green-100)] text-[var(--green-700)]",
     declined: "bg-[var(--red-100)] text-[var(--red-700)]",
     withdrawn: "bg-[var(--line)] text-[var(--ink-soft)]",
+    breached: "bg-[var(--red-100)] text-[var(--red-700)]",
   };
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${map[status] ?? "bg-[var(--line)]"}`}>
       {status}
     </span>
+  );
+}
+
+/** Penalty the admin recorded when resolving a dispute on this commitment's
+ * deal with "apply forward penalty" — a computed, informational figure; the
+ * platform never actually holds or collects it. */
+function BreachBadge({ c }: { c: ForwardCommitment }) {
+  const t = useTranslations("forward");
+  if (c.status !== "breached" || c.penalty_inr == null) return null;
+  return (
+    <Badge tone="red">
+      <Icon name="alert" size={10} className="mr-1 inline" />
+      {c.breach_status === "farmer_breach"
+        ? t("breachFarmerFault", { amount: Math.round(c.penalty_inr) })
+        : t("breachBuyerFault", { amount: Math.round(c.penalty_inr) })}
+    </Badge>
   );
 }
 
@@ -259,6 +277,7 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
                     <Icon name="alert" size={10} className="mr-1 inline" /> {t("settlementOverdue")}
                   </Badge>
                 )}
+                <BreachBadge c={c} />
                 <StatusChip status={c.status} />
                 {c.deal_id && <a href={`/deals/${c.deal_id}`} className="font-bold text-[var(--green-700)] hover:underline">{t("viewDeal")}</a>}
               </span>
@@ -388,6 +407,7 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
           {mine && (
             <p className="mt-2 flex items-center gap-2 text-xs text-[var(--ink-soft)]">
               {t("previousCommitment")}: {(mine.quantity_kg / 100).toFixed(0)} qtl @ ₹{mine.price_per_qtl}
+              <BreachBadge c={mine} />
               <StatusChip status={mine.status} />
             </p>
           )}

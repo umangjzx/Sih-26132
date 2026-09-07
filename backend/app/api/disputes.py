@@ -5,6 +5,10 @@
 - GET   /api/deals/{deal_id}/disputes       — farmer / buyer / admin.
 - POST  /api/disputes/{id}/withdraw         — the raiser withdraws their own open one.
 - PATCH /api/disputes/{id}/close            — admin resolves it with an outcome + note.
+    v1.11: when the deal came from an accepted forward-contract commitment,
+    passing ``apply_forward_penalty=true`` (with a clear-fault outcome) marks
+    that commitment ``breached`` and records a computed penalty — see
+    ``_apply_forward_penalty`` below and ``ForwardCommitment``'s docstring.
 """
 
 import logging
@@ -15,16 +19,21 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import CurrentUser, require_role
 from app.models.deal import Deal
 from app.models.demand import Demand
 from app.models.dispute import Dispute
+from app.models.forward import ForwardCommitment
 from app.models.lot import Lot
 from app.models.match import Match
 from app.models.user import User
 from app.schemas.deal import DisputeCreate, DisputeResolve, DisputeResponse
 from app.services.audit import log_event
+
+# outcome -> which side the ruling found at fault, for the forward-penalty branch.
+_OUTCOME_TO_BREACH = {"favour_farmer": "buyer_breach", "favour_buyer": "farmer_breach"}
 
 _IST = ZoneInfo("Asia/Kolkata")
 
@@ -173,8 +182,16 @@ def close_dispute(
             detail=f"Dispute is already {dispute.status}",
         )
 
+    outcome = body.outcome if body else "dismissed"
+
+    # Validated (and may raise) *before* anything is mutated, so a rejected
+    # apply_forward_penalty never leaves the dispute itself half-resolved.
+    commitment = None
+    if body is not None and body.apply_forward_penalty:
+        commitment = _validate_forward_penalty(db, dispute, outcome)
+
     dispute.status = "resolved"
-    dispute.outcome = body.outcome if body else "dismissed"
+    dispute.outcome = outcome
     dispute.resolution = body.resolution if body else None
     dispute.resolved_by = current_user.id
     dispute.resolved_at = datetime.now(_IST)
@@ -184,8 +201,59 @@ def close_dispute(
         action="dispute_resolved",
         detail={"dispute_id": dispute.id, "outcome": dispute.outcome},
     )
+
+    if commitment is not None:
+        penalty_inr = round(
+            commitment.quantity_kg / 100 * commitment.price_per_qtl * settings.forward_penalty_pct, 2
+        )
+        breach_status = _OUTCOME_TO_BREACH[outcome]
+        commitment.status = "breached"
+        commitment.breach_status = breach_status
+        commitment.penalty_inr = penalty_inr
+        commitment.breached_at = datetime.now(_IST)
+        db.flush()
+        log_event(
+            db, actor_id=current_user.id, entity_type="forward_bid", entity_id=commitment.bid_id,
+            action="forward_commitment_breached",
+            detail={
+                "commitment_id": commitment.id, "deal_id": dispute.deal_id,
+                "dispute_id": dispute.id, "breach_status": breach_status,
+                "penalty_inr": penalty_inr, "outcome": outcome,
+            },
+        )
+
     db.commit()
     db.refresh(dispute)
 
     logger.info("Dispute %d resolved (%s) by admin %d", dispute.id, dispute.outcome, current_user.id)
     return DisputeResponse.model_validate(dispute)
+
+
+def _validate_forward_penalty(db: Session, dispute: Dispute, outcome: str) -> ForwardCommitment:
+    """Read-only guard for ``apply_forward_penalty`` — raises 422/409 and
+    changes nothing if a penalty can't be applied; otherwise returns the
+    ``ForwardCommitment`` to breach. Only valid for a dispute whose deal
+    originated from a still-``accepted`` forward commitment, and only for a
+    clear-fault outcome (favour_farmer / favour_buyer) — split/dismissed/
+    no_fault have no single party to penalise.
+    """
+    if outcome not in _OUTCOME_TO_BREACH:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="A forward-contract penalty needs a clear outcome (favour_farmer or favour_buyer).",
+        )
+
+    commitment = db.execute(
+        select(ForwardCommitment).where(ForwardCommitment.deal_id == dispute.deal_id)
+    ).scalar_one_or_none()
+    if commitment is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="This deal isn't linked to a forward-contract commitment.",
+        )
+    if commitment.status != "accepted":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This commitment is '{commitment.status}' — it can't be marked breached.",
+        )
+    return commitment

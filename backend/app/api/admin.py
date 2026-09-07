@@ -10,10 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import CurrentUser, require_role
 from app.models.demand import Demand
 from app.models.dispute import Dispute
+from app.models.forward import ForwardCommitment
 from app.models.lot import Lot
 from app.models.deal import Deal
 from app.models.match import Match
@@ -81,7 +83,31 @@ def admin_dashboard(
         .where(Dispute.status == "open")
         .order_by(Dispute.created_at.desc(), Dispute.id.desc())
     ).scalars().all()
-    dispute_queue = [DisputeSummary.model_validate(d) for d in dispute_rows]
+    # Flag which of these disputes sit on a still-breachable forward-contract
+    # deal, and preview the penalty an admin could apply on resolution — so
+    # the "apply forward penalty" control only ever shows up where it's valid.
+    forward_by_deal = {
+        c.deal_id: c
+        for c in db.execute(
+            select(ForwardCommitment).where(
+                ForwardCommitment.deal_id.in_([d.deal_id for d in dispute_rows]),
+                ForwardCommitment.status == "accepted",
+            )
+        ).scalars()
+    }
+    dispute_queue = []
+    for d in dispute_rows:
+        summary = DisputeSummary.model_validate(d)
+        c = forward_by_deal.get(d.deal_id)
+        if c is not None:
+            summary = summary.model_copy(update={
+                "is_forward": True,
+                "forward_commitment_id": c.id,
+                "forward_penalty_preview_inr": round(
+                    c.quantity_kg / 100 * c.price_per_qtl * settings.forward_penalty_pct, 2
+                ),
+            })
+        dispute_queue.append(summary)
 
     # --- district price-realisation gap (latest reported date) ---
     # Per-crop: how far a district's modal price sits below/above the state

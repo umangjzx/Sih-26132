@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     # missing coordinate never causes a silent exclusion.
     match_max_km: float = 400.0
 
+    # v1.11: forward-contract breach penalty, as a fraction of contract value
+    # (price_per_qtl/100 x quantity_kg). The platform holds no money or crop —
+    # this is a computed, informational figure an admin records against
+    # whichever party a dispute resolution finds at fault, not funds actually
+    # collected. See app/api/disputes.py's close_dispute (apply_forward_penalty).
+    forward_penalty_pct: float = 0.1
+
     # v1.3: optional LLM (OpenRouter) — a *readability layer* only. Plain-language
     # advisor summary, the "Ask AgriLink" assistant, and live-string translation.
     # Blank -> those features degrade to the rule-based output / English.

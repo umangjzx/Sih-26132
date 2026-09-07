@@ -237,7 +237,13 @@ export const DISPUTE_OUTCOMES = [
 ] as const;
 export type DisputeOutcome = (typeof DISPUTE_OUTCOMES)[number];
 
-export type DisputeResolve = { outcome: DisputeOutcome; resolution?: string };
+export type DisputeResolve = {
+  outcome: DisputeOutcome;
+  resolution?: string;
+  /** v1.11 — only meaningful when the dispute is on a forward-contract-linked
+   * deal and outcome is favour_farmer/favour_buyer. See DisputeSummary.is_forward. */
+  apply_forward_penalty?: boolean;
+};
 
 export type DisputeResponse = {
   id: number;
@@ -268,6 +274,11 @@ export type DisputeSummary = {
   reason: string;
   status: string;
   created_at: string;
+  /** v1.11 — set when this dispute's deal came from a still-breachable
+   * forward-contract commitment, so the admin can offer to apply a penalty. */
+  is_forward: boolean;
+  forward_commitment_id: number | null;
+  forward_penalty_preview_inr: number | null;
 };
 
 export type DistrictPriceGap = {
@@ -896,7 +907,7 @@ export type ForwardCommitment = {
   price_per_qtl: number;
   expected_ready: string;
   note: string | null;
-  status: "pending" | "accepted" | "declined" | "withdrawn";
+  status: "pending" | "accepted" | "declined" | "withdrawn" | "breached";
   deal_id: number | null;
   created_at: string;
   settlement_due: string | null;
@@ -904,7 +915,14 @@ export type ForwardCommitment = {
   farmer_district: string;
   farmer_verified: boolean;
   calendar_warning: string | null;
-  settlement_status: "on_track" | "overdue" | "settled" | null;
+  settlement_status: "on_track" | "overdue" | "settled" | "breached" | null;
+  /** v1.11 — set once a dispute on this commitment's deal is resolved with
+   * apply_forward_penalty=true. breach_status names whichever party the
+   * ruling found at fault; penalty_inr is a computed, informational figure —
+   * the platform holds no money and doesn't collect it. */
+  breach_status: "farmer_breach" | "buyer_breach" | null;
+  penalty_inr: number | null;
+  breached_at: string | null;
 };
 export type ForwardBid = {
   id: number;

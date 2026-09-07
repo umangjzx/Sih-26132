@@ -515,6 +515,7 @@
     "resolveOutcome": "Outcome",
     "resolveOutcomeChoose": "Choose an outcome…",
     "resolveNote": "Note (optional)",
+    "resolveApplyPenalty": "This deal came from a forward contract — apply a ₹{amount} penalty to the party at fault",
     "resolveConfirm": "Confirm",
     "resolveCancel": "Cancel",
     "resolvedToast": "Dispute resolved"
@@ -884,7 +885,9 @@
     "actionError": "Something went wrong. Please try again.",
     "confirmAccept": "Accept this commitment? It creates a binding deal and can't be undone.",
     "settlementOverdue": "Overdue — past the agreed settlement date",
-    "settlementOnTrack": "On track for settlement"
+    "settlementOnTrack": "On track for settlement",
+    "breachFarmerFault": "Farmer found at fault — ₹{amount} penalty",
+    "breachBuyerFault": "Buyer found at fault — ₹{amount} penalty"
   },
   "profile": {
     "title": "Profile & verification",

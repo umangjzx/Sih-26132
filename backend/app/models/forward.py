@@ -39,7 +39,7 @@ class ForwardBid(Base):
 
 
 class ForwardCommitment(Base):
-    """status: pending | accepted | declined | withdrawn."""
+    """status: pending | accepted | declined | withdrawn | breached."""
 
     __tablename__ = "forward_commitments"
 
@@ -63,3 +63,12 @@ class ForwardCommitment(Base):
     settlement_reminder_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # v1.11: settlement enforcement. Set only when an admin resolves a dispute
+    # on this commitment's deal with `apply_forward_penalty=true` (see
+    # app/api/disputes.py). breach_status: farmer_breach | buyer_breach —
+    # whichever party the dispute outcome found at fault. penalty_inr is a
+    # computed, informational figure (settings.forward_penalty_pct of contract
+    # value); the platform holds no money or crop and never collects it.
+    breach_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    penalty_inr: Mapped[float | None] = mapped_column(Float, nullable=True)
+    breached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
