@@ -16,7 +16,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -191,7 +191,18 @@ def close_dispute(
     if body is not None and body.apply_forward_penalty:
         commitment = _validate_forward_penalty(db, dispute, outcome)
 
-    dispute.status = "resolved"
+    # Atomic claim — two admins (or one admin's double-click/two tabs)
+    # resolving the same dispute at the same instant must not both succeed.
+    claimed = db.execute(
+        update(Dispute)
+        .where(Dispute.id == dispute.id, Dispute.status == "open")
+        .values(status="resolved")
+    ).rowcount
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This dispute was just resolved — refresh and try again.")
+    db.refresh(dispute)
+
     dispute.outcome = outcome
     dispute.resolution = body.resolution if body else None
     dispute.resolved_by = current_user.id

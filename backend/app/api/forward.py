@@ -13,7 +13,7 @@ from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -461,6 +461,19 @@ def accept_commitment(
             f"Only {max(bid.quantity_kg - accepted_now, 0):.0f} kg is still open.",
         )
 
+    # Atomic claim — the same buyer double-clicking accept (or two tabs) on
+    # this exact commitment must not both pass the checks above and both
+    # materialise a Deal for it.
+    claimed = db.execute(
+        update(ForwardCommitment)
+        .where(ForwardCommitment.id == c.id, ForwardCommitment.status == "pending")
+        .values(status="accepted")
+    ).rowcount
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This commitment was just acted on — refresh and try again.")
+    db.refresh(c)
+
     farmer = db.get(User, c.farmer_id)
     lot = Lot(
         farmer_id=c.farmer_id, crop=bid.crop, quantity_kg=c.quantity_kg,
@@ -500,7 +513,7 @@ def accept_commitment(
     db.add(deal)
     db.flush()
 
-    c.status = "accepted"
+    # c.status was already flipped atomically above.
     c.deal_id = deal.id
     # the settlement clock starts now: due by whichever the farmer/buyer agreed
     # to later — the farmer's own expected-ready date, or the buyer's delivery

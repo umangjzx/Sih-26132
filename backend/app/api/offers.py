@@ -10,7 +10,7 @@ Design (from 2-CONTEXT.md D-23 to D-26):
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -289,8 +289,31 @@ def accept_offer(
             detail="Cannot accept your own offer",
         )
 
-    # Accept this offer
-    offer.status = "accepted"
+    # Everything above is a plain read — two concurrent accept calls (a
+    # double-click, two tabs, or two different pending offers on the same
+    # match) can both sail through those checks before either writes. Claim
+    # the offer AND the match atomically here — a conditional UPDATE with a
+    # WHERE on the still-expected status — so only one request can win; the
+    # loser's rowcount is 0 and it's told to retry instead of silently
+    # creating a second Deal for the same match.
+    claimed_offer = db.execute(
+        update(Offer)
+        .where(Offer.id == offer.id, Offer.status == "pending")
+        .values(status="accepted")
+    ).rowcount
+    claimed_match = db.execute(
+        update(Match)
+        .where(Match.id == match.id, Match.status.in_(("proposed", "offered")))
+        .values(status="accepted")
+    ).rowcount
+    if not claimed_offer or not claimed_match:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This offer was just acted on elsewhere — refresh and try again.",
+        )
+    db.refresh(offer)
+    db.refresh(match)
 
     # Decline all other pending offers on this match
     other_pending = db.execute(
@@ -303,9 +326,9 @@ def accept_offer(
     for o in other_pending:
         o.status = "declined"
 
-    # Advance match status, and take the lot + demand off the open market so the
-    # matcher and the discovery board stop offering an already-committed lot.
-    match.status = "accepted"
+    # match.status was already flipped atomically above. Take the lot + demand
+    # off the open market so the matcher and discovery board stop offering an
+    # already-committed lot.
     lot.status = "matched"
     demand.status = "matched"
 

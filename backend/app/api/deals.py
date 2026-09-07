@@ -20,7 +20,7 @@ _IST = ZoneInfo("Asia/Kolkata")
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session
 
 from app.api.matching import _counterparty, _demand_summary, _lot_summary
@@ -231,13 +231,30 @@ def advance_deal(
                 ),
             )
 
+    if new_status == "paid" and current_user.role != "admin" and not (body.payment_reference or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="A payment reference (UPI / bank txn id) is required to mark a deal paid",
+        )
+
+    # Atomic claim — farmer confirming delivery and buyer confirming payment
+    # can land in the same instant; whichever loses gets rowcount 0 instead
+    # of silently clobbering the other's payment_method/reference. This must
+    # happen before any field on `deal` is mutated in Python: a raw UPDATE
+    # like this bypasses the ORM's in-memory attribute tracking, so mutating
+    # first and refreshing after would wipe out those uncommitted changes.
+    claimed = db.execute(
+        update(Deal)
+        .where(Deal.id == deal.id, Deal.pipeline_status == PIPELINE_STAGES[idx])
+        .values(pipeline_status=new_status)
+    ).rowcount
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This deal was just advanced elsewhere — refresh and try again.")
+    db.refresh(deal)
+
     if new_status == "paid":
-        if current_user.role != "admin" and not (body.payment_reference or "").strip():
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="A payment reference (UPI / bank txn id) is required to mark a deal paid",
-            )
-        # This is a deliberate second path to "paid" alongside the itemised
+        # A deliberate second path to "paid" alongside the itemised
         # POST .../payments instalment ledger — a buyer can confirm payment made
         # outside the app with a single reference. Without this, that path left
         # payment_status="paid" sitting next to a ledger total of ₹0, which
@@ -264,7 +281,6 @@ def advance_deal(
         deal.payment_method = body.payment_method
         deal.payment_reference = body.payment_reference
 
-    deal.pipeline_status = new_status
     log_event(db, actor_id=current_user.id, entity_type="deal", entity_id=deal.id,
               action=f"advance_to_{new_status}",
               detail={"from": PIPELINE_STAGES[idx], "method": body.payment_method,

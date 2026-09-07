@@ -14,7 +14,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -160,7 +160,18 @@ def withdraw_request(
     if r.status != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, f"Request is '{r.status}', not pending")
 
-    r.status = "withdrawn"
+    # Atomic claim — an admin's review() could be committing at the same
+    # instant; whichever write loses the race gets rowcount 0 instead of
+    # silently overwriting the other's outcome.
+    claimed = db.execute(
+        update(FinancingRequest)
+        .where(FinancingRequest.id == r.id, FinancingRequest.status == "pending")
+        .values(status="withdrawn")
+    ).rowcount
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This request was just reviewed — refresh and try again.")
+    db.refresh(r)
     db.flush()
     log_event(db, actor_id=current_user.id, entity_type="financing_request", entity_id=r.id,
               action="financing_withdrawn", detail={})
@@ -196,7 +207,18 @@ def review_request(
     if r.status != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, f"Request is already '{r.status}'")
 
-    r.status = body.status
+    # Atomic claim — see withdraw_request's comment; a farmer's withdraw()
+    # could be racing this same instant.
+    claimed = db.execute(
+        update(FinancingRequest)
+        .where(FinancingRequest.id == r.id, FinancingRequest.status == "pending")
+        .values(status=body.status)
+    ).rowcount
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This request was just withdrawn — refresh and try again.")
+    db.refresh(r)
+
     r.admin_note = body.admin_note
     r.reviewed_by = current_user.id
     r.reviewed_at = datetime.now(_IST)
