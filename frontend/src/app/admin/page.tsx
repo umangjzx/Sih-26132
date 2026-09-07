@@ -45,6 +45,7 @@ import {
   type AdminEvent,
   type MatchingHealth,
 } from "@/lib/api";
+import { formatDateTime, formatInr as inr } from "@/lib/format";
 
 const C = {
   green: "var(--chart-green)",
@@ -53,13 +54,6 @@ const C = {
   blue: "var(--chart-blue)",
   purple: "var(--chart-purple)",
 };
-
-function inr(n: number): string {
-  if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
-  if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
-  if (n >= 1e3) return `₹${(n / 1e3).toFixed(1)}k`;
-  return `₹${Math.round(n)}`;
-}
 
 function Card({
   title,
@@ -686,7 +680,7 @@ export default function AdminPage() {
                   </span>
                 </span>
                 <span className="shrink-0 text-xs opacity-50">
-                  {e.created_at ? new Date(e.created_at).toLocaleString() : "—"}
+                  {e.created_at ? formatDateTime(e.created_at) : "—"}
                 </span>
               </li>
             ))}

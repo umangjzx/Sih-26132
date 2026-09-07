@@ -173,12 +173,12 @@ function Hero() {
         </div>
 
         <div className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <MetricCard value="97" label="Live API endpoints, across 18 routers" evidence="verified" />
-          <MetricCard value="19" label="Database tables, 12 linear migrations" evidence="verified" />
-          <MetricCard value="27" label="Backend services (one file, one job each)" evidence="verified" />
-          <MetricCard value="398 / 398" label="Automated tests passing (355 backend + 43 frontend)" evidence="verified" />
+          <MetricCard value="111" label="Live API endpoints, across 19 routers" evidence="verified" />
+          <MetricCard value="20" label="Database tables, 17 linear migrations" evidence="verified" />
+          <MetricCard value="32" label="Backend services (one file, one job each)" evidence="verified" />
+          <MetricCard value="513 / 513" label="Automated tests passing (469 backend + 44 frontend)" evidence="verified" />
           <MetricCard value="11" label="Real external data sources, every one with an offline fallback" evidence="verified" />
-          <MetricCard value="3" label="Languages at 100% parity — en / hi / mr, 1,200 keys each" evidence="verified" />
+          <MetricCard value="3" label="Languages at 100% parity — en / hi / mr, ~1,400 keys each" evidence="verified" />
         </div>
       </div>
     </section>

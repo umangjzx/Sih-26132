@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { useAuth } from "@/components/AuthProvider";
 import { NearbyResources } from "@/components/NearbyResources";
 import { Icon } from "@/components/ui";
 import { listDistricts } from "@/lib/api";
@@ -11,6 +13,7 @@ import { useLocation } from "@/lib/useLocation";
 export default function DirectoryPage() {
   const ts = useTranslations("storage");
   const { location } = useLocation();
+  const { user } = useAuth();
 
   const state = location?.state || "Maharashtra";
   const [districts, setDistricts] = useState<string[]>([]);
@@ -80,6 +83,27 @@ export default function DirectoryPage() {
         <Icon name="alert" size={12} className="mr-1 inline" />
         {ts("indicativeNote")}
       </p>
+
+      {user?.role === "farmer" && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/financing"
+            className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
+          >
+            <Icon name="coins" size={16} className="shrink-0" />
+            {ts("ctaFinancing")}
+            <Icon name="chevronLeft" size={14} className="ml-auto rotate-180" />
+          </Link>
+          <Link
+            href="/pools"
+            className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
+          >
+            <Icon name="handshake" size={16} className="shrink-0" />
+            {ts("ctaPools")}
+            <Icon name="chevronLeft" size={14} className="ml-auto rotate-180" />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

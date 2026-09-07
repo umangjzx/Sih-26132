@@ -10,20 +10,27 @@ four marketing routes below are the one exception: a thin Server Component
 
 ## Routes
 
+31 routes total. Full per-route access/purpose table in the root README's
+[What it does](../README.md#what-it-does).
+
 | Route | Purpose |
 |---|---|
-| `/` | Landing page — hero, live activity stats, feature preview grid, 3-step overview, cross-links into the marketing pages below |
+| `/` | Landing page (logged out) — hero, live activity stats, feature preview grid, 3-step overview, cross-links into the marketing pages below. Authenticated farmers/buyers see the price dashboard instead; admins see `AdminHome` (KPI tiles + quick links). |
 | `/features` | Bento-grid deep dive into every platform capability |
 | `/how-it-works` | Role-tabbed walkthrough (Farmer / Buyer / FPO) with a step timeline + trust signals |
 | `/market-insights` | The data-intelligence layer showcased — live stats, analytics capabilities, open data sources |
 | `/about` | Mission, vision, live impact numbers, values, and the SIH problem-statement context |
+| `/judges` | SIH judge evaluation hub — architecture, validation evidence, competitive comparison, FAQ |
 | `/prices` | Trend area chart, min/modal/max, nearby-market comparison bars |
-| `/advisor` | **Decision Brief** (one ranked action plan) + the full sell / wait / hold gauge with weather · MSP · calendar · holiday context |
+| `/advisor` | **Decision Brief** (one ranked action plan) + the full sell / wait / hold gauge with weather · MSP · calendar · holiday context. Buyers get the v1.18 mirrored buy-side view. Farmer/buyer-only in Sidebar navigation. |
 | `/directory` | Cold storage / FPOs near a location |
 | `/explore` | Public statewide transparency dashboard (movers, trend, activity) |
-| `/alerts` | Price alerts + notifications |
+| `/alerts` | Price alerts (create/toggle/delete) |
+| `/notifications` | Full notification history — All/Unread tabs, mark-all-read |
 | `/forward` | Forward contracts — buyers post pre-harvest bids, farmers commit at a locked price |
-| `/login` · `/farmer` · `/buyer` · `/browse` · `/pools` · `/history` · `/deals/[id]` · `/matches/[id]` · `/admin` | Auth + trade workflow. `/history` carries the farmer price-realisation scorecard; `/matches/[id]` has price-referenced counter-offers; `/deals/[id]` has payments + the audit timeline + receipt |
+| `/financing` | Farmer warehouse-receipt financing requests against an open lot |
+| `/login` · `/farmer` · `/buyer` · `/browse` · `/matches` · `/matches/[id]` · `/pools` · `/pools/[id]` · `/history` · `/deals/[id]` | Auth + trade workflow. `/history` carries the farmer price-realisation scorecard; `/matches/[id]` has price-referenced counter-offers; `/deals/[id]` has payments + the audit timeline + receipt |
+| `/admin` · `/admin/users` · `/admin/listings` · `/admin/disputes` · `/admin/financing` | Admin dashboard (Overview/Analytics/Activity tabs), user verification, listing moderation, dispute resolution, financing review — nav label reads "Dashboard" |
 
 `PublicHeader` serves every logged-out route: transparent over the `/` hero,
 solid frosted-glass everywhere else. `Landing` (used by `/`) and the four
@@ -49,7 +56,7 @@ cd frontend && npm run build
 ```
 
 > `npm run build` needs network access the first time — `next/font/google` fetches the
-> Space Grotesk / DM Sans / Noto Sans Devanagari files. The dev server works offline.
+> Poppins / Noto Sans Devanagari files. The dev server works offline.
 
 ## Tests
 

@@ -24,7 +24,7 @@ const FUNCTIONAL_TESTS = [
   { feature: "Pools", scenario: "Create, join, withdraw, aggregate, demand candidates", result: "pass" as const },
   { feature: "Discovery board", scenario: "Radius filter, verified badge, express-interest", result: "pass" as const },
   { feature: "OCR & LLM assistant", scenario: "Keyless degradation, field sanitisation", result: "pass" as const },
-  { feature: "i18n locale parity", scenario: "en/hi/mr key sets are bidirectionally identical (1,200 keys each)", result: "pass" as const },
+  { feature: "i18n locale parity", scenario: "en/hi/mr key sets are bidirectionally identical (~1,400 keys each)", result: "pass" as const },
   { feature: "Frontend components", scenario: "PriceDetail (skeleton→data→error/Retry), SellWaitSignalCard, LanguageSwitcher, smoke tests for every authed page", result: "pass" as const },
 ];
 
@@ -73,15 +73,15 @@ export function ValidationSection() {
       id="validation"
       eyebrow="Evidence, not assertions"
       title="Validation & testing center"
-      quickAnswer="398 automated tests, run to completion by hand for this page on 2026-09-04: 355/355 backend (pytest) + 43/43 frontend (vitest) — both 100% passing. No performance/security test suite exists yet; that gap is disclosed honestly in Performance and Security below rather than papered over."
+      quickAnswer="513 automated tests, run to completion by hand for this page on 2026-09-07: 469/469 backend (pytest) + 44/44 frontend (vitest) — both 100% passing. No performance/security test suite exists yet; that gap is disclosed honestly in Performance and Security below rather than papered over."
     >
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <div className="al-card-plain p-5 text-center">
-          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">355 / 355</span>
-          <p className="mt-1 text-xs text-[var(--ink-soft)]">Backend tests passing (pytest, 37 files) — run live for this page</p>
+          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">469 / 469</span>
+          <p className="mt-1 text-xs text-[var(--ink-soft)]">Backend tests passing (pytest, 42 files) — run live for this page</p>
         </div>
         <div className="al-card-plain p-5 text-center">
-          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">43 / 43</span>
+          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">44 / 44</span>
           <p className="mt-1 text-xs text-[var(--ink-soft)]">Frontend tests passing (vitest, 12 files) — run live for this page</p>
         </div>
         <div className="al-card-plain p-5 text-center">
@@ -92,7 +92,7 @@ export function ValidationSection() {
 
       <h3 className="font-heading text-base font-bold text-[var(--ink)]">Functional validation</h3>
       <p className="mt-1 text-sm text-[var(--ink-soft)]">
-        One row per test category actually present in the suite (grouped from 37 backend + 12
+        One row per test category actually present in the suite (grouped from 42 backend + 12
         frontend test files — not one row per individual test function, which would run to
         hundreds of rows).
       </p>
@@ -177,7 +177,7 @@ export function ValidationSection() {
           </tbody>
         </JudgeTable>
         <p className="mt-2 text-xs text-[var(--ink-mute)]">
-          A sample of 6 of 97 real endpoints — the full set follows the same pattern
+          A sample of 6 of 111 real endpoints — the full set follows the same pattern
           (Pydantic request validation, typed response, explicit auth requirement, explicit
           error codes). See Documentation for the complete API reference.
         </p>

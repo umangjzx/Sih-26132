@@ -8,11 +8,13 @@ verification. No real disbursement anywhere in this feature.
 from datetime import date, timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
 from app.models.lot import Lot
+from app.models.notification import Notification
 
 
 def _client(db):
@@ -157,6 +159,14 @@ def test_admin_approves_a_request(db, farmer_user, admin_user):
         # already reviewed -> 409 on a second attempt
         r2 = c.patch(f"/api/financing/requests/{rid}", json={"status": "rejected"})
         assert r2.status_code == 409
+
+        # v1.19 — the farmer should be told the outcome, not left to keep
+        # checking the /financing page.
+        notif = db.execute(
+            select(Notification).where(Notification.user_id == farmer_user.id)
+        ).scalar_one_or_none()
+        assert notif is not None
+        assert "approved" in notif.title.lower()
     finally:
         app.dependency_overrides.clear()
 

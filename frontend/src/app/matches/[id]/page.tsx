@@ -42,6 +42,8 @@ export default function MatchThreadPage() {
   const [offers, setOffers] = useState<OfferResponse[]>([]);
   const [deal, setDeal] = useState<DealResponse | null>(null);
   const [nego, setNego] = useState<NegotiationContext | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const [offerPrice, setOfferPrice] = useState("");
   const [offerQty, setOfferQty] = useState("");
   const [offerMsg, setOfferMsg] = useState("");
@@ -65,15 +67,30 @@ export default function MatchThreadPage() {
 
   const load = useCallback(async () => {
     if (!token || !matchId) return;
+    setLoading(true);
     const [m, o, n] = await Promise.allSettled([
       getMatchById(matchId, token),
       getMatchOffers(matchId, token),
       fetchNegotiationContext(matchId, token),
     ]);
-    if (m.status === "fulfilled") setMatch(m.value);
+    if (m.status === "fulfilled") {
+      setMatch(m.value);
+      setLoadErr(null);
+    } else if (m.reason instanceof ApiError) {
+      setLoadErr(
+        m.reason.status === 403
+          ? t("accessDenied")
+          : m.reason.status === 404
+            ? t("matchNotFound")
+            : t("loadFailed"),
+      );
+    } else {
+      setLoadErr(t("loadFailed"));
+    }
     if (o.status === "fulfilled") setOffers(o.value);
     setNego(n.status === "fulfilled" ? n.value : null);
-  }, [token, matchId]);
+    setLoading(false);
+  }, [token, matchId, t]);
 
   function startCounter(price: number, qty: number) {
     setOfferPrice(String(price));
@@ -154,12 +171,28 @@ export default function MatchThreadPage() {
   }
 
   if (!ready || !isAuthenticated || !user) return null;
-  
-  if (!match) {
+
+  if (!match && loading) {
     return (
       <div className="flex flex-col gap-6">
         <div className="h-24 w-full animate-pulse rounded-2xl bg-white/50" />
         <div className="h-64 w-full animate-pulse rounded-2xl bg-white/50" />
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-12 text-center">
+        <Icon name="close" size={26} className="text-[var(--red-600)]" />
+        <p className="text-sm font-semibold text-[var(--red-700)]">{loadErr ?? t("loadFailed")}</p>
+        <button
+          type="button"
+          onClick={() => router.push("/matches")}
+          className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+        >
+          {t("backToMatches")}
+        </button>
       </div>
     );
   }

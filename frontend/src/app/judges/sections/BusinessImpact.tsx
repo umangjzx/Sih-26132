@@ -21,7 +21,7 @@ export function BusinessImpactSection() {
           </div>
           <ul className="flex flex-col gap-2 text-sm leading-relaxed text-[var(--ink-soft)]">
             <li>Smallholder farmers and FPOs — the location-awareness feature is built and
-              tested for Maharashtra-first, all-India-capable operation (real: 24 routes,
+              tested for Maharashtra-first, all-India-capable operation (real: 31 routes,
               location resolver, national MSP/directory data).</li>
             <li>Buyers ranging from individual traders to processing companies — reflected in
               the real demo accounts (Anita Traders, Mega Foods Pvt, TN Agro Buyers, Chennai

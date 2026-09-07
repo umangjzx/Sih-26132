@@ -19,6 +19,7 @@ import {
   markNotificationRead,
   type AppNotification,
 } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 
 const KIND_ICON: Record<string, string> = {
   price_alert: "chart",
@@ -157,7 +158,7 @@ export default function NotificationsPage() {
                   </div>
                   {n.body && <p className="mt-0.5 text-sm text-[var(--ink-soft)]">{n.body}</p>}
                   <p className="mt-1 text-xs text-[var(--ink-soft)]/70">
-                    {new Date(n.created_at).toLocaleString()}
+                    {formatDateTime(n.created_at)}
                   </p>
                 </div>
               </div>

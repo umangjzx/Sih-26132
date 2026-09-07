@@ -33,6 +33,7 @@ import {
   type LotResponse,
   type MatchResponse,
 } from "@/lib/api";
+import { formatInr } from "@/lib/format";
 
 const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
@@ -103,6 +104,7 @@ export default function FarmerPage() {
   const [scanning, setScanning] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [loadErr, setLoadErr] = useState(false);
+  const [loadingLots, setLoadingLots] = useState(true);
   const slipInputRef = useRef<HTMLInputElement>(null);
 
   // Guard
@@ -136,6 +138,7 @@ export default function FarmerPage() {
 
   const loadLots = useCallback(async () => {
     if (!token) return;
+    setLoadingLots(true);
     let ok = true;
     try {
       const data = await listMyLots(token);
@@ -145,6 +148,7 @@ export default function FarmerPage() {
       setMatches(await listMyMatches(token));
     } catch { ok = false; }
     setLoadErr(!ok);
+    setLoadingLots(false);
   }, [token]);
 
   useEffect(() => { loadLots(); }, [loadLots]);
@@ -163,7 +167,7 @@ export default function FarmerPage() {
     { label: t("statListed"), value: `${(totalKg / 100).toFixed(1)} qtl`, sub: t("statAcrossLots", { n: openLots.length }), icon: "chart" },
     {
       label: t("statEstValue"),
-      value: estValue >= 1e5 ? `₹${(estValue / 1e5).toFixed(2)}L` : `₹${Math.round(estValue).toLocaleString()}`,
+      value: formatInr(estValue),
       sub: t("statAtAsking"),
       icon: "coins",
       tone: "good",
@@ -584,7 +588,13 @@ export default function FarmerPage() {
             {tdash("qaViewMatches")} →
           </Link>
         </div>
-        {lots.length === 0 ? (
+        {loadingLots ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-white/50" />
+            ))}
+          </div>
+        ) : lots.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
             <Icon name="leaf" size={28} className="text-[var(--green-400)]" />
             <p className="text-sm text-[var(--ink-soft)]">{t("noLots")}</p>

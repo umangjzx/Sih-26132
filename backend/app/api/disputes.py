@@ -28,6 +28,7 @@ from app.models.dispute import Dispute
 from app.models.forward import ForwardCommitment
 from app.models.lot import Lot
 from app.models.match import Match
+from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.deal import DisputeCreate, DisputeResolve, DisputeResponse
 from app.services.audit import log_event
@@ -201,6 +202,12 @@ def close_dispute(
         action="dispute_resolved",
         detail={"dispute_id": dispute.id, "outcome": dispute.outcome},
     )
+
+    _deal, farmer_id, buyer_id = _load_deal_parties(dispute.deal_id, db)
+    title = f"Dispute on deal #{dispute.deal_id} resolved: {outcome.replace('_', ' ')}"
+    link = f"/deals/{dispute.deal_id}"
+    for party_id in {farmer_id, buyer_id}:
+        db.add(Notification(user_id=party_id, kind="dispute", title=title, body=dispute.resolution or "", link=link))
 
     if commitment is not None:
         penalty_inr = round(

@@ -18,6 +18,7 @@ from app.models.demand import Demand
 from app.models.dispute import Dispute
 from app.models.lot import Lot
 from app.models.match import Match
+from app.models.notification import Notification
 from app.models.offer import Offer
 from app.models.payment import DealPayment
 from app.models.user import User
@@ -188,6 +189,13 @@ def test_advance_pipeline_farmer(db, farmer_user, buyer_user):
         db.expire_all()
         row = db.execute(select(Deal).where(Deal.id == deal.id)).scalar_one()
         assert row.pipeline_status == "offer_accepted"
+
+        # v1.19 — the buyer (who didn't make this move) should be notified,
+        # not the farmer who just did it.
+        notifs = db.execute(select(Notification)).scalars().all()
+        assert len(notifs) == 1
+        assert notifs[0].user_id == buyer_user.id
+        assert notifs[0].kind == "deal"
     finally:
         app.dependency_overrides.clear()
 

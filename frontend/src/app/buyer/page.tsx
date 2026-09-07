@@ -30,6 +30,7 @@ import {
   type MatchResponse,
   type ScoreDetail,
 } from "@/lib/api";
+import { formatInr } from "@/lib/format";
 
 const EMPTY_DEMAND: DemandCreate = {
   crop: "", quantity_kg: 0, quality_spec: "", quality_grade_min: null,
@@ -106,6 +107,7 @@ export default function BuyerPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [toastErr, setToastErr] = useState(false);
   const [loadErr, setLoadErr] = useState(false);
+  const [loadingDemands, setLoadingDemands] = useState(true);
   const flash = useCallback((msg: string, isErr = false) => {
     setToast(msg);
     setToastErr(isErr);
@@ -118,6 +120,7 @@ export default function BuyerPage() {
 
   const loadData = useCallback(async () => {
     if (!token) return;
+    setLoadingDemands(true);
     const [d, m] = await Promise.allSettled([
       listMyDemands(token),
       listMyMatches(token),
@@ -125,6 +128,7 @@ export default function BuyerPage() {
     if (d.status === "fulfilled") setDemands(d.value);
     if (m.status === "fulfilled") setMatches(m.value);
     setLoadErr(d.status === "rejected" || m.status === "rejected");
+    setLoadingDemands(false);
   }, [token]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -146,7 +150,7 @@ export default function BuyerPage() {
     { label: td("statSought"), value: `${(totalKg / 100).toFixed(1)} qtl`, sub: td("statAcross", { n: openDemands.length }), icon: "chart" },
     {
       label: td("statEstSpend"),
-      value: estSpend >= 1e5 ? `₹${(estSpend / 1e5).toFixed(2)}L` : `₹${Math.round(estSpend).toLocaleString()}`,
+      value: formatInr(estSpend),
       sub: td("statAtMidBand"),
       icon: "coins",
       tone: "good",
@@ -454,7 +458,13 @@ export default function BuyerPage() {
             </span>
           )}
         </h2>
-        {demands.length === 0 ? (
+        {loadingDemands ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-white/50" />
+            ))}
+          </div>
+        ) : demands.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
             <Icon name="handshake" size={28} className="text-[var(--green-400)]" />
             <p className="text-sm text-[var(--ink-soft)]">{td("noDemands")}</p>

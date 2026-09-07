@@ -18,6 +18,7 @@ from app.models.deal import Deal
 from app.models.demand import Demand
 from app.models.lot import Lot
 from app.models.match import Match
+from app.models.notification import Notification
 from app.models.offer import Offer
 from app.models.user import User
 from app.services.matching import run_matching
@@ -198,6 +199,29 @@ def test_accept_offer_creates_deal(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_accept_offer_notifies_the_offer_maker(db, farmer_user, buyer_user):
+    """v1.19 — the farmer who made the offer should hear about it without
+    having to keep refreshing the match page."""
+    match = _seed_match(db, farmer_user, buyer_user)
+    client, _ = _make_clients(db, farmer_user, buyer_user)
+    try:
+        _as_farmer(farmer_user)
+        offer_id = client.post(f"/api/matches/{match.id}/offers", json=OFFER_BODY).json()["id"]
+
+        _as_buyer(buyer_user)
+        resp = client.post(f"/api/offers/{offer_id}/accept")
+        assert resp.status_code == 200, resp.text
+
+        notif = db.execute(
+            select(Notification).where(Notification.user_id == farmer_user.id)
+        ).scalar_one_or_none()
+        assert notif is not None
+        assert notif.kind == "deal"
+        assert "accepted" in notif.title.lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_accept_offer_takes_lot_and_demand_off_the_market(db, farmer_user, buyer_user):
     """Accepting an offer must flip the lot + demand to 'matched' (so the matcher
     and discovery board stop offering an already-committed lot) and reject any
@@ -365,6 +389,12 @@ def test_decline_offer(db, farmer_user, buyer_user):
         assert o.status == "declined"
         m = db.execute(select(Match).where(Match.id == match.id)).scalar_one()
         assert m.status == "proposed"
+
+        notif = db.execute(
+            select(Notification).where(Notification.user_id == farmer_user.id)
+        ).scalar_one_or_none()
+        assert notif is not None
+        assert "declined" in notif.title.lower()
     finally:
         app.dependency_overrides.clear()
 

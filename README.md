@@ -24,7 +24,7 @@ Built **Maharashtra-first** (the SIH problem statement is Govt. of Maharashtra /
 MSInS) but **location-aware across India** — detect or pick a location and prices
 re-scope to that state; MSP and the storage/FPO directory are national.
 
-**Status — Phases 1–3 complete, plus v1.1 through v1.6:**
+**Status — Phases 1–3 complete, plus v1.1 through v1.19 (last updated 2026-09-07):**
 
 | Phase / Release | Scope | State |
 |---|---|---|
@@ -39,14 +39,265 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.5 · Intelligence orchestration | diesel-indexed freight, **Decision Brief** (`/api/brief`), grounded knowledge retrieval (RAG) for Ask AgriLink | ✅ |
 | v1.6 · Market linkage | price-realisation tracker, price-referenced counter-offers, **forward contracts** (pre-harvest) | ✅ |
 | v1.7 · Dispute resolution | structured dispute close with `{outcome, resolution, evidence_url?}`, `resolved_by`/`resolved_at`, and a `withdrawn` status alongside `open`/`resolved` | ✅ |
+| v1.8 · Forward settlement | overdue forward-commitment reminders, visibility only | ✅ |
+| v1.9 · OCR polish, lot photos & Judges page | mandi-slip OCR hardening, `lots.photo_url`, the `/judges` evaluation hub, forgot-password OTP | ✅ |
+| v1.10 · Semantic retrieval | optional embeddings-based re-ranking bonus for Ask AgriLink (degrades to keyword+fuzzy) | ✅ |
+| v1.11 · Forward breach penalty | admin dispute-resolution can mark a forward commitment `breached` with a computed, non-collected penalty | ✅ |
+| v1.12 · Satellite crop health | optional Google Earth Engine NDVI reading, folded into the Decision Brief | ✅ |
+| v1.13 · Public realisation | anonymised, platform-wide price-realisation aggregate on `/explore` | ✅ |
+| v1.14 · SMS digest | opt-in daily SMS summary of unread notifications | ✅ |
+| v1.15 · Crop-calendar expansion | real curated sowing/harvest timing for ~10 crops across 8 states beyond Maharashtra | ✅ |
+| v1.16 · Forecast second opinion | Holt's linear exponential-smoothing cross-check alongside the primary trend forecast | ✅ |
+| v1.17 · Warehouse-receipt financing | farmer financing requests against a stored lot, admin review queue | ✅ |
+| v1.18 · Buyer-perspective Decision Brief | `/api/brief?perspective=buyer` mirrors the same computation for a buyer's sourcing decision | ✅ |
+| v1.19 · Navigation & IA overhaul | role-gated Advisor link, admin home + overview/activity tabs, dedicated `/admin/financing` and `/notifications` pages, terminology sync | ✅ |
+| v1.20 · Full-lifecycle notifications | offer accept/decline, financing approve/reject, deal-pipeline advance, and dispute resolution now each create a real notification, not just price alerts and forward settlement | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
 
 ---
 
+## 1. What is AgriLink?
+
+AgriLink is a market-linkage and price-discovery platform that turns government
+mandi (wholesale market) data into decisions a smallholder farmer, buyer, or
+FPO can act on, and then carries them the rest of the way to a paid, tracked
+deal. It is not a price ticker and not a listing board in isolation — it is
+the two joined into one pipeline, with an explainable recommendation engine
+sitting in between: check today's price → get a reasoned sell-or-wait call →
+find a verified counterparty → negotiate with real reference numbers → close a
+deal whose logistics, payments, and disputes are all tracked on one append-only
+ledger. Built for the Smart India Hackathon 2026, Problem Statement PS-26132
+(Government of Maharashtra / MSInS).
+
+## 2. Problem
+
+Indian smallholder farmers routinely sell below a price they could have
+gotten, not because a better price doesn't exist, but because the information
+that would prove it isn't in a usable form:
+
+- **Government price data exists but isn't actionable.** AGMARKNET publishes
+  mandi prices, but a raw table of numbers doesn't tell a farmer whether today
+  is a good day to sell, which nearby market nets more after transport, or
+  whether a government MSP floor applies.
+- **No transport-adjusted comparison.** A "better" price two mandis away can
+  be worse once diesel cost is subtracted — nothing accessible does that
+  subtraction for a farmer before they travel.
+- **No direct, verified line to a buyer.** Farmers fall back on intermediaries
+  who capture a disproportionate share of the margin, because there is no
+  trusted way to find and transact with a buyer directly.
+- **No record of whether a deal was actually fair.** Even when a sale happens,
+  there is usually no way to check the realised price against the mandi
+  average or MSP after the fact — so a farmer can't tell if a buyer, a broker,
+  or the platform itself is serving them well over time.
+- **Working capital is locked in unsold produce.** A farmer holding out for a
+  better price has no way to raise cash against that stored produce in the
+  meantime, forcing a sale before they're ready.
+
+## 3. Solution
+
+AgriLink addresses each of those gaps with a real, working feature — not a
+future promise:
+
+| Gap | AgriLink's answer |
+|---|---|
+| Raw prices aren't actionable | The **sell / wait / hold signal** (rule-based, every factor and weight shown) and the **Decision Brief** that fuses it with forecast, weather, MSP, and crop-calendar timing into one ranked action list |
+| No transport-adjusted comparison | **Diesel-indexed best-market ranking** — net price after a real, inspectable freight calculation, not just the highest sticker price |
+| No verified direct buyer link | Phone-accounts, an admin **verification** workflow, scored **lot×demand matching**, a **discovery board**, and an **offer/counter-offer** thread with live price references |
+| No record of a fair deal | The **price-realisation tracker** — every closed deal's ₹/qtl compared against the AGMARKNET mandi average and MSP, farmer-facing and as a public, anonymised platform-wide aggregate |
+| Working capital locked in produce | **Warehouse-receipt financing** — a farmer requests a cash advance against an unsold lot; an admin reviews it (see [Known limitations](#known-limitations) for what this does *not* do yet) |
+| Fragmented, untracked transactions | One **deal pipeline** (matched → paid → closed) regardless of whether the deal came from a 1:1 offer, an FPO pool, or a pre-harvest forward contract, with logistics, instalment payments, and an **append-only audit ledger** shared across all three |
+
+## 4. User Roles
+
+| Role | Primary goal | What they can actually do |
+|---|---|---|
+| **Farmer** | Sell produce for a fair, provable price | Check prices and the sell/wait call for their crop; list **lots** (with OCR-assisted slip scanning and an offline queue); browse buyer demand and express interest; negotiate offers with live price references; pool produce with other farmers via **FPO pools**; commit to a buyer's **forward contract** pre-harvest; request **financing** against a stored lot; manage delivery logistics and instalment payments on a deal; see their own **price-realisation scorecard**; raise a dispute |
+| **Buyer / Trader** | Source verified, quality-matched supply reliably | Everything symmetric to a farmer on the demand side: check prices (with a buyer-perspective **Decision Brief** — buy-now/wait-to-buy, cheapest market, nearby sellers); post **demands**; browse open lots; negotiate; post a pre-harvest **forward bid**; manage logistics/payments on a deal; raise a dispute |
+| **Admin** | Keep the marketplace trustworthy and healthy | Review and approve/reject user **verification** requests; moderate open lots/demands; resolve **disputes** (with an optional forward-contract breach penalty); review the **financing** queue; monitor the platform via a KPI dashboard, GMV/funnel/deal-success analytics, and an exportable append-only activity ledger. Admins have no lot/demand of their own — the Home page reflects that with a KPI-and-quick-links view instead of the farmer/buyer price dashboard |
+
+Every role signs in through the same `/login`; the app then branches
+navigation, the Home page, and every page's own access guard by
+`user.role` — see [Role-Based Architecture](#8-role-based-architecture).
+
+## 5. Current Feature Architecture
+
+Grouped by what actually ships today (see [What it does](#what-it-does) for
+the full per-route breakdown, and [Known limitations](#known-limitations) for
+what's explicitly *not* built):
+
+- **Market intelligence** — live mandi prices, 7/30/90-day trends with a
+  statistical forecast (+ a second-opinion cross-check), the sell/wait/hold
+  signal, MSP gap, weather (7-day forecast + 30-day rainfall anomaly), crop
+  calendar, mandi holidays, diesel-indexed best-market ranking, optional
+  satellite (NDVI) crop-health, and the **Decision Brief** that fuses all of
+  it — seller and buyer perspectives — into one ranked action list.
+- **Supply & demand** — farmer lots and buyer demands, with OCR-assisted lot
+  creation and an offline-safe submission queue.
+- **Discovery & matching** — a rule-based, fully transparent scoring engine
+  (quantity fit + price overlap + distance) that runs automatically on every
+  new lot/demand, plus a manual discovery board with "Express interest".
+  FPO-style **pools** aggregate several farmers' produce into one scored
+  virtual lot.
+- **Negotiation** — an offer/counter-offer thread with a **negotiation
+  context** endpoint that surfaces the current spread, a suggested midpoint,
+  and mandi/MSP/asking-band references, so neither side has to counter blind.
+- **Deal lifecycle** — one pipeline (`matched → offer_accepted →
+  logistics_arranged → delivered → paid → closed`) regardless of origin (1:1
+  offer, FPO pool, or forward contract), with a logistics plan, instalment
+  payments, an append-only audit timeline, and a printable receipt.
+- **Forward contracts** — pre-harvest buyer bids and farmer commitments, with
+  a crop-calendar sanity check and a computed (non-collected) breach penalty
+  on dispute resolution.
+- **Financing** — warehouse-receipt-backed cash-advance requests against a
+  stored lot, capped at 75% loan-to-value, admin-reviewed.
+- **Trust & accountability** — admin-manual verification, a structured
+  dispute-resolution workflow, and the price-realisation tracker (farmer-facing
+  and as a public anonymised aggregate).
+- **Assistance** — an optional LLM readability layer (plain-language advisor
+  summary, "Ask AgriLink" grounded Q&A, OCR) that only ever rephrases numbers
+  the rule-based engine already computed — never a source of truth.
+- **Notifications** — an in-app feed covering a price-alert crossing, an
+  overdue forward-contract settlement, an offer accept/decline, a financing
+  approve/reject, a deal-pipeline advance, and a dispute resolution.
+- **Admin operations** — a tabbed dashboard (overview / analytics / activity),
+  user verification and moderation queues, dispute resolution, and financing
+  review, each promoted to its own dedicated page (v1.19).
+
+## 6. Platform Workflow
+
+The end-to-end lifecycle, as actually implemented (not every deal takes every
+branch — a forward contract or an FPO pool skips straight to "Matched"):
+
+```mermaid
+flowchart LR
+    A["Market Intelligence\nprices · signal · forecast\nDecision Brief"] --> B["Supply / Demand\nfarmer lists a Lot\nbuyer posts a Demand"]
+    B --> C["Discovery\nbrowse + Express Interest\nor FPO pool aggregation"]
+    C --> D["Matching\nrule-based score_pair\n≥30 creates a Match"]
+    D --> E["Negotiation\noffer / counter-offer\nwith live price references"]
+    E --> F["Deal\naccepted offer, forward\ncommitment, or pool demand"]
+    F --> G["Financing\noptional — farmer pledges\nan unsold lot for cash"]
+    F --> H["Logistics\ntransporter, route,\ndiesel-indexed cost"]
+    H --> I["Payments\ninstalments recorded,\npipeline auto-advances"]
+    I --> J["History & Tracking\nreceipt · audit ledger ·\nprice-realisation scorecard"]
+```
+
+A dispute can be raised at any point after a deal exists, independent of
+which pipeline stage it's at, and its resolution is itself written to the same
+append-only ledger every other step uses.
+
+## 7. Technical Architecture
+
+Frontend: Next.js 16 (App Router) client-rendered SPA, 31 routes. Backend:
+FastAPI, 19 routers, 111 endpoints, 32 single-responsibility services.
+Database: PostgreSQL 16, 20 tables, 17 linear Alembic migrations. 11 free
+external data sources, every one with an offline-safe fallback. Full diagrams,
+the complete API reference, and the database ER diagram are in
+[Architecture](#architecture), [API reference](#api-reference), and
+[Database schema](#database-schema) below — this section exists so the
+narrative above doesn't have to repeat them.
+
+## 8. Role-Based Architecture
+
+The same codebase renders a genuinely different experience per role, gated in
+one place (`user.role` from `AuthProvider`) and enforced again server-side on
+every request:
+
+- **Navigation** — a farmer sees My Lots, a buyer sees My Demands; both see
+  Advisor, Marketplace, Pools/Forward, History, Alerts; only a farmer sees
+  Financing; only an admin sees the Administration section (Dashboard, Users,
+  Listings, Disputes, Financing) and none of the Trade section, because an
+  admin has no lot or demand of their own to act on.
+- **Home page** — a logged-out visitor gets the marketing Landing page; a
+  farmer/buyer gets the price dashboard + Decision Brief hero; an admin gets
+  `AdminHome` — KPI tiles (open disputes, pending financing, open lots, total
+  deals) and quick links, because a price snapshot has nothing for an admin to
+  do with it.
+- **Data scope** — every list/detail endpoint filters by the caller's own
+  role and ownership (a farmer only ever sees their own lots and the deals
+  their lots are part of; a buyer only their own demands; an admin sees
+  everything but creates nothing transactional).
+- **Server-side enforcement** — every role distinction shown in the UI is
+  re-checked by a `require_role(...)` dependency or an explicit ownership
+  check in the API layer, not just hidden navigation — see the **Auth**
+  column in [API reference](#api-reference).
+
+## 9. Unique Differentiators
+
+- **One ranked Decision Brief, not eight separate widgets.** The Decision
+  Brief is the single biggest thing that separates AgriLink from a
+  price-lookup app — it fuses the sell/wait signal, forecast, diesel-costed
+  best market, MSP gap, weather, crop calendar, mandi holidays, and nearby
+  verified counterparties into one prioritised action list, for both a
+  seller's and (v1.18) a buyer's decision.
+- **Honestly explainable, not a black box.** The signal and forecast are
+  disclosed rule-based/statistical methods with every factor and weight shown
+  — not framed as AI, because they aren't; the two genuinely AI-powered
+  features (OCR, the LLM readability layer) are also named as such.
+- **A real diesel-indexed transport cost**, not a flat per-km guess — so
+  "best market" reflects what a farmer would actually net, not just the
+  highest sticker price.
+- **Every deal, whatever its origin, lands in one pipeline.** A 1:1 offer, an
+  FPO pool acceptance, and an accepted forward contract all materialise into
+  the exact same `Deal` row, so logistics, payments, disputes, and the audit
+  ledger work identically no matter how the deal was struck.
+- **Price-realisation tracking closes the loop.** Nearly every market-linkage
+  concept ends at "deal struck" — AgriLink measures afterward whether that
+  deal actually beat the open mandi and MSP, per farmer and as a public,
+  anonymised, platform-wide aggregate.
+- **Forward contracts with a real crop-calendar check and a computed breach
+  penalty** — pre-harvest commitments aren't just a form; they're checked
+  against real regional sowing/harvest timing and have a resolvable
+  consequence if broken.
+- **Offline-safe by construction**, not as an afterthought — every external
+  call (prices, weather, routing, geocoding, holidays, LLM) degrades to a
+  neutral result, and lot creation queues in `localStorage` and syncs when
+  connectivity returns.
+- **Trilingual at 100% parity**, enforced by an automated test, not just
+  translated once and left to drift.
+
+## 10. Future Scope
+
+**Implemented today** — see [Current Feature Architecture](#5-current-feature-architecture)
+above and the Status table for the complete, version-by-version list; nothing
+in this README describes a feature that isn't in the running code.
+
+**Planned / not yet built:**
+
+- **Cordova Android wrap** (Phase 4) — not started, but the frontend is
+  deliberately architected for it (client components only, no server actions
+  or server-only data fetching on 30 of 31 routes).
+- **Real financing disbursement** — the `/financing` flow tracks a request and
+  an admin decision only; actually advancing funds needs a licensed bank/NBFC
+  or warehouse partner integration, which doesn't exist.
+- **Automated e-KYC** — verification is admin-manual today; a PM-Kisan API or
+  Aadhaar UIDAI integration would remove that manual step.
+- **A live daily-arrivals data source** (tracked as PRICE-07) — no
+  data.gov.in resource currently exposes one, so the signal's volume factor
+  only ever contributes on offline fixture data.
+- **Production-scale load testing and a security-response-header /
+  dynamic-scanner (OWASP ZAP) pass** — a local benchmark and two static/
+  dependency scanners (bandit, pip-audit) have been run; neither is a
+  substitute for a production-scale test.
+
+---
+
 ## Contents
 
+**Product story**
+- [1. What is AgriLink?](#1-what-is-agrilink)
+- [2. Problem](#2-problem)
+- [3. Solution](#3-solution)
+- [4. User Roles](#4-user-roles)
+- [5. Current Feature Architecture](#5-current-feature-architecture)
+- [6. Platform Workflow](#6-platform-workflow)
+- [7. Technical Architecture](#7-technical-architecture)
+- [8. Role-Based Architecture](#8-role-based-architecture)
+- [9. Unique Differentiators](#9-unique-differentiators)
+- [10. Future Scope](#10-future-scope)
+
+**Reference**
 - [What it does](#what-it-does)
 - [Architecture](#architecture)
 - [Tech stack](#tech-stack)
@@ -94,7 +345,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 |---|---|
 | `/` | Hero + crop/market picker, latest modal price, the sell/wait call as a gauge, and a statewide price snapshot. |
 | `/prices` | 7/30/90-day trend as a gradient area chart with a **dashed 30-day forecast line and prediction band**; min / modal / max for the latest day; a horizontal bar comparison of the selected market against the nearest markets; and the transport-adjusted "best market" panel. |
-| `/advisor` | A **Decision Brief** at the top — one ranked action plan (`now` / `soon` / `watch`) fusing the sell/wait signal, forecast, diesel-costed best market, MSP gap, weather, crop calendar, mandi holidays and nearby verified buyers — followed by the full sell / wait / hold reasoning: price momentum vs 7- and 30-day averages, weather pressure, MSP gap, crop-calendar phase (with glut-risk warning), and the next mandi holiday. An optional **"In plain words"** panel (LLM) restates the ruling in 2-3 farmer-friendly sentences in the chosen language. |
+| `/advisor` | A **Decision Brief** at the top — one ranked action plan (`now` / `soon` / `watch`) fusing the sell/wait signal, forecast, diesel-costed best market, MSP gap, weather, crop calendar, mandi holidays and nearby verified buyers — followed by the full sell / wait / hold reasoning: price momentum vs 7- and 30-day averages, weather pressure, MSP gap, crop-calendar phase (with glut-risk warning), and the next mandi holiday. An optional **"In plain words"** panel (LLM) restates the ruling in 2-3 farmer-friendly sentences in the chosen language. **v1.18** — a signed-in buyer sees the same computation mirrored for a sourcing decision (`buy_now`/`wait_to_buy`/`hold`, cheapest-market ranking, nearby sellers instead of buyers). Sidebar navigation surfaces this link for farmer/buyer accounts only; admins use the Admin Dashboard instead. |
 | **Ask AgriLink** | A floating assistant (LLM, optional) that answers from the selected crop/market's live data **and** from a curated, retrieval-backed knowledge base — MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, PMFBY/PM-KISAN, how the signal and freight are computed. Shows its source chips; says "I don't have that" when nothing matches. Without an LLM key it still returns the grounded reference text. |
 | `/directory` | Cold storage / warehouses and FPOs near a district or state, with distance and capacity. |
 | `/explore` | Statewide price transparency — top gainers/fallers (7-day), a 30-day average-price trend, all-crops table, and activity counters (markets reporting, crops tracked, open lots/demands, deals, disputes). Re-scopes to the chosen state. |
@@ -112,7 +363,7 @@ component with a fixed, translucent parallax backdrop.
 | Route | What it shows |
 |---|---|
 | `/` | Landing page — hero, live activity stats, a feature preview grid, a 3-step "how it works" summary, and cross-links into the pages below. |
-| `/features` | Bento-grid deep dive into every capability (live prices, AI sell/wait signal, best-market routing, verified buyer linkage, deal tracking), then alternating sections on market intelligence, the decision engine, logistics, and pools/forward contracts. |
+| `/features` | Bento-grid deep dive into every capability (live prices, explainable sell/wait signal, best-market routing, verified buyer linkage, deal tracking), then alternating sections on market intelligence, the decision engine, logistics, and pools/forward contracts. |
 | `/how-it-works` | Role-tabbed walkthrough (Farmer / Buyer / FPO) — a step timeline per role, plus a trust-signals panel (verification, open data sources, the append-only ledger, offline-safety). |
 | `/market-insights` | Showcases the data-intelligence layer — live activity counters, six analytics capabilities, the open-data-source list, and a preview card linking to `/explore`. |
 | `/about` | Mission/vision, live impact numbers, core values, the SIH problem-statement context, and a technology-highlights grid. |
@@ -136,9 +387,15 @@ aren't a client component top-to-bottom; see [Architecture](#architecture).
 | `/pools/[id]` | farmer | Pool detail: aggregate stats (fill %, effective price), member list, and — for the organizer — the ranked demand candidates to negotiate with. |
 | `/financing` | farmer | **Warehouse-receipt financing (v1.17)** — pledge an open, unsold lot as collateral and request a cash advance (capped at 75% of the lot's estimated value); track pending/approved/rejected requests and withdraw a pending one. No real money moves — an admin approves/rejects, same as account verification. |
 | `/profile` | any | **User profile & verification** — set trading location (GPS, header chip, or manual entry) so distance-aware matching and radius filters work accurately. Request admin verification (unverified → pending → verified), optionally citing a PM-Kisan ID / Aadhaar reference. |
-| `/history` | farmer/buyer | Your lots, demands, and deals. Farmers also get a **price-realisation scorecard** — realised ₹/qtl vs the AGMARKNET mandi average and MSP for every completed deal, with a volume-weighted uplift headline and a per-deal bar chart. |
+| `/history` | farmer/buyer | Your lots, demands, and deals ("Deals & History" in navigation). Farmers also get a **price-realisation scorecard** — realised ₹/qtl vs the AGMARKNET mandi average and MSP for every completed deal, with a volume-weighted uplift headline and a per-deal bar chart. |
 | `/deals/[id]` | farmer/buyer/admin | Advance the deal through its pipeline; view and update the **logistics plan** (mode, transporter from the directory, vehicle, pickup/drop points, diesel-indexed cost estimate); record **instalment payments**; see the append-only **transaction timeline**; open a printable **receipt**; raise or view disputes. |
-| `/admin` | admin | Dashboard: 30-day price trend, open-dispute queue, per-district (per-crop) price gaps, and price anomalies (>20% deviation from 7-day avg). **Analytics tab**: GMV, marketplace funnel, deal-pipeline breakdown, deal-success rate, payment-status split, avg hours to deal, price-realisation vs MSP per crop, supply vs demand, user activity. **Activity ledger**: the append-only `transaction_events` feed (viewable + CSV export). **User management**: list, search, filter by role/verification status, approve/reject verification requests, activate/deactivate accounts. **Financing queue (v1.17)**: review and approve/reject pending warehouse-receipt financing requests. |
+| `/notifications` | any | **v1.19** — full notification history (the header bell only ever showed a handful): All/Unread tabs, mark-all-read, click-to-open-and-mark-read. |
+| `/` (admin) | admin | **v1.19** — admins land on a dedicated `AdminHome` greeting + KPI tiles (open disputes, pending financing, open lots, total deals) and quick links, instead of the farmer/buyer one-crop price snapshot that has nothing for them to act on. |
+| `/admin` | admin | **Overview tab**: 30-day price trend, per-district (per-crop) price gaps, price anomalies (>20% deviation from 7-day avg), and summary cards linking out to the disputes and financing queues. **Analytics tab**: GMV, marketplace funnel, deal-pipeline breakdown, deal-success rate, payment-status split, avg hours to deal, price-realisation vs MSP per crop, supply vs demand, user activity. **Activity tab**: the append-only `transaction_events` feed (viewable + CSV export). Navigation label reads "Dashboard". |
+| `/admin/users` | admin | List, search, filter by role/verification status, approve/reject verification requests, activate/deactivate accounts. |
+| `/admin/listings` | admin | Moderate open lots/demands — force-close a listing. |
+| `/admin/disputes` | admin | Dispute resolution queue — set `{outcome, resolution, evidence_url?}`, optionally apply the forward-contract breach penalty. |
+| `/admin/financing` | admin | **v1.19**, promoted from an embedded panel to its own page — full review history (not just the pending queue) for warehouse-receipt financing requests, approve/reject with a note. |
 
 ---
 
@@ -154,19 +411,19 @@ flowchart LR
 
     subgraph Client["Frontend — Next.js 16 App Router (client components + 4 thin metadata wrappers)"]
       direction TB
-      UI["20 routes: home · prices · advisor · directory · explore ·\nalerts · login · farmer · buyer · matches · browse · pools ·\nforward · profile · history · deals · admin\n+ 4 marketing pages (features, how-it-works, market-insights, about)"]:::client
+      UI["31 routes: home · prices · advisor · directory · explore ·\nalerts · notifications · login · farmer · buyer · matches ·\nbrowse · pools · forward · financing · profile · history · deals ·\nadmin (+ users, listings, disputes, financing)\n+ 4 marketing pages (features, how-it-works, market-insights, about)"]:::client
       Providers["LocaleProvider (en·hi·mr) · AuthProvider · LocationProvider"]:::client
     end
 
     subgraph API["Backend — FastAPI"]
       direction TB
-      Routers["18 routers: prices · intel · public · location · auth ·\nlots · demands · matching · offers · deals · disputes ·\nhistory · alerts · admin · assistant · ocr · pools · forward"]:::backend
+      Routers["19 routers: prices · intel · public · location · auth ·\nlots · demands · matching · offers · deals · disputes ·\nhistory · alerts · admin · assistant · ocr · pools · forward · financing"]:::backend
       Brief["★ Decision Brief\nfuses every signal into one ranked action\n(see Decision Brief diagram below)"]:::brief
-      Services["30 services, grouped by role —\ndata: ingestion · snapshot · fixtures\ndecision: signal · forecast · best_market · freight · realization\nmarketplace: matching · discovery · pools · grading\nlocation: geo · geocode · locations · routing\nknowledge: reference · holidays · knowledge · embeddings\ntrust: audit · alerts · llm · sms · forward_settlement"]:::backend
-      Sched["APScheduler\n6-hourly price re-ingestion + alert eval"]:::backend
+      Services["32 services, grouped by role —\ndata: ingestion · snapshot · fixtures\ndecision: signal · forecast · best_market · freight · realization\nmarketplace: matching · discovery · pools · grading\nlocation: geo · geocode · locations · routing\nknowledge: reference · holidays · knowledge · embeddings\ntrust: audit · alerts · llm · sms · digest · satellite · forward_settlement"]:::backend
+      Sched["APScheduler\n6-hourly price re-ingestion + alert eval + daily SMS digest"]:::backend
     end
 
-    DB[("PostgreSQL 16\n19 tables · Alembic-managed")]:::data
+    DB[("PostgreSQL 16\n20 tables · Alembic-managed")]:::data
 
     subgraph Ext["Free external sources — every call degrades to a neutral result offline"]
       direction TB
@@ -237,11 +494,11 @@ agrilink/
 │   │   │   ├── config.py       pydantic-settings (reads backend/.env)
 │   │   │   ├── database.py     engine, SessionLocal, Base, get_db
 │   │   │   └── security.py     JWT create/decode, get_current_user / CurrentUser
-│   │   ├── models/             19 SQLAlchemy models (see Database schema)
+│   │   ├── models/             18 files defining 20 SQLAlchemy tables (see Database schema)
 │   │   ├── schemas/            Pydantic request/response models
 │   │   ├── api/                one router per domain (prices, intel, public, location, auth,
 │   │   │                       lots, demands, matching, offers, deals, disputes, history,
-│   │   │                       alerts, admin, assistant, ocr, pools, forward)
+│   │   │                       alerts, admin, assistant, ocr, pools, forward, financing)
 │   │   └── services/
 │   │       ├── ingestion.py    live → snapshot → fixture resolution + upsert
 │   │       ├── snapshot.py / fixtures.py / data/    offline price sources
@@ -269,22 +526,26 @@ agrilink/
 │   │       ├── llm.py          OpenRouter client: chat, vision, translate (all degrade gracefully)
 │   │       ├── embeddings.py   optional semantic re-ranking for Ask AgriLink retrieval
 │   │       ├── sms.py          OTP delivery for forgot-password (Fast2SMS-compatible, optional)
+│   │       ├── digest.py       opt-in daily SMS summary of unread notifications
+│   │       ├── satellite.py    optional Google Earth Engine NDVI crop-health reading
 │   │       ├── forward_settlement.py  overdue-commitment reminders (visibility only)
 │   │       └── district_coords.py / market_towns.py   curated all-India lat/lon lookups
-│   ├── alembic/versions/       15 revisions, 0001_initial → c8a4f2b7d9e1_v1_11_forward_breach_penalty
+│   ├── alembic/versions/       17 revisions, 0001_initial → e7f2a9c3b6d5_v1_17_financing_requests
 │   │                           (see Database schema → Migrations for the full chain)
-│   ├── tests/                  pytest suite (SQLite in-memory) — 38 test files, 397 tests
+│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 469 tests
 │   └── .env.example
 ├── frontend/
 │   └── src/
 │       ├── app/                App Router routes + layout.tsx + globals.css
-│       │   Routes: / · /features · /how-it-works · /market-insights · /about
-│       │           /prices · /advisor · /directory · /explore · /alerts
-│       │           /login · /farmer · /buyer · /matches/[id]
-│       │           /browse · /pools · /pools/[id] · /forward · /profile
-│       │           /history · /deals/[id] · /admin
+│       │   Routes (31): / · /features · /how-it-works · /market-insights · /about · /judges
+│       │           /prices · /advisor · /directory · /explore · /alerts · /notifications
+│       │           /login · /farmer · /buyer · /matches · /matches/[id]
+│       │           /browse · /pools · /pools/[id] · /forward · /financing · /profile
+│       │           /history · /deals · /deals/[id]
+│       │           /admin · /admin/users · /admin/listings · /admin/disputes · /admin/financing
 │       │           (the 4 marketing routes pair a server page.tsx with a
-│       │            client *PageClient.tsx — everything else is one file)
+│       │            client *PageClient.tsx — everything else is one file;
+│       │            /deals is a legacy redirect shim to /history)
 │       ├── components/         Landing, PublicHeader, BottomNav, Logo, SiteFooter,
 │       │                       PriceDetail, AdvisorDetail, DecisionBrief, SellWaitSignalCard,
 │       │                       SignalGaugeChart, PriceTrendChart, MarketComparisonChart,
@@ -345,7 +606,7 @@ follow [DEPLOYMENT.md](DEPLOYMENT.md) instead.
 
 **Rate limiting** — `app/core/ratelimit.py` is an in-process sliding-window limiter
 (deliberately not Redis-backed, since the deployment runs a single Uvicorn worker). It
-guards **19 call sites across 12 route files** — registration, login, lot/demand
+guards **27 call sites across 14 route files** — registration, login, lot/demand
 creation, forward bids/commitments, pool actions, location resolve, OCR, and the manual
 ingest trigger — not just the location-resolve case called out below.
 
@@ -662,7 +923,7 @@ erDiagram
 | `financing_requests` | `farmer_id→users`, `lot_id→lots`, `requested_amount_inr, warehouse_name?, receipt_ref?, note?`, `status`, `admin_note?, reviewed_by→users?, reviewed_at?`, `created_at` (v1.17) | status: `pending` \| `approved` \| `rejected` \| `withdrawn` |
 | `geo_cache` | `query` (unique), `latitude, longitude, display_name, admin1/2/3`, `created_at` | reverse-geocode key = `@rev:{lat},{lon}` |
 | `price_alerts` | `user_id→users`, `crop, market, direction, threshold, active, last_triggered_at?` | direction: `above` \| `below` |
-| `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system` |
+| `notifications` | `user_id→users`, `kind, title, body, link?, read`, `created_at` | kind: `price_alert` \| `deal` \| `dispute` \| `digest` \| `system`. **v1.19** — `price_alert` (threshold crossing) and `deal` (a forward-contract settlement running late) fire from the 6-hourly ingestion cycle; `deal` also now fires on an offer accept/decline, a financing approve/reject, and a deal-pipeline advance; `dispute` fires when an admin resolves a dispute. `digest`/`system` are still reserved kinds with no producing code path (see [Known limitations](#known-limitations)) |
 
 **Migrations** (linear chain, in order):
 `0001_initial_schema` · `94f518efb70d_auth_columns` (`otp_code?`/`otp_expires_at?` + `is_active` + `created_at`) · `566ce44b97a1_v1_1_weather_geo_alerts` (`geo_cache`, `price_alerts`, `notifications`, `lots.lat/lon`, `price_cache.state`) · `7c1e9a4b2d10_v1_3_pools` (`pools`, `pool_members`) · `8d2f6b3a1c40_v1_3_user_password` (`users.password_hash`) · `9a3f1c05e7b2_v1_4_identity_location_verification` (`users.state/lat/lon/verification_*`, `demands.delivery_district/lat/lon`, `deals.payment_method/reference`) · `a1b7c9d3e5f0_v1_4_deal_logistics` (`deal_logistics` table) · `b2e4f7a8c1d0_v2_payment_audit_transporter` (`deal_payments`, `transaction_events`, `transporters`, `deal_logistics.pod_*`) · `c3f8a1d6b204_v1_4_pool_deal_link` (`pools.matched_deal_id`) · `d4a2e9c17b30_v1_4_demand_grade_min` (`demands.quality_grade_min`) · `e5b3c8a2f1d0_v1_6_forward_contracts` (`forward_bids`, `forward_commitments`) · `f6c9d2e4a1b8_v1_7_dispute_resolution` (`disputes.outcome/resolution/evidence_url/resolved_by/resolved_at`, `withdrawn`/`resolved` statuses) · `a7d1e9c4b6f2_v1_8_forward_settlement` (`forward_commitments.settlement_due/settlement_reminder_sent_at`) · `b3f8e1a9c5d2_v1_9_lot_photo_storage` (widens `lots.photo_url` to `Text` for base64 data-URL photos) · `c8a4f2b7d9e1_v1_11_forward_breach_penalty` (`forward_commitments.breach_status/penalty_inr/breached_at`) · `d3e6a8b1c4f7_v1_14_sms_digest` (`users.sms_digest_enabled/sms_digest_sent_at`) · `e7f2a9c3b6d5_v1_17_financing_requests` (`financing_requests` table) — **head**.
@@ -1273,10 +1534,11 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-**Backend** (38 test files, 397 tests): signal cases and MSP/weather factors;
+**Backend** (42 test files, 469 tests): signal cases and MSP/weather factors;
 price forecast (trend+seasonality, prediction band, short-history degradation);
 the **Decision Brief** (assembly, urgency ordering, reference-market inference,
-thin-history 404); **diesel-indexed freight** (breakdown sums, rate range,
+thin-history 404, and the v1.18 buyer-perspective mirror — headline action,
+best-market ranking direction, counterparties shown); **diesel-indexed freight** (breakdown sums, rate range,
 district-pair distance); the **knowledge base** (top-hit relevance per query,
 generated docs, key-less `reference` fallback); geo distance + `nearest_state`;
 ingestion normalise + live→snapshot→fixture fallback + state override; the
@@ -1287,13 +1549,16 @@ the **negotiation context** endpoint; deal payments + the append-only audit
 timeline; logistics plan upsert; the **price-realisation** tracker (uplift math,
 volume-weighting, below-MSP flag, pending-deal exclusion); **forward contracts**
 (bid + commitment lifecycle, band/quantity guards, calendar warning,
-materialise-to-deal, role gates); alerts; the admin dashboard and analytics;
-admin user management (verify / activate); pools (create, join, withdraw,
-aggregate, demand candidates); discovery board; OCR slip-read; the LLM assistant.
+materialise-to-deal, role gates); **warehouse-receipt financing** (loan-to-value
+cap, one-active-request-per-lot, withdraw, admin review); alerts; the admin
+dashboard and analytics; admin user management (verify / activate); pools
+(create, join, withdraw, aggregate, demand candidates); discovery board; OCR
+slip-read; the LLM assistant; notifications (unread count, mark-read, mark-all).
 
-**Frontend**: locale parity, `PriceDetail` (skeleton→data, error→Retry),
-`SellWaitSignalCard` (each recommendation + reasons), `LanguageSwitcher`, and a
-smoke test per authed page. Chart-rendering tests mock `recharts`.
+**Frontend** (12 test files, 44 tests): locale parity (en/hi/mr key-set
+equality), `PriceDetail` (skeleton→data, error→Retry), `SellWaitSignalCard`
+(each recommendation + reasons), `LanguageSwitcher`, and a smoke test per
+authed page. Chart-rendering tests mock `recharts`.
 
 Both suites run **offline**.
 
@@ -1301,6 +1566,12 @@ Both suites run **offline**.
 
 ## Known limitations
 
+- **`digest`/`system` notification kinds are still unused.** v1.19 wired real
+  notifications for a price-alert crossing, an overdue forward settlement, an
+  offer accept/decline, a financing approve/reject, a deal-pipeline advance,
+  and a dispute resolution — but the SMS digest job only *reads* existing
+  unread notifications to text a summary, it doesn't create a `kind="digest"`
+  row of its own, and nothing yet produces a `kind="system"` notification.
 - **No arrival volume (PRICE-07).** The OGD price resource has no daily
   arrivals/volume field and no other data.gov.in JSON resource exposes one. So
   `arrival_volume` is `null` on live and snapshot rows, and the signal's volume

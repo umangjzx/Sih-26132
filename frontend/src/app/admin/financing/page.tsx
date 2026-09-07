@@ -18,6 +18,7 @@ import {
   reviewFinancingRequest,
   type FinancingRequest,
 } from "@/lib/api";
+import { formatInrExact } from "@/lib/format";
 
 const STATUS_STYLE: Record<string, string> = {
   pending: "bg-[var(--color-wait)]/15 text-[var(--color-wait)]",
@@ -65,8 +66,8 @@ function FinancingHistoryRow({
           <span className="font-semibold">{r.farmer_name}</span>
           <span className="opacity-55"> · {r.crop}</span>
         </td>
-        <td className="px-3 py-2 align-top">₹{Math.round(r.requested_amount_inr).toLocaleString("en-IN")}</td>
-        <td className="px-3 py-2 align-top opacity-60">₹{Math.round(r.max_eligible_inr).toLocaleString("en-IN")}</td>
+        <td className="px-3 py-2 align-top">{formatInrExact(r.requested_amount_inr)}</td>
+        <td className="px-3 py-2 align-top opacity-60">{formatInrExact(r.max_eligible_inr)}</td>
         <td className="px-3 py-2 align-top opacity-60">{r.created_at.slice(0, 10)}</td>
         <td className="px-3 py-2 align-top">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[r.status] ?? STATUS_STYLE.withdrawn}`}>

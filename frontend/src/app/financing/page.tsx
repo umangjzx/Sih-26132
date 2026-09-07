@@ -22,6 +22,7 @@ import {
   type FinancingRequest,
   type LotResponse,
 } from "@/lib/api";
+import { formatInrExact } from "@/lib/format";
 
 const _LOAN_TO_VALUE = 0.75;
 
@@ -53,7 +54,7 @@ function RequestRow({ req, onWithdraw }: { req: FinancingRequest; onWithdraw: (i
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-heading text-base font-bold text-[var(--ink)]">
-            {req.crop} · ₹{Math.round(req.requested_amount_inr).toLocaleString("en-IN")}
+            {req.crop} · {formatInrExact(req.requested_amount_inr)}
           </div>
           <div className="mt-0.5 text-xs font-medium text-[var(--ink-soft)]">
             {req.warehouse_name || t("noWarehouse")}

@@ -9,11 +9,11 @@ const METRICS = [
   { metric: "Frontend page load time", value: "Not benchmarked", kind: "pending" as const },
   { metric: "Database query performance", value: "Not profiled with EXPLAIN ANALYZE, but one real bottleneck was found and fixed this run (see below)", kind: "verified" as const },
   { metric: "Concurrent users tested", value: "20 concurrent workers, 200 requests/endpoint, local benchmark — not a production-scale load test", kind: "verified" as const },
-  { metric: "Error rate", value: "0 failures across 398 automated test runs (not the same as a production error rate)", kind: "verified" as const },
+  { metric: "Error rate", value: "0 failures across 513 automated test runs (not the same as a production error rate)", kind: "verified" as const },
   { metric: "Uptime", value: "Not applicable — no long-running production deployment with an SLA yet", kind: "pending" as const },
-  { metric: "Backend test-suite runtime", value: "355 tests in 31.7s (in-memory SQLite, this run)", kind: "verified" as const },
-  { metric: "Frontend test-suite runtime", value: "43 tests in ~7s (this run)", kind: "verified" as const },
-  { metric: "Frontend production build", value: "Compiles cleanly, 25 routes prerendered/server-rendered correctly (this run)", kind: "verified" as const },
+  { metric: "Backend test-suite runtime", value: "469 tests in 34.1s (in-memory SQLite, run 2026-09-07)", kind: "verified" as const },
+  { metric: "Frontend test-suite runtime", value: "44 tests in ~7.5s (run 2026-09-07)", kind: "verified" as const },
+  { metric: "Frontend production build", value: "Compiles cleanly, 31 routes prerendered/server-rendered correctly (this run)", kind: "verified" as const },
 ];
 
 const FOUND_AND_FIXED = {

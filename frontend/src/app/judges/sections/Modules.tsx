@@ -208,7 +208,7 @@ const MODULES: Module[] = [
     features: "Geolocation / place search / all-India state picker; header language switcher",
     input: "Browser geolocation, place text, or a manual state pick",
     output: "Re-scoped prices/dashboards; instant locale switch",
-    processing: "Client-only locale (no routing middleware); 1,200 keys enforced at 100% parity across en/hi/mr by an automated test",
+    processing: "Client-only locale (no routing middleware); ~1,400 keys enforced at 100% parity across en/hi/mr by an automated test",
     tech: "LocationProvider, LocaleProvider, next-intl",
     db: "geo_cache",
     apis: "GET /api/location/resolve, /states, /districts",
@@ -264,25 +264,25 @@ const MODULES: Module[] = [
     features: "—",
     input: "—",
     output: "—",
-    processing: "Not started — but the frontend is deliberately built for it: 23 of 24 routes are pure client components with no server actions, no server-only data fetching",
+    processing: "Not started — but the frontend is deliberately built for it: 30 of 31 routes are pure client components with no server actions, no server-only data fetching",
     tech: "Apache Cordova (planned)",
     db: "—",
     apis: "—",
     validation: "—",
   },
   {
-    name: "Satellite crop-health (Google Earth Engine)",
-    status: "deferred",
-    purpose: "Would have added satellite-derived crop-health indicators",
-    users: "—",
-    features: "—",
-    input: "—",
-    output: "—",
-    processing: "GEE_* variables may exist in .env but are never read by the application",
-    tech: "Deferred",
-    db: "—",
-    apis: "—",
-    validation: "—",
+    name: "Satellite Crop-Health (NDVI)",
+    status: "production",
+    purpose: "An independent crop-vigour signal alongside price data — informational context, never a decision input",
+    users: "Farmers, folded into the Decision Brief; also queryable standalone",
+    features: "Vegetation-index reading (poor/fair/good/healthy band) for a ~3km radius around a lot's location",
+    input: "lat, lon",
+    output: "{ndvi, band, observed_on, available} — or available: false with no error if GEE isn't configured",
+    processing: "Google Earth Engine query against MODIS/061/MOD13Q1 (free 16-day, 250m, cloud-gap-filled composite), 90-day lookback for a usable pass",
+    tech: "satellite.py — optional: needs GEE_PROJECT_ID/GEE_SERVICE_ACCOUNT/GEE_CREDENTIALS_PATH, otherwise degrades to unavailable, same pattern as weather/LLM",
+    db: "None (queried live, not cached)",
+    apis: "GET /api/satellite/ndvi; folded into GET /api/brief as crop_health",
+    validation: "Never blocks the Decision Brief — any GEE failure (missing creds, quota, no cloud-free imagery) is caught and returns null",
   },
 ];
 
@@ -292,7 +292,7 @@ export function ModulesSection() {
       id="modules"
       eyebrow="Implementation evidence"
       title="Module-by-module explorer"
-      quickAnswer="17 modules, individually expandable. 17 are shipped and tested; the remaining 2 (Cordova wrap, satellite crop-health) are explicitly marked Planned/Deferred, not silently omitted."
+      quickAnswer="19 modules, individually expandable. 18 are shipped and tested; the one remaining gap (the Cordova Android wrap) is explicitly marked Planned, not silently omitted."
     >
       <div className="flex flex-col gap-2.5">
         {MODULES.map((m) => (

@@ -10,7 +10,7 @@ const STACK: { category: string; icon: string; items: Tech[] }[] = [
     category: "Frontend",
     icon: "chart",
     items: [
-      { name: "Next.js", version: "16.3.3 (App Router, Turbopack)", why: "One framework for routing, bundling and dev server; Turbopack keeps iteration fast on a large route tree (24 routes)", alt: "Vite + React Router — more moving parts to wire up ourselves" },
+      { name: "Next.js", version: "16.3.3 (App Router, Turbopack)", why: "One framework for routing, bundling and dev server; Turbopack keeps iteration fast on a large route tree (31 routes)", alt: "Vite + React Router — more moving parts to wire up ourselves" },
       { name: "React", version: "19.2.8", why: "Concurrent rendering + the ecosystem every other frontend choice here builds on", alt: "—" },
       { name: "TypeScript", version: "^5", why: "Caught real bugs during this build — e.g. the i18n key types make a missing translation a compile error, not a runtime one", alt: "—" },
       { name: "Tailwind CSS", version: "v4", why: "Design tokens (colors/shadows/radii) as CSS custom properties, enforced by convention — no raw hex anywhere in the codebase", alt: "CSS Modules — more boilerplate per component" },
@@ -25,20 +25,20 @@ const STACK: { category: string; icon: string; items: Tech[] }[] = [
     items: [
       { name: "FastAPI", version: "0.115.6", why: "Async-first, automatic OpenAPI docs at /docs, and Pydantic validation built into the request lifecycle", alt: "Flask/Django — more manual wiring for async + validation" },
       { name: "SQLAlchemy", version: "2.0.36 (typed Mapped[])", why: "Type-checked ORM models catch column-type mistakes before runtime; parameterised queries by construction (no raw SQL string interpolation found anywhere in the codebase)", alt: "raw SQL / a lighter query builder — loses the type safety" },
-      { name: "Alembic", version: "1.19.1", why: "Every schema change is a reviewable, revertible migration — 12 revisions, linear chain, no drift between environments", alt: "—" },
+      { name: "Alembic", version: "1.19.1", why: "Every schema change is a reviewable, revertible migration — 17 revisions, linear chain, no drift between environments", alt: "—" },
       { name: "Pydantic v2 / pydantic-settings", version: "2.10.4 / 2.7.0", why: "Request/response validation and typed settings from one library — e.g. phone-format regex and password length are enforced before a handler ever runs", alt: "—" },
       { name: "APScheduler", version: "3.11.0", why: "In-process scheduled jobs (6-hourly ingestion, alert evaluation) without standing up a separate worker/queue for a single-VM deployment", alt: "Celery + Redis — real overkill at this scale" },
       { name: "httpx", version: "0.28.1", why: "Async HTTP client for the 11 external integrations, with per-call timeouts so one slow provider can't hang a request", alt: "requests — sync-only" },
       { name: "python-jose[cryptography]", version: "3.5.0", why: "JWT encode/decode (HS256) for access + refresh tokens", alt: "PyJWT — comparable; jose was already pulled in for the crypto backend" },
       { name: "stdlib hashlib (PBKDF2-HMAC-SHA256)", version: "—", why: "600,000-iteration password hashing using only the Python standard library — no bcrypt/passlib dependency, so the build stays installable offline", alt: "bcrypt/argon2 — stronger per-hash cost tuning, but an extra native dependency for a hackathon-offline-safe build" },
-      { name: "pytest", version: "9.1.1", why: "355 backend tests run against an in-memory SQLite DB — no container needed to run the suite", alt: "—" },
+      { name: "pytest", version: "9.1.1", why: "469 backend tests run against an in-memory SQLite DB — no container needed to run the suite", alt: "—" },
     ],
   },
   {
     category: "Database",
     icon: "warehouse",
     items: [
-      { name: "PostgreSQL", version: "16 (Docker, host port 5433)", why: "Real relational integrity across 19 interlinked tables (users → lots/demands → matches → offers → deals → payments/disputes) — this schema leans hard on foreign keys and unique constraints", alt: "MongoDB — would fight the genuinely relational shape of a marketplace + audit ledger" },
+      { name: "PostgreSQL", version: "16 (Docker, host port 5433)", why: "Real relational integrity across 20 interlinked tables (users → lots/demands → matches → offers → deals → payments/disputes) — this schema leans hard on foreign keys and unique constraints", alt: "MongoDB — would fight the genuinely relational shape of a marketplace + audit ledger" },
     ],
   },
   {
@@ -69,6 +69,8 @@ const INTEGRATIONS = [
   { name: "Nominatim + BigDataCloud", purpose: "Reverse geocode (lat/lon → district)", freq: "Per request, cached in geo_cache", fallback: "60-city nearest-place table → nearest_state", auth: "None (keyless)", status: "operational" as const },
   { name: "Nager.Date", purpose: "Mandi holiday awareness", freq: "Cached per year", fallback: "Built-in 2026 holiday list", auth: "None (keyless)", status: "operational" as const },
   { name: "OpenRouter", purpose: "Advisor summary, Ask AgriLink, OCR, translation", freq: "Per request, 6h-cached advisor summary", fallback: "Features hidden / rule output shown", auth: "Optional API key", status: "limited" as const },
+  { name: "Google Earth Engine", purpose: "NDVI crop-health overlay (MODIS/061/MOD13Q1) on the Decision Brief", freq: "Per request", fallback: "crop_health omitted (available: false)", auth: "Optional service-account key", status: "limited" as const },
+  { name: "Fast2SMS-compatible gateway", purpose: "OTP password reset, optional price-alert/deal SMS digest", freq: "Per event", fallback: "Message logged server-side instead of sent", auth: "Optional API key", status: "limited" as const },
 ];
 
 export function TechStackSection() {

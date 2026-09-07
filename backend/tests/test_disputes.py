@@ -14,6 +14,7 @@ from app.core.security import get_current_user
 from app.main import app
 from app.models.dispute import Dispute
 from app.models.forward import ForwardBid, ForwardCommitment
+from app.models.notification import Notification
 
 from tests.test_deals import _as, _client, _make_user, _seed_deal
 
@@ -142,6 +143,14 @@ def test_close_dispute_admin(db, farmer_user, buyer_user):
             select(Dispute).where(Dispute.id == dispute_id)
         ).scalar_one()
         assert row.status == "resolved"
+
+        # v1.19 — both the farmer and the buyer should be told the outcome,
+        # not just whoever happens to reopen the deal page.
+        notifs = db.execute(
+            select(Notification).where(Notification.kind == "dispute")
+        ).scalars().all()
+        notified_ids = {n.user_id for n in notifs}
+        assert notified_ids == {farmer_user.id, buyer_user.id}
     finally:
         app.dependency_overrides.clear()
 

@@ -5,17 +5,17 @@ import { ExpandableCard, JudgeSection } from "./shared";
 
 const CHART = `flowchart LR
     subgraph Client["Frontend — Next.js 16"]
-      UI["24 routes: / · /features · /how-it-works\\n/market-insights · /about · /prices\\n/advisor · /directory · /explore · /alerts\\n/login · /farmer · /buyer · /matches\\n/browse · /pools · /forward · /profile\\n/history · /deals/[id] · /admin"]
+      UI["31 routes: / · /features · /how-it-works\\n/market-insights · /about · /prices\\n/advisor · /directory · /explore · /alerts\\n/login · /farmer · /buyer · /matches\\n/browse · /pools · /forward · /profile\\n/history · /deals/[id] · /notifications\\n/admin · /admin/financing · ..."]
       Providers["LocaleProvider · AuthProvider · LocationProvider"]
     end
 
-    subgraph API["Backend — FastAPI (97 endpoints / 18 routers)"]
-      Routers["prices · intel · public · location · auth\\nlots · demands · matching · offers · deals\\ndisputes · history · alerts · admin\\nassistant · ocr · pools · forward"]
-      Services["27 services: ingestion · signal · forecast\\nmatching · weather · routing · best_market\\nfreight · brief · geo · geocode · locations\\nreference · holidays · alerts · audit\\nknowledge · realization · pools · discovery\\ngrading · llm · transporters · ..."]
+    subgraph API["Backend — FastAPI (111 endpoints / 19 routers)"]
+      Routers["prices · intel · public · location · auth\\nlots · demands · matching · offers · deals\\ndisputes · history · alerts · admin\\nassistant · ocr · pools · forward · financing"]
+      Services["32 services: ingestion · signal · forecast\\nmatching · weather · routing · best_market\\nfreight · brief · geo · geocode · locations\\nreference · holidays · alerts · audit\\nknowledge · realization · pools · discovery\\ngrading · llm · transporters · satellite · sms · ..."]
       Sched["APScheduler — 6-hourly ingestion + alert eval"]
     end
 
-    DB[("PostgreSQL 16\\n19 tables · 12 migrations")]
+    DB[("PostgreSQL 16\\n20 tables · 17 migrations")]
 
     subgraph Ext["11 external sources — every one has an offline fallback"]
       AGMARKNET["data.gov.in AGMARKNET"]
@@ -26,6 +26,8 @@ const CHART = `flowchart LR
       GEO["Nominatim + BigDataCloud"]
       NAGER["Nager.Date holidays"]
       OR["OpenRouter LLM (optional key)"]
+      GEE["Google Earth Engine NDVI (optional key)"]
+      SMS["Fast2SMS-compatible gateway (optional key)"]
     end
 
     UI -->|"REST /api/*"| Routers
@@ -152,11 +154,11 @@ const LAYERS = [
     items: [
       {
         title: "PostgreSQL 16",
-        purpose: "System of record — 19 tables, managed only by Alembic (no create_all)",
+        purpose: "System of record — 20 tables, managed only by Alembic (no create_all)",
         tech: "SQLAlchemy 2.0 typed Mapped[] models, deterministic constraint naming",
         input: "Every write path in the app",
         output: "Durable relational storage",
-        deps: "12-migration linear chain, head f6c9d2e4a1b8",
+        deps: "17-migration linear chain, head e7f2a9c3b6d5",
       },
       {
         title: "geo_cache",

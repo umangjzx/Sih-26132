@@ -10,13 +10,15 @@ const GROUPS: { title: string; icon: string; cls: string; items: string[] }[] = 
     cls: "border-[var(--green-600)]/30 bg-[var(--green-50)]",
     items: [
       "Price discovery, trend charts, and the sell/wait/hold signal — rule-based, tested",
-      "Phone+password auth (PBKDF2, JWT access/refresh) — no OTP/SMS, no password-reset flow",
+      "Phone+password auth (PBKDF2, JWT access/refresh) with an OTP-based forgot-password flow (SMS when configured, logged server-side otherwise)",
       "Full trade lifecycle: lots, demands, matching, offers, deals, logistics, payments, disputes",
-      "FPO pools and forward contracts, including materialisation into the real deal pipeline",
-      "Price-realisation tracking against mandi average and MSP",
+      "FPO pools, forward contracts, and warehouse-receipt financing requests, including materialisation into the real deal pipeline",
+      "Price-realisation tracking against mandi average and MSP, farmer-facing and as a public anonymised aggregate",
+      "Optional satellite (NDVI) crop-health reading, folded into the Decision Brief",
       "Trilingual UI (en/hi/mr) with automated parity enforcement",
       "OCR mandi-slip assist and the Ask AgriLink grounded assistant",
       "Admin dashboard, analytics, and an append-only audit ledger",
+      "Notifications for a price-alert crossing, an overdue forward settlement, an offer accept/decline, a financing approve/reject, a deal-pipeline advance, and a dispute resolution",
     ],
   },
   {
@@ -45,9 +47,10 @@ const GROUPS: { title: string; icon: string; cls: string; items: string[] }[] = 
     cls: "border-[var(--line)] bg-[var(--paper)]",
     items: [
       "Cordova Android wrap — not built; the frontend's all-client-component architecture is deliberately ready for it",
-      "Satellite crop-health (Google Earth Engine) — deferred; credentials may exist in .env but are never read",
+      "Financing disbursement — the platform tracks a request and an admin decision only; it never holds or transfers money, so a real product still needs a licensed bank/NBFC or warehouse partner",
       "A full production-scale load test (k6/Locust against a deployed instance) — not run; what has run is a local concurrent benchmark that found and fixed one real bottleneck (see Performance)",
-      "Forward-contract escrow/penalty enforcement — no payment is held in escrow and no financial penalty is charged if a settled-overdue commitment is never honoured; only the reminder above exists",
+      "Forward-contract breach escrow — a dispute resolution can mark a commitment breached and compute a penalty figure (10% of contract value by default), but no money is ever actually held or collected — it's an auditable number, not real escrow",
+      "digest/system notification kinds — the SMS digest job reads existing unread notifications to text a summary, it doesn't create its own digest row, and nothing yet produces a system-kind notification",
     ],
   },
 ];

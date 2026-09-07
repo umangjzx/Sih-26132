@@ -7,7 +7,7 @@ import { JudgeSection } from "./shared";
 const REPO = "https://github.com/umangjzx/Sih-26132/blob/main";
 
 const DOCS = [
-  { icon: "fileText", name: "Technical documentation & API reference", desc: "Full architecture, all 97 endpoints, database schema, every feature explained — 1,100+ lines", href: `${REPO}/README.md` },
+  { icon: "fileText", name: "Technical documentation & API reference", desc: "Full architecture, all 111 endpoints, database schema, every feature explained — 1,650+ lines", href: `${REPO}/README.md` },
   { icon: "connection", name: "Frontend documentation", desc: "Routes, run/test commands, i18n model, frontend-specific config", href: `${REPO}/frontend/README.md` },
   { icon: "warehouse", name: "Backend documentation", desc: "Run, migrations & DB reset, tests, env vars, data sources, known data limitations", href: `${REPO}/backend/README.md` },
   { icon: "truck", name: "Deployment guide", desc: "Single-VM Docker Compose + Caddy, env checklist, demo-user seeder, backup/restore", href: `${REPO}/DEPLOYMENT.md` },

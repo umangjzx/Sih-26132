@@ -20,6 +20,7 @@ from app.models.deal import Deal
 from app.models.demand import Demand
 from app.models.lot import Lot
 from app.models.match import Match
+from app.models.notification import Notification
 from app.models.offer import Offer
 from app.models.price_cache import PriceCache
 from app.models.user import User
@@ -340,6 +341,13 @@ def accept_offer(
         detail={"from": "offer", "agreed_price": deal.agreed_price,
                 "agreed_quantity": deal.agreed_quantity},
     )
+    db.add(Notification(
+        user_id=offer.from_user_id,
+        kind="deal",
+        title=f"Your offer for {lot.crop} was accepted",
+        body=f"Deal #{deal.id} — {deal.agreed_quantity:.0f} kg at ₹{deal.agreed_price:.0f}/qtl.",
+        link=f"/deals/{deal.id}",
+    ))
     db.commit()
     db.refresh(deal)
 
@@ -413,5 +421,12 @@ def decline_offer(
         db, actor_id=current_user.id, entity_type="match", entity_id=offer.match_id,
         action="offer_declined", detail={"offer_id": offer.id},
     )
+    db.add(Notification(
+        user_id=offer.from_user_id,
+        kind="deal",
+        title=f"Your offer for {lot.crop} was declined",
+        body=f"₹{offer.price:.0f}/qtl for {offer.quantity:.0f} kg was declined — you can make a new offer.",
+        link=f"/matches/{offer.match_id}",
+    ))
     db.commit()
     return {"detail": "Offer declined"}

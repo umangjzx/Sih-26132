@@ -2,18 +2,24 @@
 
 FastAPI + SQLAlchemy 2.0 + Alembic + APScheduler + httpx.
 
-Route groups (all under `/api`):
+19 routers, 111 endpoints total, all under `/api` (full reference in the root
+README's [API reference](../README.md#api-reference)):
 
-| Group | Endpoints |
+| Group | Endpoints (representative) |
 |---|---|
-| Prices | `options`, `prices/trend`, `prices/nearby`, `prices/signal`, `POST ingest/run` |
-| Intelligence (v1.1) | `weather/forecast`, `msp`, `calendar`, `storage/nearby`, `fpo/nearby`, `markets/best`, `holidays/upcoming` |
-| Public | `public/overview` |
-| Location (v1.2) | `location/resolve`, `location/states` |
-| Auth | `auth/register`, `auth/login` (phone + PBKDF2 password), `auth/refresh`, `auth/me` |
-| Trade | `lots`, `demands`, `matches`, `offers`, `deals`, `disputes`, `history` |
-| Alerts | `alerts`, `notifications` |
-| Admin | `admin/dashboard` |
+| Prices | `options`, `prices/trend`, `prices/nearby`, `prices/signal`, `prices/forecast`, `POST ingest/run` |
+| Intelligence (v1.1) | `weather/forecast`, `msp`, `calendar`, `storage/nearby`, `fpo/nearby`, `markets/best`, `holidays/upcoming`, `brief` (Decision Brief, `perspective=seller\|buyer`), `satellite/ndvi`, `grades` |
+| Public | `public/overview`, `public/realization` |
+| Location (v1.2) | `location/resolve`, `location/states`, `location/districts` |
+| Auth | `auth/register`, `auth/login` (phone + PBKDF2 password), `auth/refresh`, `auth/forgot-password`, `auth/reset-password`, `auth/me` |
+| Assistant (v1.3) | `advisor/summary`, `assistant/ask`, `assistant/search` |
+| OCR (v1.3) | `ocr/lot-slip` |
+| Trade | `lots`, `demands`, `matches`, `offers`, `deals` (+ `logistics`, `payments`, `events`, `receipt`), `disputes`, `history` |
+| Pools (v1.3) | `pools`, `pools/{id}/join`, `pools/{id}/status`, `pools/{id}/accept-demand` |
+| Forward contracts (v1.6) | `forward/bids`, `forward/bids/{id}/commitments`, `forward/commitments/{id}/accept` |
+| Financing (v1.17) | `financing/requests`, `financing/requests/mine`, `financing/requests/{id}/withdraw` |
+| Alerts | `alerts`, `notifications`, `notifications/unread-count`, `notifications/read-all` |
+| Admin | `admin/dashboard`, `admin/analytics`, `admin/events(.csv)`, `admin/matching-health`, `admin/users`, `admin/users/{id}/verify`, `admin/users/{id}/active` |
 
 Plus `/health`. Windows paths below use `venv/Scripts/python.exe`; on macOS/Linux use `venv/bin/python`.
 
@@ -76,15 +82,17 @@ marked `pg` (the Postgres-only `on_conflict_do_update` upsert path) are opt-in:
 cd backend && venv/Scripts/python.exe -m pytest -q -m "not pg"   # skip the Postgres-only test
 ```
 
-`tests/` (37 files, 295 tests) covers the sell/wait signal cases and MSP/weather factors,
-the price forecast, the **Decision Brief**, **diesel-indexed freight**, the **knowledge
+`tests/` (42 files, 469 tests, all passing) covers the sell/wait signal cases and
+MSP/weather factors, the price forecast, the **Decision Brief** (seller and the
+v1.18 buyer-perspective mirror), **diesel-indexed freight**, the **knowledge
 base** retrieval, geo distance and `nearest_state`, ingestion normalize +
 live→snapshot→fixture fallback + state override, the weather OpenWeather enrichment,
 location resolve / state-filtered options + overview, the intelligence endpoints, login +
 token refresh, profile + verification, lots / demands / matching / offers / deals /
 disputes / history, the **negotiation-context** endpoint, deal **payments** + the
 append-only **audit** timeline, logistics, the **price-realisation** tracker, **forward
-contracts**, alerts, and the admin dashboard + analytics + user management.
+contracts**, **warehouse-receipt financing**, alerts, notifications, and the admin
+dashboard + analytics + user management.
 
 ## Data sources
 
@@ -139,4 +147,10 @@ Copy `.env.example` to `.env` (gitignored — never commit it). Placeholders onl
 | `ARRIVALS_SOURCE_URL` | Leave blank (see PRICE-07 above) |
 | `CORS_ORIGINS` | Comma-separated; default `http://localhost:3000` |
 
-`GEE_*` variables may exist in `.env` but are not read — satellite crop-health is deferred.
+`GEE_PROJECT_ID`, `GEE_SERVICE_ACCOUNT`, `GEE_CREDENTIALS_PATH` (v1.12) — a real
+Google Earth Engine service account enables the optional satellite crop-health
+(NDVI) overlay in `app/services/satellite.py`, exposed at `GET
+/api/satellite/ndvi` and folded into the Decision Brief as `crop_health`.
+Blank or invalid → no crop-health data, nothing else affected. This is shipped,
+not deferred — see the root README's [Satellite crop health](../README.md#satellite-crop-health)
+section.

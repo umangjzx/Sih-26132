@@ -25,12 +25,14 @@ const ER_CHART = `erDiagram
     DEALS ||--o{ TRANSACTION_EVENTS : "entity_id"
     FORWARD_BIDS ||--o{ FORWARD_COMMITMENTS : "bid_id"
     FORWARD_COMMITMENTS ||--o| DEALS : "deal_id"
+    USERS ||--o{ FINANCING_REQUESTS : "farmer_id"
+    LOTS ||--o{ FINANCING_REQUESTS : "lot_id"
 `;
 
 const LIFECYCLE_CHART = `flowchart LR
     A["Collection\\ndata.gov.in · Open-Meteo · NASA POWER\\nOSRM · Nager.Date · user input"] --> B["Validation\\nPydantic schemas, regex, range checks"]
     B --> C["Processing\\nsignal · forecast · matching · freight\\nscore_pair · brief assembly"]
-    C --> D["Storage\\nPostgreSQL 16, 19 tables\\nAlembic-managed"]
+    C --> D["Storage\\nPostgreSQL 16, 20 tables\\nAlembic-managed"]
     D --> E["Analysis\\nadmin analytics, price-realisation,\\nmatching-health"]
     E --> F["Insights\\nDecision Brief, sell/wait signal,\\nbest-market ranking"]
     F --> G["User action\\nlist a lot, post a demand, accept an offer,\\nrecord a payment"]
@@ -56,7 +58,8 @@ const TABLES = [
   { name: "forward_commitments", purpose: "A farmer's commitment against a forward bid", fields: "bid_id→forward_bids, farmer_id→users, quantity_kg, price_per_qtl, expected_ready, status, deal_id?", rel: "Acceptance creates a Lot+Demand+Match+Offer+Deal in one step", source: "Farmer commits, with a crop-calendar sanity check" },
   { name: "geo_cache", purpose: "Cached geocode lookups, to avoid repeat external calls", fields: "query (unique), lat/lon, display_name, admin1/2/3, created_at", rel: "Written by geocode.py, read on every location resolve", source: "Nominatim / BigDataCloud / Open-Meteo geocoding" },
   { name: "price_alerts", purpose: "\"Notify me when crop X at market Y crosses ₹Z\"", fields: "user_id→users, crop, market, direction (above/below), threshold, active, last_triggered_at?", rel: "Evaluated by the 6-hourly scheduler; writes notifications", source: "User-created" },
-  { name: "notifications", purpose: "In-app notification feed", fields: "user_id→users, kind, title, body, link?, read, created_at", rel: "One row per triggered alert, deal event, or dispute update", source: "System-generated" },
+  { name: "notifications", purpose: "In-app notification feed", fields: "user_id→users, kind, title, body, link?, read, created_at", rel: "One row per triggered price alert or a forward-contract settlement-risk deal event", source: "System-generated (both kinds fire only as a side effect of the price-ingestion cycle — see Notifications in Modules)" },
+  { name: "financing_requests", purpose: "A farmer's warehouse-receipt financing ask against a lot", fields: "lot_id→lots, farmer_id→users, requested_amount_inr, warehouse_name?, receipt_ref?, note?, status (pending/approved/rejected/withdrawn), admin_note?, reviewed_by?→users, reviewed_at?", rel: "Reviewed by admin; the platform tracks the request only — no money is held or disbursed", source: "Farmer-submitted, v1.17" },
 ];
 
 export function DatabaseSection() {
@@ -64,7 +67,7 @@ export function DatabaseSection() {
     <JudgeSection
       id="database"
       eyebrow="Data model"
-      title="Database design — 19 tables, 12 migrations"
+      title="Database design — 20 tables, 17 migrations"
       quickAnswer="A real relational schema (not a document store bolted onto a marketplace) — every foreign key below exists as an actual constraint, managed exclusively through Alembic migrations, never create_all()."
     >
       <div className="al-card-plain p-4 sm:p-6">

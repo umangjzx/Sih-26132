@@ -32,6 +32,7 @@ from app.models.dispute import Dispute
 from app.models.lot import Lot
 from app.models.logistics import DealLogistics
 from app.models.match import Match
+from app.models.notification import Notification
 from app.models.payment import DealPayment
 from app.models.user import User
 from app.schemas.deal import DealDetailResponse
@@ -268,6 +269,18 @@ def advance_deal(
               action=f"advance_to_{new_status}",
               detail={"from": PIPELINE_STAGES[idx], "method": body.payment_method,
                       "reference": body.payment_reference, "note": body.note})
+
+    # Notify whichever party didn't make this move — an admin pushing a stage
+    # isn't a party to the deal, so tell both.
+    notify_ids = (
+        {lot.farmer_id, demand.buyer_id}
+        if current_user.role == "admin"
+        else {demand.buyer_id if current_user.id == lot.farmer_id else lot.farmer_id}
+    )
+    title = f"Deal #{deal.id} ({lot.crop}) moved to {new_status.replace('_', ' ')}"
+    for uid in notify_ids:
+        db.add(Notification(user_id=uid, kind="deal", title=title, body="", link=f"/deals/{deal.id}"))
+
     db.commit()
     db.refresh(deal)
 

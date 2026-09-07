@@ -7,17 +7,17 @@ const SCORES = [
   {
     label: "Technical build health",
     pct: 95,
-    evidence: "Calculated: production build compiles clean across 25 routes, 398/398 automated tests pass, zero raw-SQL/injection risk found in a full-codebase grep. Docked 5% for the README staleness this audit found and corrected.",
+    evidence: "Calculated: production build compiles clean across 31 routes, 513/513 automated tests pass, zero raw-SQL/injection risk found in a full-codebase grep. Docked 5% for the doc staleness this audit found and corrected.",
   },
   {
     label: "Functional completeness",
-    pct: 89,
-    evidence: "Calculated: 17 of 19 planned modules are shipped and tested (see Core Modules). Cordova wrap and satellite crop-health are explicitly Planned/Deferred, not silently missing.",
+    pct: 92,
+    evidence: "Calculated: 18 of 19 planned modules are shipped and tested (see Core Modules). The Cordova Android wrap is explicitly Planned, not silently missing.",
   },
   {
     label: "Validation coverage",
-    pct: 83,
-    evidence: "Manually assessed from: 398 passing tests across 49 files covering every domain (auth through forward contracts), plus a local performance benchmark and two security scanners run this session — docked for no formal UAT script and no production-scale load test yet.",
+    pct: 85,
+    evidence: "Manually assessed from: 513 passing tests across 54 files covering every domain (auth through forward contracts and financing), plus a local performance benchmark and two security scanners run this session — docked for no formal UAT script and no production-scale load test yet.",
   },
   {
     label: "Security readiness",
@@ -31,8 +31,8 @@ const SCORES = [
   },
   {
     label: "Documentation",
-    pct: 90,
-    evidence: "Manually assessed from: 4 real READMEs (1,100+ lines combined), a full API reference, an ER diagram, and — per this audit — the team's own process of catching and correcting its documentation drift.",
+    pct: 92,
+    evidence: "Manually assessed from: 4 real READMEs (2,100+ lines combined), a full API reference, an ER diagram, and — per this audit — the team's own process of catching and correcting its documentation drift.",
   },
 ];
 
@@ -40,19 +40,19 @@ const SUMMARY = [
   { label: "The Problem", text: "Smallholder farmers sell at a price they can't verify, because the government data that could tell them better exists but isn't actionable." },
   { label: "The Solution", text: "AgriLink turns that raw data into an explainable sell/wait call, a transport-adjusted best market, and a direct line to a verified, tracked buyer." },
   { label: "Innovation", text: "It is the one tool in its category that carries a farmer past information and all the way to a paid, audited deal." },
-  { label: "Technical Strength", text: "97 real endpoints, a 19-table relational schema under Alembic, 398/398 tests passing, and 11 external integrations that all degrade gracefully." },
+  { label: "Technical Strength", text: "111 real endpoints, a 20-table relational schema under Alembic, 513/513 tests passing, and 11 external integrations that all degrade gracefully." },
   { label: "Impact", text: "Directly targets under-selling and post-harvest loss for smallholders, at zero marginal API cost per user." },
   { label: "Current Readiness", text: "Fully functional as a demo-ready product today. Security scanning and an initial performance benchmark are now done (and one real bottleneck they found is already fixed) — the remaining gaps, a production-scale load test and the Cordova wrap, are named explicitly rather than hidden." },
 ];
 
 const WHY = [
-  "398 of 398 automated tests pass — verified by running both suites live, not quoted from a stale document",
+  "513 of 513 automated tests pass — verified by running both suites live, not quoted from a stale document",
   "11 real external data sources, every single one with a working offline fallback — the app never shows a broken screen because a third party is down",
-  "A genuine architecture: 19 relational tables, 97 REST endpoints, 27 single-responsibility services — not a thin CRUD wrapper",
+  "A genuine architecture: 20 relational tables, 111 REST endpoints, 32 single-responsibility services — not a thin CRUD wrapper",
   "Honest AI labeling — rule-based and statistical methods are named as such; only the two components that are genuinely AI (vision OCR, LLM phrasing) are called AI",
-  "A previously-undocumented, real security feature (rate-limiting across 19 endpoints) surfaced and disclosed by this very audit, alongside the drift it found and corrected",
+  "A previously-undocumented, real security feature (in-process sliding-window rate-limiting, 27 checkpoints across 14 routers) surfaced and disclosed by this very audit, alongside the drift it found and corrected",
   "This page's own disclosed gaps were then actually worked: a real 12x performance bottleneck (GET /api/options) and every finding from two security scanners (bandit + pip-audit) were found and fixed, not just written down",
-  "100% trilingual parity (1,200 keys × 3 languages) enforced automatically, not just claimed",
+  "100% trilingual parity (~1,400 keys × 3 languages) enforced automatically, not just claimed",
   "This page itself — every number traces to a file, a test run, or an explicit 'not yet available' label",
 ];
 

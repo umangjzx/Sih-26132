@@ -22,6 +22,7 @@ from app.core.database import get_db
 from app.core.security import CurrentUser, require_role
 from app.models.financing import FinancingRequest
 from app.models.lot import Lot
+from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.financing import (
     FinancingRequestCreate,
@@ -204,6 +205,15 @@ def review_request(
         db, actor_id=current_user.id, entity_type="financing_request", entity_id=r.id,
         action="financing_reviewed", detail={"status": r.status},
     )
+    lot = db.get(Lot, r.lot_id)
+    crop = lot.crop if lot else "your lot"
+    db.add(Notification(
+        user_id=r.farmer_id,
+        kind="deal",
+        title=f"Financing request for {crop} {r.status}",
+        body=r.admin_note or "",
+        link="/financing",
+    ))
     db.commit()
     db.refresh(r)
     logger.info("Financing request %d %s by admin %d", r.id, r.status, current_user.id)
