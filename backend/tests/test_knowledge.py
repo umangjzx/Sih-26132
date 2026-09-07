@@ -71,6 +71,34 @@ def test_synonym_expansion_finds_paraphrased_queries(paraphrase, expect_id):
     assert hits and hits[0].doc.id == expect_id
 
 
+def test_semantic_layer_surfaces_a_zero_overlap_paraphrase(monkeypatch):
+    """Baseline (no embeddings configured, the default): this query shares no
+    vocabulary with the warehouse-receipt doc and isn't covered by
+    knowledge._SYNONYMS, so it isn't found. Wiring up the optional semantic
+    layer (mocked here at the _semantic_scores boundary — its own HTTP/caching
+    behaviour is covered in test_embeddings.py) must let a strong match
+    through even with zero lexical overlap."""
+    query = "zzz completely unrelated wording zzz"
+    baseline = knowledge.search(query, k=5)
+    assert not any(h.doc.id == "warehouse-receipt" for h in baseline)
+
+    monkeypatch.setattr(
+        knowledge, "_semantic_scores",
+        lambda q, docs: {"warehouse-receipt": 0.9},
+    )
+    hits = knowledge.search(query, k=5)
+    assert hits and hits[0].doc.id == "warehouse-receipt"
+
+
+def test_semantic_layer_off_by_default(monkeypatch):
+    """With no OPENROUTER_API_KEY (the default), _semantic_scores must be a
+    no-op so search() never depends on the network."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "openrouter_api_key", "")
+    assert knowledge._semantic_scores("anything", knowledge._corpus()) == {}
+
+
 def test_context_block_formats_titles():
     block = knowledge.context_block("how does MSP procurement work", k=2)
     assert "[How MSP procurement works for a farmer]" in block

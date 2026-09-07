@@ -343,6 +343,8 @@ ingest trigger — not just the location-resolve case called out below.
 | `WEATHER_API_KEY` | *(blank)* | Optional OpenWeatherMap key — enriches the forecast with current conditions. Blank → keyless Open-Meteo only |
 | `OPENROUTER_API_KEY` | *(blank)* | Optional. Enables the plain-language advisor summary, Ask AgriLink chat, mandi-slip OCR, and live-string translation. Blank → all LLM features hidden; rule output / English shown |
 | `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Any vision-capable OpenRouter model. Used for both text and image (OCR) calls |
+| `EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Optional — rides on `OPENROUTER_API_KEY`. Only used if that key is set and the model actually serves embeddings; otherwise Ask AgriLink retrieval stays keyword+fuzzy (see [Grounded knowledge retrieval](#grounded-knowledge-retrieval-rag)) |
+| `EMBEDDING_URL` | OpenRouter embeddings endpoint | Override to point at a different embeddings-compatible endpoint |
 | `TRANSPORT_COST_PER_QTL_KM` | `0.4` | Legacy flat fallback. Since v1.5 `markets/best` and deal-logistics cost use the **diesel-indexed** rate from `services/freight.py` instead (see [Diesel-indexed freight](#diesel-indexed-freight)) |
 | `SMS_API_KEY` | *(blank)* | Optional Fast2SMS-compatible "quick SMS" key for the forgot-password OTP (`services/sms.py`). Blank → the OTP is logged server-side instead of texted, so `/auth/forgot-password` + `/auth/reset-password` still work end-to-end for a local/offline demo |
 | `SMS_API_URL` | Fast2SMS bulk endpoint | Override to point at a different quick-SMS-compatible provider |
@@ -380,7 +382,7 @@ All free; all with an offline fallback so the app runs air-gapped.
 | **curated** (`app/services/reference.py`) | MSP (₹/quintal, official CACP 2024‑25 / 2025‑26), crop calendar (MH-tuned), cold-storage / FPO directory (MH in detail + national sample) | — (static) |
 | **curated** (`app/services/freight.py`) | per-state retail diesel reference (₹/L, ~35 states/UTs, indicative — state VAT makes it vary 87–98 ₹/L), used to compute the freight rate | `_DIESEL_DEFAULT` (₹92.0/L) |
 | **curated** (`app/services/knowledge.py`) | Ask AgriLink corpus — ~13 how-it-works / policy notes (MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, PMFBY, PM-KISAN) + docs generated from the MSP / calendar / grading / holiday data | — (static, offline retrieval) |
-| **OpenRouter** *(needs `OPENROUTER_API_KEY`)* | readability layer only — plain-language advisor summary, the Decision-Brief summary, the "Ask AgriLink" assistant (phrasing retrieved chunks), mandi-slip OCR, live-string translation. Never a source of truth. | features hidden; rule output / grounded reference text / English shown |
+| **OpenRouter** *(needs `OPENROUTER_API_KEY`)* | readability layer only — plain-language advisor summary, the Decision-Brief summary, the "Ask AgriLink" assistant (phrasing retrieved chunks), mandi-slip OCR, live-string translation, and (v1.10, optional) an embeddings call that re-ranks knowledge retrieval. Never a source of truth — the embeddings call only scores which chunks to hand the LLM/user, it never generates the answer text. | features hidden; rule output / grounded reference text / English shown; retrieval stays keyword+fuzzy |
 
 ---
 
@@ -915,8 +917,16 @@ only the selected crop/market's numbers.
   PM-KISAN, how the signal and freight are computed) plus documents generated
   from the MSP table, crop calendar, grading rubric and mandi-holiday list.
 - **Retrieval** — `search(query, k)` scores each chunk by TF-IDF token overlap +
-  a `difflib` fuzzy fallback for near-miss tokens + title similarity. **No
-  embeddings, no network.**
+  a `difflib` fuzzy fallback for near-miss tokens + curated synonym expansion +
+  title similarity. No embeddings or network required for any of this.
+- **Optional semantic bonus (v1.10)** — `app/services/embeddings.py` folds a
+  cosine-similarity score into the ranking when `OPENROUTER_API_KEY` is set and
+  the configured model actually serves embeddings, so a paraphrase sharing no
+  vocabulary with the corpus (and not covered by the curated synonym table) can
+  still surface the right chunk. Corpus and query embeddings are cached
+  in-process. Any failure — no key, an incompatible model, a network error —
+  degrades to exactly the keyword+fuzzy score above; nothing here can make
+  retrieval worse or break offline use.
 - **Wiring** — `POST /api/assistant/ask` injects the top chunks as a `REFERENCE`
   block and returns `sources[]`; without an LLM key it returns the `reference[]`
   text itself. `GET /api/assistant/search` exposes the raw retrieval with scores.
@@ -1096,9 +1106,12 @@ Both suites run **offline**.
 - **Diesel prices are a curated reference, not a live feed** — `freight.py` holds
   an indicative per-state table with an `as_of` date; there is no daily retail
   diesel API wired in.
-- **Ask AgriLink retrieval is keyword + fuzzy, not semantic** — the knowledge
-  base is deliberately embedding-free (offline-safe); a paraphrase with no shared
-  vocabulary can miss.
+- **Semantic retrieval degrades to keyword + fuzzy without a key.** v1.10 adds
+  an optional embeddings-based bonus (`app/services/embeddings.py`, riding on
+  `OPENROUTER_API_KEY`) so a paraphrase with no shared vocabulary can still
+  surface the right chunk — but without a key, or if the configured model
+  doesn't serve embeddings, retrieval is exactly the offline keyword+fuzzy
+  scoring it always was.
 - **Forward contracts have no settlement enforcement** — an accepted commitment
   becomes a normal `matched` deal; honouring it at harvest still runs through the
   ordinary deal pipeline, disputes included. There is no escrow or penalty

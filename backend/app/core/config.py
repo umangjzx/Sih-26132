@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     weather_api_key: str = ""
     openweather_url: str = "https://api.openweathermap.org/data/2.5/weather"
 
+    # v1.10: optional semantic re-ranking for Ask AgriLink retrieval
+    # (app/services/embeddings.py). Rides on the same OPENROUTER_API_KEY — no
+    # separate key. If the configured model/provider doesn't support
+    # embeddings, or the key is blank, retrieval just stays on the existing
+    # keyword + fuzzy scoring in knowledge.py, unchanged.
+    embedding_model: str = "openai/text-embedding-3-small"
+    embedding_url: str = "https://openrouter.ai/api/v1/embeddings"
+
     # v1.2: which AGMARKNET states the scheduled ingestion pulls. "ALL" pulls the
     # whole national feed in one shot (~10 pages, real prices for every state);
     # or comma-separate specific states (e.g. "Maharashtra,Karnataka").

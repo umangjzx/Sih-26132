@@ -2,9 +2,17 @@
 
 A small, curated corpus of how-it-works / policy notes plus text generated from
 the reference datasets (MSP, crop calendar, grading rubric, mandi holidays).
-Retrieval is keyword + fuzzy overlap with TF-IDF-ish weighting — no embeddings,
-no network — so the assistant can answer "how does MSP procurement work?" or
-"when is tur sown?" from real text while staying offline-safe and inspectable.
+Retrieval is keyword + fuzzy overlap with TF-IDF-ish weighting, plus curated
+synonym expansion — no embeddings required, no network required — so the
+assistant can answer "how does MSP procurement work?" or "when is tur sown?"
+from real text while staying offline-safe and inspectable by default.
+
+v1.10 layers an *optional* semantic bonus on top (``app/services/embeddings.py``):
+when an embeddings-capable OpenRouter key is configured, cosine similarity
+between the query and each chunk folds into the score, catching a paraphrase
+that shares no vocabulary with the corpus and isn't covered by the curated
+``_SYNONYMS`` table below. Without a key (or if the call fails), scoring is
+byte-identical to the keyword+fuzzy path — nothing here depends on it.
 
 The LLM answer layer is handed the top few chunks as REFERENCE context; the
 retrieval itself is also exposed at GET /api/assistant/search for transparency.
@@ -19,6 +27,7 @@ from datetime import date
 from difflib import SequenceMatcher
 from functools import lru_cache
 
+from app.services import embeddings as embeddings_svc
 from app.services import holidays as holidays_svc
 from app.services.grading import GRADES
 from app.services.reference import CALENDAR, MSP, _months_label
@@ -416,16 +425,40 @@ class Hit:
     score: float
 
 
+# A strong semantic match (cosine ~0.7-0.9) must be able to clear the default
+# min_score on its own, even with zero lexical overlap — that's the whole
+# point of the layer. A weak/unrelated one (~0.2-0.3) should barely move the
+# needle. 6.0 puts those two cases on the right sides of min_score=3.0.
+_SEMANTIC_WEIGHT = 6.0
+
+
+def _semantic_scores(query: str, docs: list[Doc]) -> dict[str, float]:
+    """doc id -> cosine similarity to ``query``, or {} if the optional
+    embeddings layer is unavailable or the call fails."""
+    if not embeddings_svc.available():
+        return {}
+    vectors = embeddings_svc.corpus_vectors([d.id for d in docs], [d.text for d in docs])
+    if not vectors:
+        return {}
+    q_vec = embeddings_svc.embed_query(query)
+    if not q_vec:
+        return {}
+    return {doc_id: embeddings_svc.cosine(q_vec, vec) for doc_id, vec in vectors.items()}
+
+
 def search(query: str, k: int = 4, min_score: float = 3.0) -> list[Hit]:
     """Top-``k`` corpus chunks for ``query`` by TF-IDF overlap plus a fuzzy
-    fallback for near-miss tokens and a title-similarity bonus."""
+    fallback for near-miss tokens, a title-similarity bonus, and — when the
+    optional embeddings layer is configured — a semantic-similarity bonus."""
     q_tokens = _tokens(query)
     if not q_tokens:
         return []
     idf = _idf()
     q_weights = _expand_query(q_tokens)
+    docs = _corpus()
+    sem_scores = _semantic_scores(query, docs)
     hits: list[Hit] = []
-    for d in _corpus():
+    for d in docs:
         score = 0.0
         for qt, qw in q_weights.items():
             w = idf.get(qt, 1.0) * qw
@@ -438,6 +471,8 @@ def search(query: str, k: int = 4, min_score: float = 3.0) -> list[Hit]:
         # title / phrase similarity bonus
         title_sim = SequenceMatcher(None, query.lower(), d.title.lower()).ratio()
         score += 1.8 * title_sim
+        if d.id in sem_scores:
+            score += _SEMANTIC_WEIGHT * sem_scores[d.id]
         if score >= min_score:
             hits.append(Hit(doc=d, score=round(score, 3)))
     hits.sort(key=lambda h: h.score, reverse=True)
