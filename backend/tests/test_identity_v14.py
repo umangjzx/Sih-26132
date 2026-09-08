@@ -2,10 +2,10 @@
 admin user management, and the distance veto in matching.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -100,6 +100,37 @@ def test_verification_request_then_admin_verifies(db, buyer_user, admin_user):
         # supply one of its own (previously admin.py unconditionally overwrote
         # verification_note with the request body's, which was None here)
         assert buyer_user.verification_note == "GST 27ABC"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_request_verification_rejects_a_concurrent_already_verified_race(db, buyer_user, admin_user):
+    """The classic sibling-endpoint race: an admin's approval commits to the
+    DB, but the requester's own in-flight resubmit read `verification_status`
+    as "pending" a moment earlier and would otherwise plain-write "pending"
+    right back over it, silently discarding the admin's decision. The atomic
+    conditional UPDATE must check the DB's live status, not any stale
+    in-memory value, and refuse instead of reverting it."""
+    client = _client(db)
+    try:
+        _as(buyer_user)
+        db.execute(
+            update(User).where(User.id == buyer_user.id).values(
+                verification_status="verified",
+                verified_at=datetime.now(timezone.utc),
+                verified_by=admin_user.id,
+            )
+        )
+        db.commit()
+        # simulate a stale in-memory `current_user` still showing "pending"
+        buyer_user.verification_status = "pending"
+
+        r = client.post("/api/auth/me/request-verification", json={"note": "resubmit"})
+        assert r.status_code == 409, r.text
+
+        row = db.execute(select(User).where(User.id == buyer_user.id)).scalar_one()
+        assert row.verification_status == "verified"
+        assert row.verified_by == admin_user.id
     finally:
         app.dependency_overrides.clear()
 

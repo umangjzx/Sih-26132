@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -338,12 +338,17 @@ def request_verification(
     current_user: CurrentUser,
     db: Session = Depends(get_db),
 ) -> UserResponse:
-    if current_user.verification_status == "verified":
+    # Atomic claim: an admin's concurrent approval must not be silently
+    # reverted by a resubmit that read "pending" before the approval landed.
+    claimed = db.execute(
+        update(User)
+        .where(User.id == current_user.id, User.verification_status != "verified")
+        .values(verification_status="pending", verified_at=None, verified_by=None)
+    ).rowcount
+    if not claimed:
+        db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "This account is already verified.")
-    current_user.verification_status = "pending"
-    # a fresh request supersedes any earlier admin decision
-    current_user.verified_at = None
-    current_user.verified_by = None
+    db.refresh(current_user)
     if body.note is not None:
         current_user.verification_note = body.note
     if body.reference is not None:
