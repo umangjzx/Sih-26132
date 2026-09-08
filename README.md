@@ -1297,7 +1297,10 @@ verification (`POST /auth/me/request-verification` →
    repaid doesn't leave the advance unsecured. Only one active
    (`pending`/`approved`) request is allowed per lot at a time.
 2. An **admin** reviews the queue and approves or rejects, with an optional
-   note back to the farmer.
+   note back to the farmer. Approving re-checks the 75% cap against the
+   lot's *current* value, not the value at request time — a farmer can
+   still edit an open lot's price/quantity while a request against it is
+   pending, so a stale cap can't be silently approved.
 3. The farmer can **withdraw** their own request while it's still `pending`.
 
 **This is a request tracker, not a lender** — AgriLink never disburses,

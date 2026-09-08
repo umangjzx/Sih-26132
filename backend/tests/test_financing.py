@@ -201,6 +201,41 @@ def test_admin_approves_a_request(db, farmer_user, admin_user):
         app.dependency_overrides.clear()
 
 
+def test_admin_cannot_approve_once_the_lot_no_longer_covers_it(db, farmer_user, admin_user):
+    """The 75% loan-to-value cap is only checked once, at request-creation
+    time — nothing stops the farmer from editing the lot's price/quantity
+    down while the request is still pending. review_request must re-check
+    the cap against the lot's CURRENT value before approving, not just
+    trust the number the request was created with."""
+    lot = _make_lot(db, farmer_user.id, quantity_kg=1000, expected_price=2000)  # value 20,000, cap 15,000
+    c = _client(db)
+    try:
+        _as(farmer_user)
+        rid = c.post("/api/financing/requests", json={"lot_id": lot.id, "requested_amount_inr": 14000}).json()["id"]
+
+        # farmer edits the lot's price down after submitting — a legitimate,
+        # unrelated action (e.g. correcting a typo, reacting to the market)
+        r_edit = c.patch(f"/api/lots/{lot.id}", json={"expected_price": 500})  # value now 5,000, cap 3,750
+        assert r_edit.status_code == 200, r_edit.text
+
+        _as(admin_user)
+        r = c.patch(f"/api/financing/requests/{rid}", json={"status": "approved"})
+        assert r.status_code == 409, r.text
+
+        # the request is untouched — still pending, not silently approved
+        db.expire_all()
+        still_pending = db.execute(
+            select(FinancingRequest).where(FinancingRequest.id == rid)
+        ).scalar_one()
+        assert still_pending.status == "pending"
+
+        # rejecting doesn't need the cap to hold — it's still allowed
+        r_reject = c.patch(f"/api/financing/requests/{rid}", json={"status": "rejected"})
+        assert r_reject.status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_admin_rejects_a_request(db, farmer_user, admin_user):
     lot = _make_lot(db, farmer_user.id, quantity_kg=1000, expected_price=2000)
     c = _client(db)

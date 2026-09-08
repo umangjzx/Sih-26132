@@ -219,6 +219,23 @@ def review_request(
     if r.status != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, f"Request is already '{r.status}'")
 
+    lot = db.get(Lot, r.lot_id)
+
+    # Re-validate against the lot's CURRENT value before approving — nothing
+    # stops the farmer from editing an open lot's price/quantity while a
+    # request against it is still pending, so the cap checked at creation
+    # time may now be stale. Validated (and may raise) before anything is
+    # mutated, same as _validate_forward_penalty in disputes.py.
+    if body.status == "approved" and lot is not None:
+        cap = _max_eligible(lot)
+        if r.requested_amount_inr > cap:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"This lot's value has changed since the request was made — the requested "
+                f"₹{r.requested_amount_inr:.0f} now exceeds the {_LOAN_TO_VALUE:.0%} cap "
+                f"(₹{cap:.0f}). Reject this request, or ask the farmer to resubmit at a valid amount.",
+            )
+
     # Atomic claim — see withdraw_request's comment; a farmer's withdraw()
     # could be racing this same instant.
     claimed = db.execute(
@@ -239,7 +256,6 @@ def review_request(
         db, actor_id=current_user.id, entity_type="financing_request", entity_id=r.id,
         action="financing_reviewed", detail={"status": r.status},
     )
-    lot = db.get(Lot, r.lot_id)
     crop = lot.crop if lot else "your lot"
     db.add(Notification(
         user_id=r.farmer_id,
