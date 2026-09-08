@@ -13,7 +13,7 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -47,10 +47,6 @@ _ACTIVE_STATUSES = ("pending", "approved")
 _CREATE_LIMIT, _CREATE_WINDOW_S = 10, 3600
 
 
-def _client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
-
-
 def _max_eligible(lot: Lot) -> float:
     return round(lot.expected_price / 100 * lot.quantity_kg * _LOAN_TO_VALUE, 0)
 
@@ -70,12 +66,15 @@ def _enrich(db: Session, r: FinancingRequest, lot: Lot | None = None, farmer: Us
 @router.post("/requests", response_model=FinancingRequestOut, status_code=status.HTTP_201_CREATED)
 def create_request(
     body: FinancingRequestCreate,
-    request: Request,
     current_user: CurrentUser,
     _role: User = require_role("farmer"),
     db: Session = Depends(get_db),
 ) -> FinancingRequestOut:
-    if not ratelimit.check(f"financing_create:{_client_ip(request)}",
+    # Per-user, like every other write endpoint (lot_write, demand_write,
+    # alert_write, pool_create, fwd_bid) — this used to key on the client IP,
+    # which throttles every farmer sharing one (a village kiosk, a carrier's
+    # NAT'd mobile data) whenever any one of them hits the limit.
+    if not ratelimit.check(f"financing_create:{current_user.id}",
                            limit=_CREATE_LIMIT, window_s=_CREATE_WINDOW_S):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                             "Too many requests — please try again later.")

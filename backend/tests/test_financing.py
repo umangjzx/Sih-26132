@@ -287,3 +287,46 @@ def test_buyer_cannot_create_financing_request(db, buyer_user):
         assert r.status_code == 403
     finally:
         app.dependency_overrides.clear()
+
+
+def test_financing_rate_limit_is_per_user_not_shared_by_ip(db, farmer_user):
+    """create_request used to rate-limit by client IP, which throttles every
+    farmer sharing one (a village kiosk, a carrier's NAT'd mobile data)
+    whenever any single one of them hits the limit — unlike every other
+    write endpoint in this codebase (lot_write, demand_write, alert_write,
+    pool_create, fwd_bid), which all key on the user. Prove a second
+    farmer's request still succeeds after the first farmer exhausts their
+    own quota, even though TestClient sends every request from the same
+    "IP"."""
+    from app.models.user import User
+
+    other_farmer = User(role="farmer", name="Other Farmer", phone="+91otherfin",
+                        district="Pune", taluka="Haveli", is_active=True)
+    db.add(other_farmer)
+    db.commit()
+
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        for _ in range(10):
+            lot = _make_lot(db, farmer_user.id)
+            r = client.post("/api/financing/requests", json={
+                "lot_id": lot.id, "requested_amount_inr": 100,
+            })
+            assert r.status_code == 201, r.text
+
+        # the 11th request from the SAME farmer is throttled
+        lot11 = _make_lot(db, farmer_user.id)
+        assert client.post("/api/financing/requests", json={
+            "lot_id": lot11.id, "requested_amount_inr": 100,
+        }).status_code == 429
+
+        # a different farmer, on the same TestClient/"IP", is unaffected
+        _as(other_farmer)
+        lot_other = _make_lot(db, other_farmer.id)
+        r = client.post("/api/financing/requests", json={
+            "lot_id": lot_other.id, "requested_amount_inr": 100,
+        })
+        assert r.status_code == 201, r.text
+    finally:
+        app.dependency_overrides.clear()

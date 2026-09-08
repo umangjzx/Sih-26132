@@ -73,11 +73,11 @@ export function ValidationSection() {
       id="validation"
       eyebrow="Evidence, not assertions"
       title="Validation & testing center"
-      quickAnswer="539 automated tests, run to completion by hand for this page on 2026-09-08: 488/488 backend (pytest) + 51/51 frontend (vitest) — both 100% passing. No performance/security test suite exists yet; that gap is disclosed honestly in Performance and Security below rather than papered over."
+      quickAnswer="540 automated tests, run to completion by hand for this page on 2026-09-08: 489/489 backend (pytest) + 51/51 frontend (vitest) — both 100% passing. No performance/security test suite exists yet; that gap is disclosed honestly in Performance and Security below rather than papered over."
     >
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <div className="al-card-plain p-5 text-center">
-          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">488 / 488</span>
+          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">489 / 489</span>
           <p className="mt-1 text-xs text-[var(--ink-soft)]">Backend tests passing (pytest, 42 files) — run live for this page</p>
         </div>
         <div className="al-card-plain p-5 text-center">
