@@ -5,7 +5,7 @@ notification when one fires. De-bounced to at most once per 20 hours per alert.
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
@@ -65,6 +65,26 @@ def evaluate_alerts(db: Session) -> int:
         )
         if not fired:
             continue
+
+        # Atomic claim: nothing serializes this against another evaluation
+        # run — the in-process scheduler's interval job, its one-time boot
+        # job, and the separately-triggerable POST /ingest/run (meant for an
+        # external cron) all call this with their own DB session and can
+        # genuinely overlap. Without this, two overlapping runs could both
+        # pass the debounce check above and each fire a duplicate
+        # notification for the same crossing, breaking the "at most once per
+        # 20 hours" guarantee this module promises. Compare-and-swap on the
+        # exact value already read (rather than re-deriving a cutoff
+        # inequality in SQL) sidesteps the tz-naive-vs-aware quirk SQLite has
+        # with this column — see the debounce check above.
+        prev = a.last_triggered_at
+        cond = PriceAlert.last_triggered_at.is_(None) if prev is None else PriceAlert.last_triggered_at == prev
+        claimed = db.execute(
+            update(PriceAlert).where(PriceAlert.id == a.id, cond).values(last_triggered_at=now)
+        ).rowcount
+        if not claimed:
+            continue
+
         db.add(
             Notification(
                 user_id=a.user_id,
@@ -74,7 +94,6 @@ def evaluate_alerts(db: Session) -> int:
                 link=f"/?crop={a.crop}&market={a.market}",
             )
         )
-        a.last_triggered_at = now
         created += 1
     if created:
         db.commit()

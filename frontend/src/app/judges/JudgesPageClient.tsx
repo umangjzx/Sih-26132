@@ -177,7 +177,7 @@ function Hero() {
           <MetricCard value="111" label="Live API endpoints, across 19 routers" evidence="verified" />
           <MetricCard value="20" label="Database tables, 24 linear migrations" evidence="verified" />
           <MetricCard value="33" label="Backend services (one file, one job each)" evidence="verified" />
-          <MetricCard value="530 / 530" label="Automated tests passing (485 backend + 45 frontend)" evidence="verified" />
+          <MetricCard value="531 / 531" label="Automated tests passing (486 backend + 45 frontend)" evidence="verified" />
           <MetricCard value="11" label="Real external data sources, every one with an offline fallback" evidence="verified" />
           <MetricCard value="3" label="Languages at 100% parity — en / hi / mr, ~1,400 keys each" evidence="verified" />
         </div>

@@ -1,14 +1,18 @@
 """Price alerts, notifications, and the ingestion-time alert evaluator (v1.1)."""
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi.testclient import TestClient
+from sqlalchemy import update
+from sqlalchemy.orm import sessionmaker
 
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
+from app.models.notification import Notification
 from app.models.price_alert import PriceAlert
 from app.models.price_cache import PriceCache
+from app.services import alerts as alerts_module
 from app.services.alerts import evaluate_alerts
 
 
@@ -203,6 +207,47 @@ def test_evaluate_alerts_below_direction(db, buyer_user):
                       min_price=6200, max_price=6800, modal_price=6500, arrival_volume=None))
     db.commit()
     assert evaluate_alerts(db) == 1
+
+
+def test_evaluate_alerts_avoids_a_duplicate_fire_from_a_concurrent_run(db, farmer_user, monkeypatch):
+    """evaluate_alerts() runs from the in-process scheduler's interval job,
+    its one-time boot job, and the separately-triggerable POST /ingest/run
+    (meant for an external cron) — none of these are mutually exclusive, so
+    two overlapping runs, each with their own DB session, could both pass
+    the debounce check and each fire a duplicate notification for the same
+    crossing. Simulate the other run's claim landing on this alert *while*
+    this run is still mid-evaluation (right where `_latest_modal` is called,
+    just before this run reaches its own atomic claim) — only one of the two
+    must actually create a notification."""
+    db.add(PriceAlert(user_id=farmer_user.id, crop="Onion", market="Pune",
+                      direction="above", threshold=1500, active=True))
+    db.add(PriceCache(crop="Onion", variety="", market="Pune", district="Pune",
+                      state="Maharashtra", date=date(2026, 9, 1),
+                      min_price=1800, max_price=2100, modal_price=2000, arrival_volume=None))
+    db.commit()
+
+    # A second session sharing the same in-memory SQLite DB (StaticPool),
+    # standing in for a concurrent evaluate_alerts() run's own session.
+    other = sessionmaker(bind=db.get_bind())()
+    original = alerts_module._latest_modal
+
+    def sneaky_latest_modal(_db, crop, market):
+        other.execute(
+            update(PriceAlert)
+            .where(PriceAlert.crop == crop, PriceAlert.market == market)
+            .values(last_triggered_at=datetime.now(timezone.utc))
+        )
+        other.commit()
+        return original(_db, crop, market)
+
+    monkeypatch.setattr(alerts_module, "_latest_modal", sneaky_latest_modal)
+    try:
+        created = evaluate_alerts(db)
+    finally:
+        other.close()
+
+    assert created == 0, "the concurrent run's claim should have won; this run must not double-fire"
+    assert db.query(Notification).count() == 0
 
 
 def test_inactive_alert_does_not_fire(db, farmer_user):
