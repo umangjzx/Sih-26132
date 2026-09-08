@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -10,6 +10,16 @@ class Match(Base):
     """status: proposed | offered | accepted | rejected."""
 
     __tablename__ = "matches"
+    __table_args__ = (
+        # _score_and_upsert / try_pair both check-then-insert keyed on
+        # (lot_id, demand_id), with an intentional invariant that a Match in
+        # any terminal-ish status (accepted/rejected) is never superseded by
+        # a new row for the same pair — only a proposed/offered one is
+        # updated in place. A double-submit (multi-tab "express interest"
+        # click, or a manual rematch racing an express-interest call) could
+        # insert two. This backs the invariant at the DB level.
+        UniqueConstraint("lot_id", "demand_id", name="uq_match_lot_demand"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     lot_id: Mapped[int] = mapped_column(ForeignKey("lots.id"))

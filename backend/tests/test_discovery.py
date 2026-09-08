@@ -105,6 +105,47 @@ def test_express_interest_opens_a_match(db):
         app.dependency_overrides.clear()
 
 
+def test_express_interest_twice_reuses_the_same_match_not_a_duplicate(db):
+    """try_pair's `existing is None` check can be raced past by a
+    double-submit (two near-simultaneous "express interest" clicks both
+    reading "no match yet"). This proves the DB constraint backing "one
+    Match row per (lot, demand)" actually catches what the check misses, by
+    inserting the second row directly rather than relying on ORM-level
+    timing, and that the losing caller still gets back a usable match
+    instead of an error."""
+    farmer, buyer = _cbe_farmer(db), _cbe_buyer(db)
+    lot = _onion_lot(db, farmer)
+    demand = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=1000, quality_spec="Grade A",
+                     price_band_min=2200, price_band_max=2700, delivery_window="Within 7 days",
+                     delivery_district="Coimbatore", latitude=11.0168, longitude=76.9558, status="open")
+    db.add(demand)
+    db.commit()
+    client = _client(db)
+    try:
+        _as(buyer)
+        r = client.post(f"/api/lots/{lot.id}/express-interest")
+        assert r.status_code == 200, r.text
+        match_id = r.json()["match_id"]
+
+        # Simulate the losing half of a race: a second Match row for the
+        # same (lot, demand) inserted directly, bypassing the app-level
+        # check that the winning request already passed.
+        dupe = Match(lot_id=lot.id, demand_id=demand.id, score=40.0, status="proposed")
+        db.add(dupe)
+        try:
+            db.flush()
+            assert False, "expected the unique constraint to reject a second match row"
+        except Exception as e:
+            assert "uq_match_lot_demand" in str(e) or "UNIQUE" in str(e)
+        finally:
+            db.rollback()
+
+        assert db.query(Match).count() == 1
+        assert db.query(Match).first().id == match_id
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_browse_hides_a_lot_the_buyer_already_matched(db):
     farmer, buyer = _cbe_farmer(db), _cbe_buyer(db)
     lot = _onion_lot(db, farmer)

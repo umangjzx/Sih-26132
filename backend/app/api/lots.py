@@ -5,7 +5,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -128,10 +128,19 @@ def withdraw_lot(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lot not found")
     if lot.farmer_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your lot")
-    if lot.status != "open":
+
+    # Atomic claim — accept_offer (or a pool accepting a demand against this
+    # lot) could be atomically claiming Lot.status the same instant. Without
+    # this, a losing withdraw would still plain-write status="closed" over a
+    # lot that just got matched into a Deal.
+    claimed = db.execute(
+        update(Lot).where(Lot.id == lot.id, Lot.status == "open").values(status="closed")
+    ).rowcount
+    if not claimed:
+        db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "This lot is in a deal and can't be withdrawn.")
-    lot.status = "closed"
+    db.refresh(lot)
     # drop its still-open matches so they don't linger on buyers' boards
     for m in db.execute(
         select(Match).where(Match.lot_id == lot.id, Match.status.in_(("proposed", "offered")))

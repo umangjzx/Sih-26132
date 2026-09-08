@@ -324,8 +324,21 @@ def set_pool_status(
             f"Can't move a pool from '{pool.status}' to '{body.status}'.",
         )
     old = pool.status
-    pool.status = body.status
-    db.flush()
+
+    # Atomic claim — accept_demand_for_pool could be atomically claiming this
+    # exact pool into 'matched' the same instant. A plain "pool.status =
+    # body.status" here would let a stale-read organizer action (e.g.
+    # closing) overwrite that, orphaning the Deal accept-demand just created.
+    claimed = db.execute(
+        update(Pool).where(Pool.id == pool.id, Pool.status == old).values(status=body.status)
+    ).rowcount
+    if not claimed:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This pool's status just changed — refresh and try again.",
+        )
+    db.refresh(pool)
     log_event(db, actor_id=current_user.id, entity_type="pool", entity_id=pool.id,
               action="pool_status_changed", detail={"from": old, "to": body.status})
     db.commit()
@@ -408,7 +421,22 @@ def accept_demand_for_pool(
                 pipeline_status="matched")
     db.add(deal); db.flush()
 
-    pool.status = "matched"
+    # Atomic claim — the organizer's own set_pool_status could be closing
+    # this exact pool at the same instant (double-click, two tabs). A plain
+    # "pool.status = 'matched'" here would let both writes land regardless
+    # of order, possibly leaving the pool 'closed' with a live matched_deal_id
+    # pointing at the Deal just created above.
+    claimed_pool = db.execute(
+        update(Pool).where(Pool.id == pool.id, Pool.status.in_(("open", "locked")))
+        .values(status="matched")
+    ).rowcount
+    if not claimed_pool:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This pool's status just changed — refresh and try again.",
+        )
+    db.refresh(pool)
     pool.matched_deal_id = deal.id
     # Only fully close the demand when the pool covers its whole remaining
     # quantity. A pool that's smaller than the demand (allowed above — only the

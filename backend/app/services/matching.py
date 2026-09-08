@@ -12,6 +12,7 @@ import json
 import logging
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.demand import Demand
@@ -450,7 +451,21 @@ def try_pair(db: Session, lot: Lot, demand: Demand) -> dict:
 
     m = Match(lot_id=lot.id, demand_id=demand.id, score=total, score_detail=detail, status="proposed")
     db.add(m)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two near-simultaneous "express interest" clicks on the same lot
+        # (double-submit, multi-tab) — or this racing the background
+        # auto-matcher — both passed the `existing is None` check above.
+        # The uq_match_lot_demand constraint catches what the read missed;
+        # whichever request lost just reads back the row the winner made.
+        db.rollback()
+        existing = db.execute(
+            select(Match).where(Match.lot_id == lot.id, Match.demand_id == demand.id)
+        ).scalar_one_or_none()
+        if existing is not None:
+            return {"matched": True, "match_id": existing.id, "score": existing.score}
+        raise
     db.refresh(m)
     return {"matched": True, "match_id": m.id, "score": total}
 

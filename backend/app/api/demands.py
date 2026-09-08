@@ -5,7 +5,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -141,10 +141,19 @@ def withdraw_demand(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Demand not found")
     if demand.buyer_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your demand")
-    if demand.status != "open":
+
+    # Atomic claim — accept_offer (or a pool accepting this demand) could be
+    # atomically claiming Demand.status the same instant. Without this, a
+    # losing withdraw would still plain-write status="closed" over a demand
+    # that just got matched into a Deal.
+    claimed = db.execute(
+        update(Demand).where(Demand.id == demand.id, Demand.status == "open").values(status="closed")
+    ).rowcount
+    if not claimed:
+        db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "This demand is in a deal and can't be withdrawn.")
-    demand.status = "closed"
+    db.refresh(demand)
     for m in db.execute(
         select(Match).where(Match.demand_id == demand.id, Match.status.in_(("proposed", "offered")))
     ).scalars().all():

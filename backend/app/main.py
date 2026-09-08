@@ -6,8 +6,10 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config as AlembicConfig
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from app.api.admin import router as admin_router
 from app.api.alerts import router as alerts_router
@@ -130,6 +132,28 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(OperationalError)
+async def db_operational_error_handler(request: Request, exc: OperationalError) -> JSONResponse:
+    """Two concurrent requests updating overlapping rows in different orders
+    (e.g. accept_offer's Offer->Lot updates racing withdraw_lot's Lot->Match
+    updates) can genuinely deadlock — Postgres detects the cycle and aborts
+    one side. That's expected under real concurrency, not a bug in either
+    transaction's own logic, so surface it as the same "just try again" 409
+    every other race in this app already returns instead of a raw 500.
+    Any other OperationalError (e.g. the DB connection itself dropping)
+    still surfaces as a 500 — this only special-cases the deadlock code.
+    """
+    pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+    if pgcode == "40P01":  # PostgreSQL deadlock_detected
+        logger.warning("DB deadlock on %s %s — returning 409", request.method, request.url.path)
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "This action conflicted with another update — please try again."},
+        )
+    logger.exception("Unhandled DB OperationalError on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
 
 app.include_router(auth_router)
 app.include_router(lots_router)
