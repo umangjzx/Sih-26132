@@ -24,7 +24,7 @@ Built **Maharashtra-first** (the SIH problem statement is Govt. of Maharashtra /
 MSInS) but **location-aware across India** — detect or pick a location and prices
 re-scope to that state; MSP and the storage/FPO directory are national.
 
-**Status — Phases 1–3 complete, plus v1.1 through v1.30 (last updated 2026-09-08):**
+**Status — Phases 1–3 complete, plus v1.1 through v1.31 (last updated 2026-09-08):**
 
 | Phase / Release | Scope | State |
 |---|---|---|
@@ -62,6 +62,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.28 · Verification-request race guard | One more sibling-endpoint gap: a user's own `request-verification` resubmit and an admin's `PATCH /admin/users/{id}/verify` decision both plain-wrote `User.verification_status` — a resubmit racing a concurrent approval could silently revert "verified" back to "pending" and wipe `verified_at`/`verified_by`. Closed with the same atomic conditional UPDATE (no schema change needed) | ✅ |
 | v1.29 · Deal-logistics race guard | `PUT /api/deals/{id}/logistics` had the same check-then-insert race as the earlier insert-race sweep, but on a row either the farmer or the buyer can create — a double "Plan logistics" click from both parties at the same instant 500'd for the loser instead of a clean 409. `deal_logistics.deal_id` was already `UNIQUE` at the model level; the endpoint now catches the `IntegrityError` (no schema change needed). Also fixed a frontend bug this exposed: the logistics card mislabeled any 409 as "This deal is closed." — it now only does that for an actual closed-deal conflict | ✅ |
 | v1.30 · Price-alert debounce race guard | `evaluate_alerts` (the "at most once per 20 hours per alert" notification debounce) had no protection against two overlapping evaluation runs — the in-process scheduler's interval job, its boot-time job, and the separately-triggerable `POST /ingest/run` (for an external cron) all call it independently and can genuinely race, each with its own DB session. Two overlapping runs could both pass the debounce check and double-fire the same alert. Fixed with an atomic compare-and-swap on `last_triggered_at` before creating the notification (no schema change needed); the analogous SMS-digest debounce was checked too but has only one possible trigger path (`max_instances=1`, no external endpoint), so it wasn't at risk and was left as-is | ✅ |
+| v1.31 · Cordova-safe admin reason prompts | Three admin moderation flows (close lot, close demand, reject verification) collected a free-text reason via `window.prompt()`, which is disabled/throws in embedded WebViews — including the Cordova Android wrap this app is headed toward, where these actions would have silently failed to collect a reason. Replaced all three with a new `ReasonPromptModal` in-page dialog, passing the same trimmed reason through to the existing API calls unchanged | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -1569,10 +1570,11 @@ dashboard and analytics; admin user management (verify / activate); pools
 (create, join, withdraw, aggregate, demand candidates); discovery board; OCR
 slip-read; the LLM assistant; notifications (unread count, mark-read, mark-all).
 
-**Frontend** (12 test files, 45 tests): locale parity (en/hi/mr key-set
+**Frontend** (14 test files, 51 tests): locale parity (en/hi/mr key-set
 equality), `PriceDetail` (skeleton→data, error→Retry), `SellWaitSignalCard`
-(each recommendation + reasons), `LanguageSwitcher`, and a smoke test per
-authed page. Chart-rendering tests mock `recharts`.
+(each recommendation + reasons), `LanguageSwitcher`, the admin close-lot/
+reject-verification reason modals (opens, submits, cancels), and a smoke
+test per authed page. Chart-rendering tests mock `recharts`.
 
 Both suites run **offline**.
 

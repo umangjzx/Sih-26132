@@ -73,7 +73,7 @@ export function ValidationSection() {
       id="validation"
       eyebrow="Evidence, not assertions"
       title="Validation & testing center"
-      quickAnswer="531 automated tests, run to completion by hand for this page on 2026-09-08: 486/486 backend (pytest) + 45/45 frontend (vitest) — both 100% passing. No performance/security test suite exists yet; that gap is disclosed honestly in Performance and Security below rather than papered over."
+      quickAnswer="537 automated tests, run to completion by hand for this page on 2026-09-08: 486/486 backend (pytest) + 51/51 frontend (vitest) — both 100% passing. No performance/security test suite exists yet; that gap is disclosed honestly in Performance and Security below rather than papered over."
     >
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <div className="al-card-plain p-5 text-center">
@@ -81,8 +81,8 @@ export function ValidationSection() {
           <p className="mt-1 text-xs text-[var(--ink-soft)]">Backend tests passing (pytest, 42 files) — run live for this page</p>
         </div>
         <div className="al-card-plain p-5 text-center">
-          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">45 / 45</span>
-          <p className="mt-1 text-xs text-[var(--ink-soft)]">Frontend tests passing (vitest, 12 files) — run live for this page</p>
+          <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">51 / 51</span>
+          <p className="mt-1 text-xs text-[var(--ink-soft)]">Frontend tests passing (vitest, 14 files) — run live for this page</p>
         </div>
         <div className="al-card-plain p-5 text-center">
           <span className="font-heading text-3xl font-extrabold text-[var(--green-700)]">0</span>
@@ -92,7 +92,7 @@ export function ValidationSection() {
 
       <h3 className="font-heading text-base font-bold text-[var(--ink)]">Functional validation</h3>
       <p className="mt-1 text-sm text-[var(--ink-soft)]">
-        One row per test category actually present in the suite (grouped from 42 backend + 12
+        One row per test category actually present in the suite (grouped from 42 backend + 14
         frontend test files — not one row per individual test function, which would run to
         hundreds of rows).
       </p>
