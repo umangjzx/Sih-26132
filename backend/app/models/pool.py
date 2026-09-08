@@ -8,7 +8,7 @@ floored at ``floor_price`` so nobody is sold below what they agreed to.
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -46,6 +46,13 @@ class PoolMember(Base):
     """status: committed | withdrawn. One row per farmer per pool."""
 
     __tablename__ = "pool_members"
+    __table_args__ = (
+        # join_pool upserts by (pool_id, farmer_id) — this backs that "one row
+        # per farmer per pool" invariant at the DB level, so a double-submit
+        # race can't insert two rows for the same farmer (which would
+        # double-count their quantity_kg in the pool's aggregate).
+        UniqueConstraint("pool_id", "farmer_id", name="uq_pool_member_pool_farmer"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     pool_id: Mapped[int] = mapped_column(ForeignKey("pools.id"), index=True)

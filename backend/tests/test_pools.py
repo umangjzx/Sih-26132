@@ -234,6 +234,33 @@ def test_pool_accept_demand_full_coverage_closes_demand(farmer_client, db):
     assert dem_after.status == "matched" and dem_after.quantity_kg == 2000
 
 
+def test_join_pool_rejects_a_second_member_row_race(farmer_client, farmer_user, db):
+    """join_pool's `existing` check can be raced past by a double-submit (two
+    near-simultaneous requests both reading "not a member yet"). This proves
+    the DB constraint backing "one row per farmer per pool" actually catches
+    what the check misses, by inserting the second row directly rather than
+    relying on ORM-level timing."""
+    pid = farmer_client.post("/api/pools", json={
+        "crop": "Onion", "title": "p", "target_quantity_kg": 1000, "floor_price": 2000,
+        "grade": "B", "location": "Pune",
+    }).json()["id"]
+    r = farmer_client.post(f"/api/pools/{pid}/join", json={"quantity_kg": 300, "expected_price": 2200})
+    assert r.status_code == 200, r.text
+
+    # Simulate the losing half of a race: a second member row for the same
+    # (pool, farmer) inserted directly, bypassing the app-level check that
+    # the winning request already passed.
+    dupe = PoolMember(pool_id=pid, farmer_id=farmer_user.id, quantity_kg=300, expected_price=2200, status="committed")
+    db.add(dupe)
+    try:
+        db.flush()
+        assert False, "expected the unique constraint to reject a second member row"
+    except Exception as e:
+        assert "uq_pool_member_pool_farmer" in str(e) or "UNIQUE" in str(e)
+    finally:
+        db.rollback()
+
+
 def test_pool_cannot_be_manually_moved_to_matched(farmer_client):
     pid = farmer_client.post("/api/pools", json={
         "crop": "Onion", "title": "p", "target_quantity_kg": 1000, "floor_price": 2000,

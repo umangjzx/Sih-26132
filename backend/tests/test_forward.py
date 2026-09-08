@@ -81,6 +81,43 @@ def test_commit_price_outside_band_rejected(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_commit_to_bid_rejects_a_second_active_commitment_race(db, farmer_user, buyer_user):
+    """The app-level `existing` check in commit_to_bid can be raced past by a
+    double-submit (two near-simultaneous requests both reading "no active
+    commitment yet"). This proves the DB constraint backing that invariant
+    actually catches what the check misses, by inserting the second row
+    directly rather than relying on ORM-level timing."""
+    c = _client(db)
+    try:
+        bid_body = _make_bid(c, buyer_user)
+        bid_id = bid_body["id"]
+        _as(farmer_user)
+        r = c.post(f"/api/forward/bids/{bid_id}/commitments", json={
+            "quantity_kg": 1000, "price_per_qtl": 7400,
+            "expected_ready": (date.today() + timedelta(days=55)).isoformat(),
+        })
+        assert r.status_code == 201, r.text
+
+        # Simulate the losing half of a race: a second active commitment for
+        # the same (bid, farmer) inserted directly, bypassing the app-level
+        # check that the winning request already passed.
+        dupe = ForwardCommitment(
+            bid_id=bid_id, farmer_id=farmer_user.id, quantity_kg=500,
+            price_per_qtl=7400, expected_ready=date.today() + timedelta(days=60),
+            status="pending",
+        )
+        db.add(dupe)
+        try:
+            db.flush()
+            assert False, "expected the partial unique index to reject a second active commitment"
+        except Exception as e:
+            assert "uq_forward_commitment_active_per_farmer_bid" in str(e) or "UNIQUE" in str(e)
+        finally:
+            db.rollback()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_farmer_cannot_create_bid(db, farmer_user):
     c = _client(db)
     try:

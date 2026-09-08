@@ -11,6 +11,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -260,7 +261,14 @@ def join_pool(
         )
         db.add(member)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two near-simultaneous joins from the same farmer (double-submit,
+        # multi-tab) both passed the `existing is None` check above — the
+        # uq_pool_member_pool_farmer constraint catches what the read missed.
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "You've already joined this pool — refresh and try again.")
     db.refresh(member)
     out = PoolMemberOut.model_validate(member)
     out.farmer_name = current_user.name

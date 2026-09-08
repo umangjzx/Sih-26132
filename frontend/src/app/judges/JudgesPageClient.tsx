@@ -175,9 +175,9 @@ function Hero() {
 
         <div className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <MetricCard value="111" label="Live API endpoints, across 19 routers" evidence="verified" />
-          <MetricCard value="20" label="Database tables, 19 linear migrations" evidence="verified" />
+          <MetricCard value="20" label="Database tables, 20 linear migrations" evidence="verified" />
           <MetricCard value="33" label="Backend services (one file, one job each)" evidence="verified" />
-          <MetricCard value="515 / 515" label="Automated tests passing (471 backend + 44 frontend)" evidence="verified" />
+          <MetricCard value="522 / 522" label="Automated tests passing (477 backend + 45 frontend)" evidence="verified" />
           <MetricCard value="11" label="Real external data sources, every one with an offline fallback" evidence="verified" />
           <MetricCard value="3" label="Languages at 100% parity — en / hi / mr, ~1,400 keys each" evidence="verified" />
         </div>

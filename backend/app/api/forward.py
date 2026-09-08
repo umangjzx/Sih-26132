@@ -14,6 +14,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -412,7 +413,19 @@ def commit_to_bid(
         status="pending",
     )
     db.add(c)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # Two near-simultaneous commits from the same farmer (double-submit,
+        # multi-tab) both passed the `existing` check above — the
+        # uq_forward_commitment_active_per_farmer_bid constraint catches what
+        # the read missed, before this could ever reach accept_commitment and
+        # materialise two deals for one farmer's forward commitment.
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "You already have an active commitment on this bid — withdraw it first to change terms.",
+        )
     log_event(
         db, actor_id=current_user.id, entity_type="forward_bid", entity_id=bid_id,
         action="forward_commitment_made",

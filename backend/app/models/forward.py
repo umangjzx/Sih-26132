@@ -10,7 +10,7 @@ logistics, payment and disputes all work unchanged.
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -42,6 +42,23 @@ class ForwardCommitment(Base):
     """status: pending | accepted | declined | withdrawn | breached."""
 
     __tablename__ = "forward_commitments"
+    __table_args__ = (
+        # A farmer may only have one *active* (pending/accepted) commitment on
+        # a given bid at a time — commit_to_bid enforces this in Python, but a
+        # double-submit (multi-tab, retried request) could race past that
+        # check and insert two. This backs the invariant at the DB level so
+        # the race becomes an IntegrityError (caught and turned into the same
+        # 409) instead of a silently duplicated commitment. Past withdrawn/
+        # declined rows are intentionally excluded so a farmer can re-commit
+        # after withdrawing.
+        Index(
+            "uq_forward_commitment_active_per_farmer_bid",
+            "bid_id", "farmer_id",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'accepted')"),
+            sqlite_where=text("status IN ('pending', 'accepted')"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     bid_id: Mapped[int] = mapped_column(ForeignKey("forward_bids.id"), index=True)
