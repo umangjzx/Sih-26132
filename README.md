@@ -24,7 +24,7 @@ Built **Maharashtra-first** (the SIH problem statement is Govt. of Maharashtra /
 MSInS) but **location-aware across India** — detect or pick a location and prices
 re-scope to that state; MSP and the storage/FPO directory are national.
 
-**Status — Phases 1–3 complete, plus v1.1 through v1.37 (last updated 2026-09-08):**
+**Status — Phases 1–3 complete, plus v1.1 through v1.38 (last updated 2026-09-08):**
 
 | Phase / Release | Scope | State |
 |---|---|---|
@@ -69,6 +69,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.35 · Full performance audit | End-to-end pass across DB/backend/frontend/infra, done via three independent research agents grounded in this app's actual single-VM/single-worker architecture (no Redis/queues invented). **DB**: added 12 missing indexes on the hottest unindexed filter/sort/join columns (`lots.status`, `demands.status`, and 10 more). **N+1s**: batched the per-counterparty completed-deals `COUNT` query in `/api/matches/mine`, `/api/deals/mine`, and `/api/history` (was one extra query per row shown); batched the per-candidate `Match` existence check in `match_lot`/`match_demand`/`run_matching`, on the hot path of every lot/demand create and edit. **`/api/markets/best`**: routed candidate markets through OSRM concurrently (`ThreadPoolExecutor`) instead of one sequential blocking call per market. **Admin analytics**: `_by_week` no longer loads the entire `Deal`/`Offer`/`User` tables just to bucket the last 8 weeks. **Security**: two log call sites could leak the live `data.gov.in`/OpenWeatherMap API keys into application logs via `httpx`'s own exception messages — now log exception type/status only. **Observability**: added a minimal slow-request-only timing middleware (logs only requests over 1s). **`/api/location/resolve`**: halved the on-demand ingest's worst-case blocking time on a cold (never-seen) state. **Frontend**: memoized `AuthProvider`'s context value (was re-rendering the whole app tree on every token refresh); dynamic-imported `recharts` out of the home page's initial bundle; parallelized independent data fetches on the admin dashboard, farmer dashboard, and public explore page; gated the notification-bell poll on tab visibility. All changes verified live and via the full test suites (494 backend + 51 frontend); one finding (embedding full-size lot photos in match/deal list payloads) was deliberately left unfixed rather than risk regressing the dashboard thumbnail feature — see Known Limitations | ✅ |
 | v1.36 · Discovery bounding-box pre-filter | The other item v1.35 deferred: `browse_lots`/`browse_demands` loaded every open lot/demand on the platform into Python before geo-filtering by radius, with no SQL-level filter at all. Added a conservative lat/lon bounding-box pre-filter (a superset of the true circle, so it can only ever include extra rows the existing precise haversine check then discards — never wrongly exclude one) plus supporting indexes on `lots`/`demands` `(latitude, longitude)`. A listing with no stored coordinates (relying on the district-centroid fallback) is explicitly kept as a candidate regardless of the box. `browse_demands` had zero prior test coverage at all — added it alongside the fix | ✅ |
 | v1.37 · Lot photo thumbnail pipeline | The last item deferred by the performance audit: `GET /api/matches/mine`, `/api/deals/mine`, and `/api/history` embedded the full (~30-80 KB) lot photo in every row, even though the buyer dashboard and match-thread page only ever render it at 40-64 px. Added `lots.photo_thumb_url` — a genuinely tiny (~96 px) thumbnail generated client-side alongside the full photo — and `LotSummary` (the shape those three endpoints use) now exposes only the thumbnail, never the full photo. Live-verified: a real match's lot payload dropped from ~37 KB to ~1.2 KB. Existing lots keep their full photo but get `photo_thumb_url = NULL` until next edited — a one-time, self-healing gap, not a break, since the UI already treats "no photo" as a normal empty state. Also fixed a real bug surfaced while wiring this up: `update_lot` silently ignored an explicit `null` for `photo_url`/`photo_thumb_url` (a farmer removing an attached photo via edit never actually cleared it in the database) | ✅ |
+| v1.38 · Security-response headers | Closed a gap the Security page had disclosed rather than hidden: no CSP/HSTS/X-Frame-Options/etc. were set on any response. Added a global middleware that sets `Content-Security-Policy` (`default-src 'none'; frame-ancestors 'none'`), `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy` on every response — `/docs`/`/redoc`/`/openapi.json` are exempted from the CSP only, so Swagger's CDN-loaded assets keep working. Live-verified via `curl -I` against a real running instance, including that CORS preflight still succeeds alongside the new headers | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -549,7 +550,7 @@ agrilink/
 │   │       └── district_coords.py / market_towns.py   curated all-India lat/lon lookups
 │   ├── alembic/versions/       27 revisions, 0001_initial → a4d1e8c9f3b2_v1_37_lot_photo_thumbnail
 │   │                           (see Database schema → Migrations for the full chain)
-│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 501 tests
+│   ├── tests/                  pytest suite (SQLite in-memory) — 43 test files, 503 tests
 │   └── .env.example
 ├── frontend/
 │   └── src/
@@ -1555,7 +1556,7 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-**Backend** (42 test files, 501 tests): signal cases and MSP/weather factors;
+**Backend** (43 test files, 503 tests): signal cases and MSP/weather factors;
 price forecast (trend+seasonality, prediction band, short-history degradation);
 the **Decision Brief** (assembly, urgency ordering, reference-market inference,
 thin-history 404, and the v1.18 buyer-perspective mirror — headline action,

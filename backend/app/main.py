@@ -134,6 +134,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_DOC_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Baseline security-response headers, missing until now. Swagger/ReDoc
+    load their JS/CSS from a CDN, so those two doc paths (and the schema
+    they render from) are exempted from the CSP rather than left broken."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    if request.url.path not in _DOC_PATHS:
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    return response
+
+
 @app.middleware("http")
 async def timing_log(request: Request, call_next):
     """Minimal request-timing observability — this app has no tracing/APM
