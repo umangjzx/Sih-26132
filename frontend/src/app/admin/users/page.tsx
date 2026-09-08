@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
+import { ReasonPromptModal } from "@/components/ReasonPromptModal";
 import { Icon, SkeletonTableRows } from "@/components/ui";
 import { ApiError, getAdminUsers, setUserActive, verifyUser, type AdminUser } from "@/lib/api";
 
@@ -29,6 +30,7 @@ export default function AdminUsersPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<AdminUser | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -166,11 +168,7 @@ export default function AdminUsersPage() {
                       {r.role !== "admin" && r.verification_status !== "rejected" && r.verification_status !== "verified" && (
                         <button
                           disabled={busy === r.id}
-                          onClick={() => {
-                            const reason = window.prompt(t("rejectReasonPrompt"));
-                            if (reason === null) return; // cancelled
-                            act(() => verifyUser(r.id, "rejected", reason.trim() || undefined, token!), r.id);
-                          }}
+                          onClick={() => setRejectTarget(r)}
                           className="rounded-lg border border-[var(--color-wait)]/50 px-2.5 py-1 text-xs font-bold text-[var(--color-wait)] disabled:opacity-50"
                         >
                           {t("reject")}
@@ -193,6 +191,21 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+
+      {rejectTarget && (
+        <ReasonPromptModal
+          title={t("rejectReasonTitle")}
+          description={t("rejectReasonPrompt")}
+          confirmLabel={t("reject")}
+          cancelLabel={t("cancel")}
+          onConfirm={(reason) => {
+            const target = rejectTarget;
+            setRejectTarget(null);
+            act(() => verifyUser(target.id, "rejected", reason || undefined, token!), target.id);
+          }}
+          onCancel={() => setRejectTarget(null)}
+        />
+      )}
     </div>
   );
 }

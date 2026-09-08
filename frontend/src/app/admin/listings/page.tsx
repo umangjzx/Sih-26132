@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
+import { ReasonPromptModal } from "@/components/ReasonPromptModal";
 import { Icon, SkeletonTableRows } from "@/components/ui";
 import {
   ApiError,
@@ -47,6 +48,9 @@ export default function AdminListingsPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [reasonTarget, setReasonTarget] = useState<
+    { kind: "lots"; row: AdminLot } | { kind: "demands"; row: AdminDemand } | null
+  >(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -73,31 +77,30 @@ export default function AdminListingsPage() {
     return () => clearTimeout(id);
   }, [load]);
 
-  async function closeLot(row: AdminLot) {
-    const reason = window.prompt(t("closeReasonPrompt", { crop: row.crop }));
-    if (reason === null) return;
-    if (reason.trim().length < 3) { setErr(t("reasonTooShort")); return; }
-    setBusy(row.id);
-    setErr(null);
-    try {
-      const updated = await closeAdminLot(row.id, reason.trim(), token!);
-      setLots((rs) => rs.map((r) => (r.id === row.id ? updated : r)));
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : t("actionError"));
-    } finally {
-      setBusy(null);
-    }
+  function closeLot(row: AdminLot) {
+    setReasonTarget({ kind: "lots", row });
   }
 
-  async function closeDemand(row: AdminDemand) {
-    const reason = window.prompt(t("closeReasonPrompt", { crop: row.crop }));
-    if (reason === null) return;
+  function closeDemand(row: AdminDemand) {
+    setReasonTarget({ kind: "demands", row });
+  }
+
+  async function confirmClose(reason: string) {
+    const target = reasonTarget;
+    if (!target) return;
+    setReasonTarget(null);
     if (reason.trim().length < 3) { setErr(t("reasonTooShort")); return; }
+    const { kind, row } = target;
     setBusy(row.id);
     setErr(null);
     try {
-      const updated = await closeAdminDemand(row.id, reason.trim(), token!);
-      setDemands((rs) => rs.map((r) => (r.id === row.id ? updated : r)));
+      if (kind === "lots") {
+        const updated = await closeAdminLot(row.id, reason.trim(), token!);
+        setLots((rs) => rs.map((r) => (r.id === row.id ? updated : r)));
+      } else {
+        const updated = await closeAdminDemand(row.id, reason.trim(), token!);
+        setDemands((rs) => rs.map((r) => (r.id === row.id ? updated : r)));
+      }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : t("actionError"));
     } finally {
@@ -234,6 +237,17 @@ export default function AdminListingsPage() {
           </tbody>
         </table>
       </div>
+
+      {reasonTarget && (
+        <ReasonPromptModal
+          title={t("closeReasonTitle")}
+          description={t("closeReasonPrompt", { crop: reasonTarget.row.crop })}
+          confirmLabel={t("close")}
+          cancelLabel={t("cancel")}
+          onConfirm={confirmClose}
+          onCancel={() => setReasonTarget(null)}
+        />
+      )}
     </div>
   );
 }
