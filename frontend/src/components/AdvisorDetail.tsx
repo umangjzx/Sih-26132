@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "@/components/AuthProvider";
 import { useAppLocale } from "@/i18n/LocaleProvider";
 import {
   fetchAdvisorSummary,
@@ -172,6 +173,8 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
   const ta = useTranslations("advisor");
   const { locale } = useAppLocale();
   const { location } = useLocation();
+  const { user } = useAuth();
+  const isBuyer = user?.role === "buyer";
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [signal, setSignal] = useState<SellWaitSignalResponse | null>(null);
   const [weather, setWeather] = useState<WeatherForecast | null>(null);
@@ -186,7 +189,10 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
     setLoading(true);
     setError(false);
     try {
-      const sig = await fetchSignal(cm.crop, cm.market).catch(() => null);
+      // The sell/wait/hold signal and its AI summary are a farmer decision
+      // ("should I sell now") — meaningless for a buyer, who already gets a
+      // buy_now/wait_to_buy recommendation from the Decision Brief above.
+      const sig = isBuyer ? null : await fetchSignal(cm.crop, cm.market).catch(() => null);
       setSignal(sig);
       const [w, m, c, h] = await Promise.allSettled([
         fetchWeather({ market: cm.market, district: cm.district, includeAnomaly: true, lang: locale }),
@@ -198,17 +204,19 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
       setMsp(m.status === "fulfilled" ? m.value : null);
       setCalendar(c.status === "fulfilled" ? c.value : null);
       setHolidays(h.status === "fulfilled" ? h.value : null);
-      if (!sig) setError(true);
+      if (!sig && !isBuyer) setError(true);
       setAiSummary(null);
-      fetchAdvisorSummary(cm.crop, cm.market, locale)
-        .then((r) => setAiSummary(r.available ? r.summary : null))
-        .catch(() => setAiSummary(null));
+      if (!isBuyer) {
+        fetchAdvisorSummary(cm.crop, cm.market, locale)
+          .then((r) => setAiSummary(r.available ? r.summary : null))
+          .catch(() => setAiSummary(null));
+      }
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [cm.crop, cm.market, cm.district, locale, location?.state]);
+  }, [cm.crop, cm.market, cm.district, locale, location?.state, isBuyer]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -277,6 +285,15 @@ export function AdvisorDetail({ cm }: { cm: CropMarketState }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Buyers get their buy_now/wait_to_buy call from the Decision Brief
+          above — this section's sell/wait/hold signal is farmer-only. */}
+      {isBuyer && (
+        <div className="flex items-start gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] px-5 py-4 text-sm text-[var(--ink-soft)]">
+          <Icon name="spark" size={18} className="mt-0.5 shrink-0 text-[var(--green-600)]" />
+          <span>{ta("buyerNotice")}</span>
+        </div>
+      )}
+
       {/* Hero Recommendation Card */}
       {signal && (
         <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${bgGradient} p-6 text-white shadow-xl`}>

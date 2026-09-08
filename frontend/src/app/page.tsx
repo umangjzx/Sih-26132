@@ -94,6 +94,8 @@ function HomeInner() {
   const te = useTranslations("explore");
   const cm = useCropMarket();
   const { location, warmTick } = useLocation();
+  const { user } = useAuth();
+  const isBuyer = user?.role === "buyer";
 
   const [price, setPrice] = useState<number | null>(null);
   const [pctChange, setPctChange] = useState<number | null>(null);
@@ -110,12 +112,14 @@ function HomeInner() {
   const load = useCallback(async () => {
     if (!cm.crop || !cm.market) return;
     setLoading(true);
+    // sell/wait signal and "best market to sell at" are both farmer-side
+    // decisions (a buyer isn't selling anything) — skip them for a buyer.
     const [tr, sg, wx, mp, bm, nb] = await Promise.allSettled([
       fetchTrend(cm.crop, cm.market, 7),
-      fetchSignal(cm.crop, cm.market),
+      isBuyer ? Promise.resolve(null) : fetchSignal(cm.crop, cm.market),
       fetchWeather({ market: cm.market, district: cm.district, lat: location?.lat, lon: location?.lon, lang: locale }),
       fetchMsp(cm.crop),
-      fetchBestMarkets(cm.crop, cm.market),
+      isBuyer ? Promise.resolve(null) : fetchBestMarkets(cm.crop, cm.market),
       fetchNearby(cm.crop, cm.district || cm.market),
     ]);
     if (tr.status === "fulfilled") {
@@ -135,7 +139,7 @@ function HomeInner() {
     setBestMarket(bm.status === "fulfilled" ? bm.value : null);
     setNearbyMarkets(nb.status === "fulfilled" ? nb.value : []);
     setLoading(false);
-  }, [cm.crop, cm.market, cm.district, location?.lat, location?.lon, locale, warmTick]);
+  }, [cm.crop, cm.market, cm.district, location?.lat, location?.lon, locale, warmTick, isBuyer]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -262,10 +266,20 @@ function HomeInner() {
           }`}
         >
           <p className="text-xs font-bold uppercase tracking-widest text-[var(--ink-soft)]">
-            {ts("title")}
+            {isBuyer ? t("buyTimingTitle") : ts("title")}
           </p>
           {loading ? (
             <Skeleton className="mt-4 h-20 w-full" />
+          ) : isBuyer ? (
+            <>
+              <p className="mt-4 text-sm text-[var(--ink-soft)]">{t("buyTimingNote")}</p>
+              <Link
+                href={`/advisor?crop=${cm.crop}&market=${cm.market}`}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[var(--green-700)] hover:underline"
+              >
+                {t("seeFullAnalysis")}
+              </Link>
+            </>
           ) : rec ? (
             <>
               <SignalGaugeChart recommendation={rec.recommendation} />
@@ -365,11 +379,12 @@ function HomeInner() {
           <PriceTrendChart points={trendPoints} />
         </div>
 
-        {/* Best Market Card */}
+        {/* Best Market Card — "net price after transport" is a seller's
+            revenue math, so a buyer gets a pointer to the marketplace instead. */}
         <div className="rounded-2xl border border-[var(--green-600)]/20 bg-gradient-to-br from-[var(--green-700)] to-[var(--green-900)] p-5 shadow-lg text-white">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/60">
             <Icon name="pin" size={14} />
-            {t("bestMarketForYou")}
+            {isBuyer ? t("nearbySellersTitle") : t("bestMarketForYou")}
           </div>
           {loading ? (
             <div className="mt-4 space-y-3">
@@ -377,9 +392,20 @@ function HomeInner() {
               <div className="h-8 rounded bg-white/20"></div>
               <div className="h-4 w-2/3 rounded bg-white/20"></div>
             </div>
+          ) : isBuyer ? (
+            <>
+              <p className="mt-4 text-sm text-white/70">{t("nearbySellersNote")}</p>
+              <Link
+                href="/browse"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/25"
+              >
+                <Icon name="map" size={15} />
+                {t("browseLots")}
+              </Link>
+            </>
           ) : bestMarket?.best ? (
             <>
-              <div className="mt-3 font-heading text-3xl font-extrabold">
+              <div className="mt-3 break-words font-heading text-2xl font-extrabold leading-tight [text-wrap:balance]">
                 {bestMarket.best.market}
               </div>
               <div className="mt-1 font-heading text-xl font-bold text-[var(--amber-500)]">

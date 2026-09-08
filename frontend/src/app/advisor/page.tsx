@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 import { AdvisorDetail } from "@/components/AdvisorDetail";
+import { useAuth } from "@/components/AuthProvider";
 import { CropMarketPicker } from "@/components/CropMarketPicker";
 import { DecisionBrief } from "@/components/DecisionBrief";
 import { StateDataNotice } from "@/components/StateDataNotice";
@@ -13,6 +14,8 @@ import { useCropMarket } from "@/lib/useCropMarket";
 function AdvisorInner() {
   const t = useTranslations("home");
   const cm = useCropMarket();
+  const { user } = useAuth();
+  const isBuyer = user?.role === "buyer";
 
   return (
     <div className="flex flex-col gap-6">
@@ -24,7 +27,7 @@ function AdvisorInner() {
           </div>
           <div>
             <h1 className="font-heading text-2xl font-bold tracking-tight text-[var(--green-900)]">
-              {t("advisorTitle")}
+              {isBuyer ? t("advisorTitleBuyer") : t("advisorTitle")}
             </h1>
             <p className="mt-0.5 text-sm text-[var(--ink-soft)]">{t("advisorDesc")}</p>
           </div>
