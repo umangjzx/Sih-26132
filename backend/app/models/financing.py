@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -20,6 +20,21 @@ class FinancingRequest(Base):
     """
 
     __tablename__ = "financing_requests"
+    __table_args__ = (
+        # A lot may only have one *active* (pending/approved) financing
+        # request at a time — create_request enforces this in Python, but a
+        # double-submit (multi-tab, retried request) could race past that
+        # check and pledge the same lot twice. This backs the invariant at
+        # the DB level. Past rejected/withdrawn rows are intentionally
+        # excluded so a farmer can request again after either outcome.
+        Index(
+            "uq_financing_request_active_per_lot",
+            "lot_id",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'approved')"),
+            sqlite_where=text("status IN ('pending', 'approved')"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     farmer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)

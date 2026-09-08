@@ -13,6 +13,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
+from app.models.financing import FinancingRequest
 from app.models.lot import Lot
 from app.models.notification import Notification
 
@@ -98,6 +99,35 @@ def test_cannot_double_pledge_the_same_lot(db, farmer_user):
         assert r1.status_code == 201
         r2 = c.post("/api/financing/requests", json={"lot_id": lot.id, "requested_amount_inr": 3000})
         assert r2.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_create_request_rejects_a_second_active_pledge_race(db, farmer_user):
+    """create_request's `existing` check can be raced past by a double-submit
+    (two near-simultaneous requests both reading "no active pledge yet").
+    This proves the DB constraint backing "one active request per lot"
+    actually catches what the check misses, by inserting the second row
+    directly rather than relying on ORM-level timing."""
+    lot = _make_lot(db, farmer_user.id, quantity_kg=1000, expected_price=2000)
+    c = _client(db)
+    try:
+        _as(farmer_user)
+        r = c.post("/api/financing/requests", json={"lot_id": lot.id, "requested_amount_inr": 5000})
+        assert r.status_code == 201, r.text
+
+        # Simulate the losing half of a race: a second active request for the
+        # same lot inserted directly, bypassing the app-level check that the
+        # winning request already passed.
+        dupe = FinancingRequest(farmer_id=farmer_user.id, lot_id=lot.id, requested_amount_inr=3000, status="pending")
+        db.add(dupe)
+        try:
+            db.flush()
+            assert False, "expected the partial unique index to reject a second active request"
+        except Exception as e:
+            assert "uq_financing_request_active_per_lot" in str(e) or "UNIQUE" in str(e)
+        finally:
+            db.rollback()
     finally:
         app.dependency_overrides.clear()
 

@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -120,7 +121,18 @@ def create_request(
         status="pending",
     )
     db.add(r)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # Two near-simultaneous requests for the same lot (double-submit,
+        # multi-tab) both passed the `existing` check above — the
+        # uq_financing_request_active_per_lot constraint catches what the
+        # read missed, before this lot could ever be pledged twice.
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This lot already has an active financing request — withdraw it first to request again",
+        )
     log_event(
         db, actor_id=current_user.id, entity_type="financing_request", entity_id=r.id,
         action="financing_requested",
