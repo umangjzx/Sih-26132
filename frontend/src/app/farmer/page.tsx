@@ -21,6 +21,7 @@ import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { QuickActions } from "@/components/QuickActions";
 import { Icon } from "@/components/ui";
 import { compressImageToDataUrl } from "@/lib/image";
+import { useLocation } from "@/lib/useLocation";
 import {
   ApiError,
   createLot,
@@ -81,6 +82,7 @@ function saveQueue(q: LotCreate[]) {
 
 export default function FarmerPage() {
   const { isAuthenticated, ready, user, token } = useAuth();
+  const { location } = useLocation();
   const router = useRouter();
   const t = useTranslations("lots");
   const tdash = useTranslations("dash");
@@ -665,6 +667,9 @@ export default function FarmerPage() {
       <NearbyResources
         district={user?.district}
         crop={lots[0]?.crop ?? (form.crop || undefined)}
+        state={location?.state}
+        lat={location?.lat}
+        lon={location?.lon}
       />
 
       {cameraOpen && (
