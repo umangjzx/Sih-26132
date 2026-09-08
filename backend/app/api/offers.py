@@ -456,9 +456,23 @@ def decline_offer(
             detail="Cannot decline your own offer",
         )
 
-    offer.status = "declined"
+    # Atomic claim — accept_offer could be claiming this exact offer (and
+    # creating a Deal for it) at the same instant. Without this, a losing
+    # decline_offer would still plain-write status="declined" over an
+    # already-accepted offer, leaving a Deal in existence whose originating
+    # offer contradicts it.
+    claimed_offer = db.execute(
+        update(Offer).where(Offer.id == offer.id, Offer.status == "pending").values(status="declined")
+    ).rowcount
+    if not claimed_offer:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This offer was just acted on elsewhere — refresh and try again.")
+    db.refresh(offer)
 
-    # Revert match to 'proposed' if no pending offers remain
+    # Revert match to 'proposed' if no pending offers remain — atomic for the
+    # same reason: accept_offer's own atomic claim on Match.status could have
+    # already flipped it to 'accepted' via this same offer's acceptance
+    # racing this decline. Only revert if it's still sitting open.
     remaining_pending = db.execute(
         select(Offer).where(
             Offer.match_id == offer.match_id,
@@ -468,7 +482,11 @@ def decline_offer(
     ).scalars().first()
 
     if remaining_pending is None:
-        match.status = "proposed"
+        db.execute(
+            update(Match)
+            .where(Match.id == match.id, Match.status.in_(("proposed", "offered")))
+            .values(status="proposed")
+        )
 
     db.flush()
     log_event(
