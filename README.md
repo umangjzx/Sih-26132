@@ -207,7 +207,7 @@ append-only ledger every other step uses.
 ## 7. Technical Architecture
 
 Frontend: Next.js 16 (App Router) client-rendered SPA, 31 routes. Backend:
-FastAPI, 19 routers, 111 endpoints, 32 single-responsibility services.
+FastAPI, 19 routers, 111 endpoints, 33 single-responsibility services.
 Database: PostgreSQL 16, 20 tables, 27 linear Alembic migrations. 11 free
 external data sources, every one with an offline-safe fallback. Full diagrams,
 the complete API reference, and the database ER diagram are in
@@ -924,7 +924,7 @@ erDiagram
 |---|---|---|
 | `price_cache` | `crop, variety, market, district, state, date, min/max/modal_price, arrival_volume?` — unique `(market, crop, variety, date)` | — |
 | `users` | `role, name, phone` (unique), `district, taluka, state, kyc_status`, `latitude?, longitude?`, `verification_status, verification_note?, verification_ref?, verified_at?, verified_by?`, `password_hash?` (PBKDF2), `is_active`, `created_at`, `sms_digest_enabled, sms_digest_sent_at?` (v1.14) | role: `farmer` \| `buyer` \| `admin`; verification: `unverified` \| `pending` \| `verified` \| `rejected` |
-| `lots` | `farmer_id→users`, `crop, quantity_kg, quality_grade, photo_url?, expected_price, available_from, location, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
+| `lots` | `farmer_id→users`, `crop, quantity_kg, quality_grade, photo_url?, photo_thumb_url?` (v1.37 — a small client-generated thumbnail; match/deal list responses expose only this, never the full photo), `expected_price, available_from, location, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
 | `demands` | `buyer_id→users`, `crop, quantity_kg, quality_spec, price_band_min/max, delivery_window, delivery_district, latitude?, longitude?` | status: `open` \| `matched` \| `closed` |
 | `matches` | `lot_id→lots`, `demand_id→demands`, `score`, `score_detail` (JSON string) | status: `proposed` \| `offered` \| `accepted` \| `rejected` |
 | `offers` | `match_id→matches`, `from_user_id→users`, `price, quantity, message?`, `created_at` | status: `pending` \| `countered` \| `accepted` \| `declined` |

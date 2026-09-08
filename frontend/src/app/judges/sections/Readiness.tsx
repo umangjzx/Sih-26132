@@ -48,7 +48,7 @@ const SUMMARY = [
 const WHY = [
   "552 of 552 automated tests pass — verified by running both suites live, not quoted from a stale document",
   "11 real external data sources, every single one with a working offline fallback — the app never shows a broken screen because a third party is down",
-  "A genuine architecture: 20 relational tables, 111 REST endpoints, 32 single-responsibility services — not a thin CRUD wrapper",
+  "A genuine architecture: 20 relational tables, 111 REST endpoints, 33 single-responsibility services — not a thin CRUD wrapper",
   "Honest AI labeling — rule-based and statistical methods are named as such; only the two components that are genuinely AI (vision OCR, LLM phrasing) are called AI",
   "A previously-undocumented, real security feature (in-process sliding-window rate-limiting, 27 checkpoints across 14 routers) surfaced and disclosed by this very audit, alongside the drift it found and corrected",
   "This page's own disclosed gaps were then actually worked: a real 12x performance bottleneck (GET /api/options) and every finding from two security scanners (bandit + pip-audit) were found and fixed, not just written down",
