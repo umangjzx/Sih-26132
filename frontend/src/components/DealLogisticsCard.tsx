@@ -89,8 +89,13 @@ export function DealLogisticsCard({
       setForm(saved);
       setEditing(false);
     } catch (e) {
-      if (e instanceof ApiError) setErr(e.status === 409 ? t("closed") : e.message);
-      else setErr(t("error"));
+      if (e instanceof ApiError) {
+        // Only the deal-closed 409 has a localized message; a concurrent-save
+        // conflict is also a 409 but must not be mislabeled as "deal closed".
+        setErr(e.status === 409 && e.message.includes("closed") ? t("closed") : e.status === 409 ? t("error") : e.message);
+      } else {
+        setErr(t("error"));
+      }
     } finally {
       setSaving(false);
     }

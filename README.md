@@ -24,7 +24,7 @@ Built **Maharashtra-first** (the SIH problem statement is Govt. of Maharashtra /
 MSInS) but **location-aware across India** — detect or pick a location and prices
 re-scope to that state; MSP and the storage/FPO directory are national.
 
-**Status — Phases 1–3 complete, plus v1.1 through v1.28 (last updated 2026-09-08):**
+**Status — Phases 1–3 complete, plus v1.1 through v1.29 (last updated 2026-09-08):**
 
 | Phase / Release | Scope | State |
 |---|---|---|
@@ -60,6 +60,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.26 · Price-alert dedup guard | The same shape once more in `create_alert` — a double-submit could create two identical alerts, double-firing the same notification; closed with a functional unique index matching the existing case-insensitive dedup check | ✅ |
 | v1.27 · Sibling-endpoint & deadlock hardening | `decline_offer`, `withdraw_lot`, `withdraw_demand`, and pools' `set_pool_status`/`accept_demand_for_pool` all had a plain status write on a field a sibling endpoint already atomically claimed (e.g. `accept_offer` claims `Lot.status`, but `withdraw_lot` didn't) — closed with the same atomic-UPDATE pattern. `matches` also got a `UNIQUE(lot_id, demand_id)` closing a duplicate-match race in "express interest". Live concurrent testing of these fixes surfaced genuine Postgres deadlocks between transactions updating `lots`/`matches` in different orders — added a global exception handler converting a detected deadlock into the same "please try again" 409 every other race in this app returns, instead of a raw 500 | ✅ |
 | v1.28 · Verification-request race guard | One more sibling-endpoint gap: a user's own `request-verification` resubmit and an admin's `PATCH /admin/users/{id}/verify` decision both plain-wrote `User.verification_status` — a resubmit racing a concurrent approval could silently revert "verified" back to "pending" and wipe `verified_at`/`verified_by`. Closed with the same atomic conditional UPDATE (no schema change needed) | ✅ |
+| v1.29 · Deal-logistics race guard | `PUT /api/deals/{id}/logistics` had the same check-then-insert race as the earlier insert-race sweep, but on a row either the farmer or the buyer can create — a double "Plan logistics" click from both parties at the same instant 500'd for the loser instead of a clean 409. `deal_logistics.deal_id` was already `UNIQUE` at the model level; the endpoint now catches the `IntegrityError` (no schema change needed). Also fixed a frontend bug this exposed: the logistics card mislabeled any 409 as "This deal is closed." — it now only does that for an actual closed-deal conflict | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -540,7 +541,7 @@ agrilink/
 │   │       └── district_coords.py / market_towns.py   curated all-India lat/lon lookups
 │   ├── alembic/versions/       24 revisions, 0001_initial → cc8b832e753a_v1_27_match_lot_demand_race_guard
 │   │                           (see Database schema → Migrations for the full chain)
-│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 484 tests
+│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 485 tests
 │   └── .env.example
 ├── frontend/
 │   └── src/
@@ -1546,7 +1547,7 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-**Backend** (42 test files, 484 tests): signal cases and MSP/weather factors;
+**Backend** (42 test files, 485 tests): signal cases and MSP/weather factors;
 price forecast (trend+seasonality, prediction band, short-history degradation);
 the **Decision Brief** (assembly, urgency ordering, reference-market inference,
 thin-history 404, and the v1.18 buyer-perspective mirror — headline action,

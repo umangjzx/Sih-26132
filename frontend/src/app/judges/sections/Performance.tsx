@@ -9,9 +9,9 @@ const METRICS = [
   { metric: "Frontend page load time", value: "Not benchmarked", kind: "pending" as const },
   { metric: "Database query performance", value: "Not profiled with EXPLAIN ANALYZE, but one real bottleneck was found and fixed this run (see below)", kind: "verified" as const },
   { metric: "Concurrent users tested", value: "20 concurrent workers, 200 requests/endpoint, local benchmark — not a production-scale load test", kind: "verified" as const },
-  { metric: "Error rate", value: "0 failures across 529 automated test runs (not the same as a production error rate)", kind: "verified" as const },
+  { metric: "Error rate", value: "0 failures across 530 automated test runs (not the same as a production error rate)", kind: "verified" as const },
   { metric: "Uptime", value: "Not applicable — no long-running production deployment with an SLA yet", kind: "pending" as const },
-  { metric: "Backend test-suite runtime", value: "484 tests in 33.6s (in-memory SQLite, run 2026-09-08 alongside a live dev server — runtime varies with what else is running on the machine)", kind: "verified" as const },
+  { metric: "Backend test-suite runtime", value: "485 tests in 33.5s (in-memory SQLite, run 2026-09-08 alongside a live dev server — runtime varies with what else is running on the machine)", kind: "verified" as const },
   { metric: "Frontend test-suite runtime", value: "45 tests in ~6.4s (run 2026-09-08)", kind: "verified" as const },
   { metric: "Frontend production build", value: "Compiles cleanly, 31 routes prerendered/server-rendered correctly (this run)", kind: "verified" as const },
 ];

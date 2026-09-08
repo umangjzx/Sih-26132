@@ -80,6 +80,37 @@ def test_put_logistics_saves_and_recomputes(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_put_logistics_rejects_a_second_first_save_race(db, farmer_user, buyer_user):
+    """A double-submit (multi-tab, or farmer and buyer both saving a first
+    logistics plan on the same deal at the same instant) can race past the
+    "no row yet" read the same way join_pool/commit_to_bid/post_offer etc.
+    could — the deal_logistics.deal_id UNIQUE constraint must catch what the
+    read missed, and the loser must get a clean 409, not a raw 500."""
+    deal = _seed(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        r = client.put(f"/api/deals/{deal.id}/logistics", json={"mode": "self_pickup"})
+        assert r.status_code == 200, r.text
+
+        # Simulate the losing half of the race: a second row for the same
+        # deal inserted directly, bypassing the app-level "row is None" check
+        # the winning request already passed.
+        dupe = DealLogistics(deal_id=deal.id, mode="buyer_arranged")
+        db.add(dupe)
+        try:
+            db.flush()
+            assert False, "expected the unique constraint to reject a second logistics row"
+        except Exception as e:
+            assert "deal_logistics" in str(e).lower() or "unique" in str(e).lower()
+        finally:
+            db.rollback()
+
+        assert db.query(DealLogistics).count() == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_logistics_access_is_deal_scoped(db, farmer_user, buyer_user, admin_user):
     deal = _seed(db, farmer_user, buyer_user)
     from app.models.user import User

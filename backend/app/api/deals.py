@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.matching import _counterparty, _demand_summary, _lot_summary
@@ -384,6 +385,19 @@ def upsert_logistics(
     if row is None:
         row = DealLogistics(deal_id=deal_id, pickup_point=pickup, drop_point=drop)
         db.add(row)
+        try:
+            db.flush()
+        except IntegrityError:
+            # Two near-simultaneous first-saves on this deal (farmer and buyer
+            # both plan logistics for the first time at the same instant) both
+            # passed the "no row yet" read above — the deal_logistics.deal_id
+            # UNIQUE constraint catches what the read missed. A retry goes
+            # through the update path below since the row now exists.
+            db.rollback()
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Someone just saved a logistics plan for this deal — refresh and try again.",
+            )
 
     data = body.cleaned()
     pod_added = bool(data.get("pod_url")) and not row.pod_url
