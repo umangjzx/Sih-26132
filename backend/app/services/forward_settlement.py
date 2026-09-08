@@ -11,7 +11,7 @@ going nowhere.
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models.deal import Deal
@@ -54,6 +54,25 @@ def check_settlement_risk(db: Session) -> int:
             if now - sent < _REMINDER_COOLDOWN:
                 continue
 
+        # Atomic claim — this runs from the same run_ingestion() fan-out as
+        # evaluate_alerts (the scheduler's interval job, its boot job, and
+        # the separately-triggerable POST /ingest/run all call it
+        # independently, each with its own DB session, and can genuinely
+        # overlap). Without this, two overlapping runs could both pass the
+        # cooldown check above and each send a duplicate pair of reminders
+        # for the same overdue commitment.
+        prev = c.settlement_reminder_sent_at
+        cond = (
+            ForwardCommitment.settlement_reminder_sent_at.is_(None)
+            if prev is None
+            else ForwardCommitment.settlement_reminder_sent_at == prev
+        )
+        claimed = db.execute(
+            update(ForwardCommitment).where(ForwardCommitment.id == c.id, cond).values(settlement_reminder_sent_at=now)
+        ).rowcount
+        if not claimed:
+            continue
+
         days_overdue = (today - c.settlement_due).days
         title = f"Forward contract for {bid.crop} is {days_overdue}d overdue"
         body = (
@@ -67,7 +86,6 @@ def check_settlement_risk(db: Session) -> int:
         db.add(Notification(
             user_id=bid.buyer_id, kind="deal", title=title, body=body, link=link,
         ))
-        c.settlement_reminder_sent_at = now
         created += 2
 
     if created:

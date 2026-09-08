@@ -162,7 +162,18 @@ def withdraw_dispute(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the person who raised it can withdraw it")
     if dispute.status != "open":
         raise HTTPException(status.HTTP_409_CONFLICT, f"Dispute is '{dispute.status}', not open")
-    dispute.status = "withdrawn"
+
+    # Atomic claim — an admin's close_dispute() could be committing a
+    # resolution (possibly with a forward-contract penalty already applied)
+    # at this same instant; a plain write here could silently revert that
+    # back to "withdrawn" after the resolution's side effects already ran.
+    claimed = db.execute(
+        update(Dispute).where(Dispute.id == dispute.id, Dispute.status == "open").values(status="withdrawn")
+    ).rowcount
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This dispute was just resolved — refresh and try again.")
+    db.refresh(dispute)
     db.flush()
     log_event(db, actor_id=current_user.id, entity_type="deal", entity_id=dispute.deal_id,
               action="dispute_withdrawn", detail={"dispute_id": dispute.id})

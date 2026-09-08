@@ -7,7 +7,7 @@ Reuses ``_seed_deal`` / ``_as`` / ``_client`` / ``_make_user`` from
 from datetime import date, timedelta
 
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -234,6 +234,32 @@ def test_raiser_can_withdraw_own_open_dispute(db, farmer_user, buyer_user):
         did2 = client.post(f"/api/deals/{deal.id}/disputes", json={"reason": "again"}).json()["id"]
         _as(farmer_user)
         assert client.post(f"/api/disputes/{did2}/withdraw").status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_withdraw_dispute_rejects_a_concurrent_already_resolved_race(db, farmer_user, buyer_user):
+    """withdraw_dispute's own status check can be raced past by an admin's
+    close_dispute() committing a resolution (possibly with a forward-penalty
+    already applied) between the read and this write — the atomic claim must
+    catch it, not silently revert an already-resolved dispute back to
+    "withdrawn"."""
+    deal = _seed_deal(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        did = client.post(f"/api/deals/{deal.id}/disputes", json={"reason": "mistake"}).json()["id"]
+
+        # Simulate a concurrent admin resolution landing in the DB just
+        # before this withdraw request's own atomic claim runs.
+        db.execute(update(Dispute).where(Dispute.id == did).values(status="resolved", outcome="dismissed"))
+        db.commit()
+
+        r = client.post(f"/api/disputes/{did}/withdraw")
+        assert r.status_code == 409, r.text
+
+        row = db.execute(select(Dispute).where(Dispute.id == did)).scalar_one()
+        assert row.status == "resolved"
     finally:
         app.dependency_overrides.clear()
 

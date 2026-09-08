@@ -1,9 +1,10 @@
 """Forward contracts (v1.6 #3) — pre-harvest bid + commitment + materialise."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.orm import sessionmaker
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -412,6 +413,40 @@ def test_check_settlement_risk_flags_overdue_and_notifies_both_parties(db, farme
         _as(buyer_user)
         detail = c.get(f"/api/forward/bids/{bid['id']}").json()
         assert detail["commitments"][0]["settlement_status"] == "overdue"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_check_settlement_risk_avoids_a_duplicate_reminder_from_a_concurrent_run(db, farmer_user, buyer_user):
+    """check_settlement_risk runs from the same run_ingestion() fan-out as
+    evaluate_alerts (the scheduler's interval job, its boot job, and the
+    separately-triggerable POST /ingest/run all call it independently, each
+    with its own DB session) — two overlapping runs could otherwise both
+    pass the cooldown check on the same commitment and each send a
+    duplicate reminder pair. Simulate a concurrent run's claim landing (via
+    a second session) in between this session loading the commitment and
+    this session's own call reaching its atomic claim."""
+    c = _client(db)
+    try:
+        bid = _make_bid(c, buyer_user, quantity_kg=1000)
+        result = _accept_commitment(c, farmer_user, buyer_user, bid)
+        cm = db.get(ForwardCommitment, result["commitment_id"])
+        cm.settlement_due = date.today() - timedelta(days=10)
+        db.commit()
+        assert cm.settlement_reminder_sent_at is None  # this session's stale read
+
+        # A concurrent overlapping run's own session claims it first.
+        other = sessionmaker(bind=db.get_bind())()
+        other.execute(
+            update(ForwardCommitment).where(ForwardCommitment.id == cm.id)
+            .values(settlement_reminder_sent_at=datetime.now(timezone.utc))
+        )
+        other.commit()
+        other.close()
+
+        created = check_settlement_risk(db)
+        assert created == 0, "the concurrent run's claim should have won; this run must not double-fire"
+        assert db.query(Notification).count() == 0
     finally:
         app.dependency_overrides.clear()
 

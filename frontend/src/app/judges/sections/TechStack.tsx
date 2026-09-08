@@ -31,7 +31,7 @@ const STACK: { category: string; icon: string; items: Tech[] }[] = [
       { name: "httpx", version: "0.28.1", why: "Async HTTP client for the 11 external integrations, with per-call timeouts so one slow provider can't hang a request", alt: "requests — sync-only" },
       { name: "python-jose[cryptography]", version: "3.5.0", why: "JWT encode/decode (HS256) for access + refresh tokens", alt: "PyJWT — comparable; jose was already pulled in for the crypto backend" },
       { name: "stdlib hashlib (PBKDF2-HMAC-SHA256)", version: "—", why: "600,000-iteration password hashing using only the Python standard library — no bcrypt/passlib dependency, so the build stays installable offline", alt: "bcrypt/argon2 — stronger per-hash cost tuning, but an extra native dependency for a hackathon-offline-safe build" },
-      { name: "pytest", version: "9.1.1", why: "486 backend tests run against an in-memory SQLite DB — no container needed to run the suite", alt: "—" },
+      { name: "pytest", version: "9.1.1", why: "488 backend tests run against an in-memory SQLite DB — no container needed to run the suite", alt: "—" },
     ],
   },
   {
