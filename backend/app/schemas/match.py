@@ -1,6 +1,6 @@
 """Pydantic v2 schemas for match and related summary responses."""
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -33,6 +33,10 @@ class CounterpartySummary(BaseModel):
     district: str
     kyc_status: str
     verification_status: str = "unverified"
+    # v1.22 — a trust signal beyond the binary verified badge: a real deal
+    # history and how long they've actually been on the platform.
+    completed_deals: int = 0
+    member_since: date
 
 
 class MatchResponse(BaseModel):
@@ -44,4 +48,5 @@ class MatchResponse(BaseModel):
     score: float
     score_detail: str | None
     status: str
+    created_at: datetime
     counterparty: CounterpartySummary | None = None

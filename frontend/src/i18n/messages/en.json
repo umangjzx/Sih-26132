@@ -246,6 +246,11 @@
     "viewOffers": "View Offers",
     "verifiedBuyer": "Verified Buyer",
     "verifiedFarmer": "Verified Farmer",
+    "matchGettingStale": "No response in {days} days — a nudge or a counter-offer might help",
+    "matchAtRisk": "At risk — {days} days with no response. Consider following up or withdrawing.",
+    "dealsCompleted": "{count} deals completed",
+    "newToPlatform": "New to AgriLink",
+    "memberSince": "member since {year}",
     "offerThreadTitle": "Offer Thread",
     "makeOffer": "Make an Offer",
     "offerPriceLabel": "Your Price (₹/quintal)",
@@ -412,7 +417,9 @@
     "viewDeal": "View Deal",
     "loadError": "Could not load your history",
     "subtitle": "All your past lots, demands, and finalised deals in one place.",
-    "grade": "Grade: {grade}"
+    "grade": "Grade: {grade}",
+    "filterAll": "All",
+    "noneMatchFilter": "No matches for this filter."
   },
   "realization": {
     "title": "Price realisation",

@@ -33,13 +33,14 @@ const verifiedMatch = {
   score: 85,
   score_detail: JSON.stringify({ quantity: 25, price: 40, distance: 20, total: 85, max: 100 }),
   status: "proposed",
-  counterparty: { id: 1, name: "Ravi Patil", district: "Pune", kyc_status: "verified" },
+  created_at: "2026-09-01T00:00:00Z",
+  counterparty: { id: 1, name: "Ravi Patil", district: "Pune", kyc_status: "verified", completed_deals: 3, member_since: "2025-01-01" },
 };
 
 const unverifiedMatch = {
   ...verifiedMatch,
   id: 2,
-  counterparty: { id: 3, name: "Suresh", district: "Nashik", kyc_status: "unverified" },
+  counterparty: { id: 3, name: "Suresh", district: "Nashik", kyc_status: "unverified", completed_deals: 0, member_since: "2026-06-01" },
 };
 
 beforeEach(() => {

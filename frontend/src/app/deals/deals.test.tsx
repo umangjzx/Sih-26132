@@ -39,7 +39,7 @@ const baseDeal = {
   created_at: "2026-09-01T00:00:00Z",
   lot: { id: 10, farmer_id: 1, crop: "Onion", quantity_kg: 500, quality_grade: "A", expected_price: 2400, location: "Pune", status: "matched" },
   demand: { id: 20, crop: "Onion", quantity_kg: 600, price_band_min: 2000, price_band_max: 2800, delivery_window: "7 days", status: "matched" },
-  counterparty: { id: 2, name: "Anil Traders", district: "Nashik", kyc_status: "verified" },
+  counterparty: { id: 2, name: "Anil Traders", district: "Nashik", kyc_status: "verified", completed_deals: 2, member_since: "2025-01-01" },
 };
 
 beforeEach(() => {

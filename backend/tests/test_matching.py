@@ -221,6 +221,40 @@ class TestGetMatchesMine:
         assert len(data) == 1
         assert data[0]["lot"]["crop"] == "Onion"
         assert data[0]["score_detail"] is not None
+        # v1.22 — created_at powers the frontend's "at risk" staleness badge
+        assert data[0]["created_at"] is not None
+
+    def test_counterparty_shows_completed_deals_and_member_since(
+        self, db, farmer_client, farmer_user, buyer_user
+    ):
+        """v1.22 — a trust signal beyond the binary verified badge: how many
+        deals this counterparty has actually closed, and how long they've
+        been on the platform."""
+        from app.models.deal import Deal
+        from app.models.offer import Offer
+
+        # A prior, already-closed deal between this exact farmer and buyer —
+        # a fresh match/demand/lot pair, fully wired through to a closed Deal.
+        old_lot = _make_lot(db, farmer_user, crop="Wheat")
+        old_demand = _make_demand(db, buyer_user, crop="Wheat")
+        run_matching(db)
+        old_match = db.execute(select(Match)).scalar_one()
+        db.add(Offer(match_id=old_match.id, from_user_id=buyer_user.id, price=2400, quantity=500, status="accepted"))
+        db.add(Deal(match_id=old_match.id, agreed_price=2400, agreed_quantity=500,
+                     logistics_mode="self_pickup", payment_status="paid", pipeline_status="closed"))
+        db.commit()
+
+        # A brand new, unrelated match between the same two parties.
+        _make_lot(db, farmer_user, crop="Onion")
+        _make_demand(db, buyer_user, crop="Onion")
+        run_matching(db)
+
+        resp = farmer_client.get("/api/matches/mine")
+        assert resp.status_code == 200
+        onion_match = next(m for m in resp.json() if m["lot"]["crop"] == "Onion")
+        cp = onion_match["counterparty"]
+        assert cp["completed_deals"] == 1
+        assert cp["member_since"] is not None
 
     def test_buyer_sees_own_matches(self, db, buyer_client, farmer_user, buyer_user):
         _make_lot(db, farmer_user)

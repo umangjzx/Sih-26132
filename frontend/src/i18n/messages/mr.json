@@ -246,6 +246,11 @@
     "viewOffers": "ऑफर पहा",
     "verifiedBuyer": "पडताळलेला खरेदीदार",
     "verifiedFarmer": "पडताळलेला शेतकरी",
+    "matchGettingStale": "{days} दिवसांपासून कोणताही प्रतिसाद नाही — आठवण किंवा नवीन ऑफर उपयोगी ठरू शकते",
+    "matchAtRisk": "धोक्यात — {days} दिवसांपासून कोणताही प्रतिसाद नाही. पाठपुरावा करा किंवा मागे घेण्याचा विचार करा.",
+    "dealsCompleted": "{count} व्यवहार पूर्ण झाले",
+    "newToPlatform": "AgriLink वर नवीन",
+    "memberSince": "{year} पासून सदस्य",
     "offerThreadTitle": "ऑफर धागा",
     "makeOffer": "ऑफर द्या",
     "offerPriceLabel": "तुमचा भाव (₹/क्विंटल)",
@@ -412,7 +417,9 @@
     "viewDeal": "व्यवहार पहा",
     "loadError": "तुमचा इतिहास लोड होऊ शकला नाही",
     "subtitle": "तुमचे सर्व मागील लॉट, मागण्या आणि अंतिम व्यवहार एका ठिकाणी.",
-    "grade": "प्रतवारी: {grade}"
+    "grade": "प्रतवारी: {grade}",
+    "filterAll": "सर्व",
+    "noneMatchFilter": "या फिल्टरसाठी काहीही जुळत नाही."
   },
   "realization": {
     "title": "भाव प्राप्ती",

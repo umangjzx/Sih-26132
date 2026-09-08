@@ -18,6 +18,42 @@ import { PageHeader } from "@/components/PageHeader";
 import { PriceRealizationCard } from "@/components/PriceRealizationCard";
 import { Icon } from "@/components/ui";
 
+/** Status filter pills, shown only when there's more than one status to
+ * filter between — a single-value pill row is just noise. */
+function StatusFilterPills({
+  value,
+  onChange,
+  options,
+  labels,
+  allLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  labels?: Record<string, string>;
+  allLabel: string;
+}) {
+  if (options.length < 2) return null;
+  return (
+    <div className="mb-3 flex flex-wrap gap-1.5">
+      {["all", ...options].map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={`rounded-full px-3 py-1 text-xs font-bold capitalize transition ${
+            value === opt
+              ? "bg-[var(--green-700)] text-white"
+              : "bg-[var(--paper)] text-[var(--ink-soft)] hover:bg-[var(--line)]"
+          }`}
+        >
+          {opt === "all" ? allLabel : (labels?.[opt] ?? opt.replace(/_/g, " "))}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function HistoryPage() {
   const { token, isAuthenticated, ready, user } = useAuth();
   const router = useRouter();
@@ -27,6 +63,9 @@ export default function HistoryPage() {
 
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lotFilter, setLotFilter] = useState("all");
+  const [demandFilter, setDemandFilter] = useState("all");
+  const [dealFilter, setDealFilter] = useState("all");
 
   useEffect(() => {
     if (!ready) return;
@@ -47,6 +86,23 @@ export default function HistoryPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const lotStatuses = Array.from(new Set((data?.lots ?? []).map((l) => l.status)));
+  const filteredLots = (data?.lots ?? []).filter((l) => lotFilter === "all" || l.status === lotFilter);
+
+  const demandStatuses = Array.from(new Set((data?.demands ?? []).map((d) => d.status)));
+  const filteredDemands = (data?.demands ?? []).filter((d) => demandFilter === "all" || d.status === demandFilter);
+
+  const dealStatuses = Array.from(new Set((data?.deals ?? []).map((d) => d.pipeline_status)));
+  const filteredDeals = (data?.deals ?? []).filter((d) => dealFilter === "all" || d.pipeline_status === dealFilter);
+  const dealStageLabels: Record<string, string> = {
+    matched: tdeals("pipeline_matched"),
+    offer_accepted: tdeals("pipeline_offer_accepted"),
+    logistics_arranged: tdeals("pipeline_logistics_arranged"),
+    delivered: tdeals("pipeline_delivered"),
+    paid: tdeals("pipeline_paid"),
+    closed: tdeals("pipeline_closed"),
+  };
 
   if (!ready || !isAuthenticated) return null;
 
@@ -96,20 +152,23 @@ export default function HistoryPage() {
                 </div>
                 {t("lotsSection")}
                 <span className="ml-2 rounded-full bg-[var(--green-100)] px-2.5 py-0.5 text-xs font-bold text-[var(--green-700)]">
-                  {data.lots.length}
+                  {lotFilter === "all" ? data.lots.length : `${filteredLots.length}/${data.lots.length}`}
                 </span>
               </div>
               <Icon name="chevronDown" size={20} className="text-[var(--ink-soft)] transition-transform group-open:rotate-180" />
             </summary>
             <div className="border-t border-[var(--line)] p-5">
+              <StatusFilterPills value={lotFilter} onChange={setLotFilter} options={lotStatuses} allLabel={t("filterAll")} />
               {data.lots.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-6 text-center">
                   <Icon name="leaf" size={28} className="text-[var(--green-300)]" />
                   <p className="text-sm text-[var(--ink-soft)]">{t("noLots")}</p>
                 </div>
+              ) : filteredLots.length === 0 ? (
+                <p className="py-6 text-center text-sm text-[var(--ink-soft)]">{t("noneMatchFilter")}</p>
               ) : (
                 <ul className="grid gap-3 sm:grid-cols-2">
-                  {data.lots.map((lot) => (
+                  {filteredLots.map((lot) => (
                     <li key={lot.id} className="flex flex-col gap-2 rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-[var(--ink)]">{lot.crop}</span>
@@ -140,20 +199,23 @@ export default function HistoryPage() {
                 </div>
                 {t("demandsSection")}
                 <span className="ml-2 rounded-full bg-[var(--amber-100)] px-2.5 py-0.5 text-xs font-bold text-[var(--amber-700)]">
-                  {data.demands.length}
+                  {demandFilter === "all" ? data.demands.length : `${filteredDemands.length}/${data.demands.length}`}
                 </span>
               </div>
               <Icon name="chevronDown" size={20} className="text-[var(--ink-soft)] transition-transform group-open:rotate-180" />
             </summary>
             <div className="border-t border-[var(--line)] p-5">
+              <StatusFilterPills value={demandFilter} onChange={setDemandFilter} options={demandStatuses} allLabel={t("filterAll")} />
               {data.demands.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-6 text-center">
                   <Icon name="handshake" size={28} className="text-[var(--amber-300)]" />
                   <p className="text-sm text-[var(--ink-soft)]">{t("noDemands")}</p>
                 </div>
+              ) : filteredDemands.length === 0 ? (
+                <p className="py-6 text-center text-sm text-[var(--ink-soft)]">{t("noneMatchFilter")}</p>
               ) : (
                 <ul className="grid gap-3 sm:grid-cols-2">
-                  {data.demands.map((d) => (
+                  {filteredDemands.map((d) => (
                     <li key={d.id} className="flex flex-col gap-2 rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-[var(--ink)]">{d.crop}</span>
@@ -182,25 +244,28 @@ export default function HistoryPage() {
                 </div>
                 {t("dealsSection")}
                 <span className="ml-2 rounded-full bg-[var(--green-100)] px-2.5 py-0.5 text-xs font-bold text-[var(--green-700)]">
-                  {data.deals.length}
+                  {dealFilter === "all" ? data.deals.length : `${filteredDeals.length}/${data.deals.length}`}
                 </span>
               </div>
               <Icon name="chevronDown" size={20} className="text-[var(--ink-soft)] transition-transform group-open:rotate-180" />
             </summary>
             <div className="border-t border-[var(--line)] p-5">
+              <StatusFilterPills value={dealFilter} onChange={setDealFilter} options={dealStatuses} labels={dealStageLabels} allLabel={t("filterAll")} />
               {data.deals.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-6 text-center">
                   <Icon name="connection" size={28} className="text-[var(--green-300)]" />
                   <p className="text-sm text-[var(--ink-soft)]">{t("noDeals")}</p>
                 </div>
+              ) : filteredDeals.length === 0 ? (
+                <p className="py-6 text-center text-sm text-[var(--ink-soft)]">{t("noneMatchFilter")}</p>
               ) : (
                 <ul className="grid gap-3 sm:grid-cols-2">
-                  {data.deals.map((deal) => (
+                  {filteredDeals.map((deal) => (
                     <li key={deal.id} className="flex flex-col gap-3 rounded-xl border border-[var(--green-600)] bg-[var(--green-50)] p-4">
                       <div className="flex items-center justify-between border-b border-[var(--green-200)] pb-2">
                         <span className="font-bold text-[var(--green-900)]">{deal.lot.crop}</span>
                         <span className="rounded-full bg-[var(--green-200)] px-2.5 py-1 text-xs font-bold text-[var(--green-800)] capitalize">
-                          {deal.pipeline_status}
+                          {dealStageLabels[deal.pipeline_status] ?? deal.pipeline_status}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm font-medium">

@@ -1,11 +1,12 @@
 """Matching endpoints: list matches for the current user."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import CurrentUser
+from app.models.deal import Deal
 from app.models.demand import Demand
 from app.models.lot import Lot
 from app.models.match import Match
@@ -41,13 +42,28 @@ def _demand_summary(demand: Demand) -> DemandSummary:
     )
 
 
-def _counterparty(user: User) -> CounterpartySummary:
+def _completed_deals_count(db: Session, user_id: int) -> int:
+    return db.execute(
+        select(func.count(Deal.id))
+        .join(Match, Deal.match_id == Match.id)
+        .join(Lot, Match.lot_id == Lot.id)
+        .join(Demand, Match.demand_id == Demand.id)
+        .where(
+            Deal.pipeline_status == "closed",
+            (Lot.farmer_id == user_id) | (Demand.buyer_id == user_id),
+        )
+    ).scalar_one()
+
+
+def _counterparty(user: User, db: Session) -> CounterpartySummary:
     return CounterpartySummary(
         id=user.id,
         name=user.name,
         district=user.district,
         kyc_status=user.kyc_status,
         verification_status=getattr(user, "verification_status", "unverified"),
+        completed_deals=_completed_deals_count(db, user.id),
+        member_since=user.created_at.date(),
     )
 
 
@@ -85,7 +101,8 @@ def list_my_matches(
                 score=match.score,
                 score_detail=match.score_detail,
                 status=match.status,
-                counterparty=_counterparty(buyer),
+                created_at=match.created_at,
+                counterparty=_counterparty(buyer, db),
             ))
 
     elif current_user.role == "buyer":
@@ -109,7 +126,8 @@ def list_my_matches(
                 score=match.score,
                 score_detail=match.score_detail,
                 status=match.status,
-                counterparty=_counterparty(farmer),
+                created_at=match.created_at,
+                counterparty=_counterparty(farmer, db),
             ))
 
     else:
@@ -159,5 +177,6 @@ def get_match(
         score=match.score,
         score_detail=match.score_detail,
         status=match.status,
-        counterparty=_counterparty(cp_user) if cp_user else None,
+        created_at=match.created_at,
+        counterparty=_counterparty(cp_user, db) if cp_user else None,
     )

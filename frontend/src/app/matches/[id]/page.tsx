@@ -256,6 +256,11 @@ export default function MatchThreadPage() {
                   <Icon name="check" size={12} /> {isFarmer ? t("verifiedBuyer") : t("verifiedFarmer")}
                 </div>
               )}
+              <div className="mt-0.5 text-[11px] font-medium text-[var(--ink-soft)]">
+                {cp.completed_deals > 0 ? t("dealsCompleted", { count: cp.completed_deals }) : t("newToPlatform")}
+                {" · "}
+                {t("memberSince", { year: new Date(cp.member_since).getFullYear() })}
+              </div>
             </div>
           </div>
         )}

@@ -246,6 +246,11 @@
     "viewOffers": "ऑफ़र देखें",
     "verifiedBuyer": "सत्यापित खरीदार",
     "verifiedFarmer": "सत्यापित किसान",
+    "matchGettingStale": "{days} दिनों से कोई जवाब नहीं — एक याद दिलाना या नई पेशकश मदद कर सकती है",
+    "matchAtRisk": "जोखिम में — {days} दिनों से कोई जवाब नहीं। फॉलो-अप करें या वापस लेने पर विचार करें।",
+    "dealsCompleted": "{count} सौदे पूरे हुए",
+    "newToPlatform": "AgriLink पर नया",
+    "memberSince": "{year} से सदस्य",
     "offerThreadTitle": "ऑफ़र थ्रेड",
     "makeOffer": "ऑफ़र दें",
     "offerPriceLabel": "आपका मूल्य (₹/क्विंटल)",
@@ -412,7 +417,9 @@
     "viewDeal": "सौदा देखें",
     "loadError": "आपका इतिहास लोड नहीं हो सका",
     "subtitle": "आपके सभी पिछले लॉट, मांग और अंतिम सौदे एक ही जगह।",
-    "grade": "ग्रेड: {grade}"
+    "grade": "ग्रेड: {grade}",
+    "filterAll": "सभी",
+    "noneMatchFilter": "इस फ़िल्टर से कुछ नहीं मिला।"
   },
   "realization": {
     "title": "मूल्य प्राप्ति",

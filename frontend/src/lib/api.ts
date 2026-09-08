@@ -162,6 +162,8 @@ export type CounterpartySummary = {
   district: string;
   kyc_status: string;
   verification_status?: "unverified" | "pending" | "verified" | "rejected";
+  completed_deals: number;
+  member_since: string;
 };
 
 export type LotSummary = {
@@ -193,6 +195,7 @@ export type MatchResponse = {
   score: number;
   score_detail: string | null;
   status: string;
+  created_at: string;
   counterparty: CounterpartySummary | null;
 };
 

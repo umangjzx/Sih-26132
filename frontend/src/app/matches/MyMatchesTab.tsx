@@ -16,6 +16,22 @@ function parseScoreDetail(raw: string | null): ScoreDetail | null {
   try { return JSON.parse(raw) as ScoreDetail; } catch { return null; }
 }
 
+const _STALE_DAYS = 3;
+const _AT_RISK_DAYS = 7;
+
+/** A match still sitting unresolved (no accept/reject either way) for a
+ * while is easy to lose track of in a list sorted by score, not recency —
+ * this surfaces it instead of letting it quietly go cold. */
+function matchAgeRisk(match: MatchResponse): { level: "none" | "stale" | "risk"; days: number } {
+  if (match.status !== "proposed" && match.status !== "offered") {
+    return { level: "none", days: 0 };
+  }
+  const days = Math.floor((Date.now() - new Date(match.created_at).getTime()) / 86_400_000);
+  if (days >= _AT_RISK_DAYS) return { level: "risk", days };
+  if (days >= _STALE_DAYS) return { level: "stale", days };
+  return { level: "none", days };
+}
+
 const TIER_STYLE: Record<string, string> = {
   strong: "bg-[var(--green-100)] text-[var(--green-700)]",
   good: "bg-[var(--green-100)] text-[var(--green-700)]",
@@ -124,10 +140,25 @@ export function MyMatchesTab() {
             const detail = parseScoreDetail(match.score_detail);
             const cp = match.counterparty;
             const isFarmer = user?.role === "farmer";
+            const risk = matchAgeRisk(match);
 
             return (
               <li key={match.id}
-                className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm transition hover:shadow-md">
+                className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+                  risk.level === "risk" ? "border-[var(--red-500)]/50" : "border-[var(--line)]"
+                }`}>
+                {risk.level !== "none" && (
+                  <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold ${
+                    risk.level === "risk"
+                      ? "bg-[var(--red-100)] text-[var(--red-700)]"
+                      : "bg-[var(--amber-100)] text-[var(--amber-700)]"
+                  }`}>
+                    <Icon name="alert" size={14} />
+                    {risk.level === "risk"
+                      ? tm("matchAtRisk", { days: risk.days })
+                      : tm("matchGettingStale", { days: risk.days })}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
@@ -146,6 +177,15 @@ export function MyMatchesTab() {
                               <Icon name="check" size={10} /> {isFarmer ? tm("verifiedBuyer") : tm("verifiedFarmer")}
                             </span>
                           )}
+                        </div>
+                      )}
+                      {cp && (
+                        <div className="mt-1 text-[11px] font-medium text-[var(--ink-soft)]">
+                          {cp.completed_deals > 0
+                            ? tm("dealsCompleted", { count: cp.completed_deals })
+                            : tm("newToPlatform")}
+                          {" · "}
+                          {tm("memberSince", { year: new Date(cp.member_since).getFullYear() })}
                         </div>
                       )}
                     </div>

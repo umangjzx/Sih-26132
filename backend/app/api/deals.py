@@ -114,7 +114,7 @@ def _assemble_detail(
         created_at=deal.created_at,
         lot=_lot_summary(lot),
         demand=_demand_summary(demand),
-        counterparty=_counterparty(cp_user) if cp_user else None,
+        counterparty=_counterparty(cp_user, db) if cp_user else None,
     )
 
 
