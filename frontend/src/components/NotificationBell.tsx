@@ -36,9 +36,36 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    // Gate polling on tab visibility — a backgrounded tab has no reason to
+    // keep hitting the network every minute, which matters on the metered
+    // rural mobile connections this app targets. Refresh immediately (not
+    // after waiting up to 60s) when the tab becomes visible again.
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id) return;
+      id = setInterval(refreshCount, 60_000);
+    };
+    const stop = () => {
+      if (id) {
+        clearInterval(id);
+        id = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshCount();
+        start();
+      } else {
+        stop();
+      }
+    };
     refreshCount();
-    const id = setInterval(refreshCount, 60_000);
-    return () => clearInterval(id);
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [isAuthenticated, refreshCount]);
 
   if (!isAuthenticated) return null;

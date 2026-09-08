@@ -9,6 +9,7 @@ centroids.
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -57,7 +58,8 @@ def best_markets(
     ).all()
 
     rate = freight_rate(origin_state)["rate_per_qtl_km"]
-    out: list[dict] = []
+
+    candidates: list[tuple[str, str, float, tuple[float, float]]] = []
     seen: set[str] = set()
     for market, district, modal in rows:
         if market in seen:
@@ -66,13 +68,30 @@ def best_markets(
         coords = _coords_for(market, district or "")
         if coords is None:
             continue
-        if use_routing:
-            r = road_distance(origin, coords)
-            km, mins, dsrc = r["distance_km"], r["duration_min"], r["source"]
-        else:
-            from app.services.geo import haversine_km
+        candidates.append((market, district, modal, coords))
 
-            km, mins, dsrc = round(haversine_km(origin, coords), 1), None, "haversine"
+    # Each candidate's road distance is an independent, blocking HTTP call to
+    # OSRM (8s timeout) — routing them one at a time used to serialize
+    # dozens of these on a single request thread, worst-casing at minutes.
+    # They share nothing but the read-only `origin`, so a small thread pool
+    # runs them concurrently without changing which markets get routed or
+    # how each one is scored.
+    if use_routing and candidates:
+        with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
+            routed = list(pool.map(lambda c: road_distance(origin, c[3]), candidates))
+    elif candidates:
+        from app.services.geo import haversine_km
+
+        routed = [
+            {"distance_km": round(haversine_km(origin, c[3]), 1), "duration_min": None, "source": "haversine"}
+            for c in candidates
+        ]
+    else:
+        routed = []
+
+    out: list[dict] = []
+    for (market, district, modal, _coords), r in zip(candidates, routed):
+        km, mins, dsrc = r["distance_km"], r["duration_min"], r["source"]
         if km > max_km:
             continue
         transport = round(km * rate, 0)

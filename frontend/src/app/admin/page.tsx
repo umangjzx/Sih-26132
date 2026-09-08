@@ -165,30 +165,39 @@ export default function AdminPage() {
   const load = useCallback(async () => {
     if (!token) return;
     setError(null);
-    try {
-      setData(await getAdminDashboard(token));
-    } catch {
-      setError(t("loadError"));
-    }
-    try {
-      setAn(await getAdminAnalytics(token));
+    // Four independent reads — fire concurrently instead of one after
+    // another; each keeps its own existing success/error handling.
+    const [dataResult, anResult, healthResult, eventsResult] = await Promise.allSettled([
+      getAdminDashboard(token),
+      getAdminAnalytics(token),
+      getMatchingHealth(token),
+      getAdminEvents(token),
+    ]);
+
+    if (dataResult.status === "fulfilled") setData(dataResult.value);
+    else setError(t("loadError"));
+
+    if (anResult.status === "fulfilled") {
+      setAn(anResult.value);
       setAnErr(false);
-    } catch {
+    } else {
       // Non-fatal — the rest of the dashboard still works — but silent
       // failure here was indistinguishable from "no analytics data yet",
       // so surface it instead of just swallowing it.
       setAnErr(true);
     }
-    try {
-      setHealth(await getMatchingHealth(token));
+
+    if (healthResult.status === "fulfilled") {
+      setHealth(healthResult.value);
       setHealthErr(false);
-    } catch {
+    } else {
       setHealthErr(true);
     }
-    try {
-      setEvents(await getAdminEvents(token));
+
+    if (eventsResult.status === "fulfilled") {
+      setEvents(eventsResult.value);
       setEventsErr(false);
-    } catch {
+    } else {
       setEventsErr(true);
     }
   }, [token, t]);
@@ -210,6 +219,14 @@ export default function AdminPage() {
     () =>
       Object.entries(an?.users_by_role ?? {}).map(([role, count]) => ({ role, count })),
     [an],
+  );
+
+  const districtGapTop14 = useMemo(
+    () =>
+      [...(data?.district_price_gaps ?? [])]
+        .sort((a, b) => a.gap_vs_state_pct - b.gap_vs_state_pct)
+        .slice(0, 14),
+    [data],
   );
 
   if (!ready || !isAuthenticated || user?.role !== "admin") return null;
@@ -600,7 +617,7 @@ export default function AdminPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={[...data.district_price_gaps].sort((a, b) => a.gap_vs_state_pct - b.gap_vs_state_pct).slice(0, 14)}
+                data={districtGapTop14}
                 layout="vertical"
                 margin={{ left: 8, right: 24 }}
               >
@@ -609,13 +626,9 @@ export default function AdminPage() {
                 <YAxis type="category" dataKey="district" tick={{ fontSize: 10 }} width={90} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${v}% vs state avg`} />
                 <Bar dataKey="gap_vs_state_pct" radius={[0, 4, 4, 0]}>
-                  {data.district_price_gaps
-                    .slice()
-                    .sort((a, b) => a.gap_vs_state_pct - b.gap_vs_state_pct)
-                    .slice(0, 14)
-                    .map((g, i) => (
-                      <Cell key={i} fill={g.gap_vs_state_pct < 0 ? C.red : C.green} />
-                    ))}
+                  {districtGapTop14.map((g, i) => (
+                    <Cell key={i} fill={g.gap_vs_state_pct < 0 ? C.red : C.green} />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

@@ -162,6 +162,46 @@ def test_best_markets_places_non_maharashtra_markets(db):
     assert {"Erode Uzhavar Sandhai", "Palladam"} <= {r["market"] for r in ranked}
 
 
+def test_best_markets_routes_candidates_concurrently(db, monkeypatch):
+    """use_routing=True used to call road_distance() once per market
+    sequentially — dozens of blocking 8s-timeout OSRM calls in a row on one
+    request thread. Prove every candidate still gets routed (none silently
+    skipped by the concurrent rewrite) and that ranking is unaffected, using
+    a stubbed road_distance so no real network call happens."""
+    import app.services.best_market as best_market_module
+
+    today = date(2026, 9, 1)
+    db.add_all([
+        PriceCache(crop="Onion", variety="", market="Pune", district="Pune", state="Maharashtra",
+                   date=today, min_price=1800, max_price=2000, modal_price=1900, arrival_volume=None),
+        PriceCache(crop="Onion", variety="", market="Lasalgaon", district="Nashik", state="Maharashtra",
+                   date=today, min_price=2200, max_price=2500, modal_price=2400, arrival_volume=None),
+        PriceCache(crop="Onion", variety="", market="Solapur", district="Solapur", state="Maharashtra",
+                   date=today, min_price=2000, max_price=2300, modal_price=2100, arrival_volume=None),
+    ])
+    db.commit()
+
+    calls: list[tuple[float, float]] = []
+
+    def fake_road_distance(origin, dest):
+        calls.append(dest)
+        # Farther destinations still cost more, same relationship a real
+        # OSRM/haversine result would produce.
+        km = abs(dest[0] - origin[0]) * 100 + abs(dest[1] - origin[1]) * 100
+        return {"distance_km": round(km, 1), "duration_min": round(km / 40 * 60, 0), "source": "osrm"}
+
+    monkeypatch.setattr(best_market_module, "road_distance", fake_road_distance)
+
+    ranked = best_market_module.best_markets(
+        db, "Onion", origin=(18.52, 73.86), use_routing=True, limit=10,
+    )
+    assert len(calls) == 3  # every candidate market was routed, none skipped
+    assert {r["market"] for r in ranked} == {"Pune", "Lasalgaon", "Solapur"}
+    nets = [r["net_price_per_qtl"] for r in ranked]
+    assert nets == sorted(nets, reverse=True)
+    assert all(r["distance_source"] == "osrm" for r in ranked)
+
+
 def test_markets_best_resolves_origin_from_market_district(seeded_db):
     """A market that isn't in the curated coord table and whose name isn't a
     district must still resolve — via its own `district` column — instead of

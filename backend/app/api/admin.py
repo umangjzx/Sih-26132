@@ -376,7 +376,12 @@ def admin_analytics(
     weeks = [monday - timedelta(weeks=i) for i in range(7, -1, -1)]
 
     def _by_week(model) -> dict[str, int]:
-        rows = db.execute(select(model.created_at)).scalars().all()
+        # Only the last 8 weeks are ever used below — filter in SQL instead
+        # of pulling every row this model has ever had (this table only
+        # grows, so an unfiltered select here would get slower forever).
+        rows = db.execute(
+            select(model.created_at).where(model.created_at >= weeks[0])
+        ).scalars().all()
         out: dict[str, int] = {}
         for ts in rows:
             if ts is None:

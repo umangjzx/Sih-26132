@@ -5,7 +5,12 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/explore",
   useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock("@/lib/api", () => ({ fetchPublicOverview: vi.fn() }));
+vi.mock("@/lib/api", () => ({
+  fetchPublicOverview: vi.fn(),
+  // load() fires fetchPublicOverview + fetchPublicRealization concurrently
+  // (Promise.allSettled) — both must resolve/reject cleanly under test.
+  fetchPublicRealization: vi.fn().mockResolvedValue(null),
+}));
 vi.mock("recharts", () => {
   const Wrap = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
   const Nil = () => null;

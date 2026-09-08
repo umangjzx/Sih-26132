@@ -254,10 +254,17 @@ def _lot_point(lot: Lot) -> tuple[float, float] | None:
 
 def _score_and_upsert(db: Session, lot: Lot, demand: Demand,
                       district: str, coords: tuple[float, float] | None,
-                      max_km: float) -> int:
+                      max_km: float, existing: Match | None) -> int:
     """Score one open lot × open demand pair. Upsert a proposed Match when it
     clears the veto + MIN_SCORE; reject a now-stale proposed/offered Match when
-    it no longer does. Returns 1 if a row was written, else 0."""
+    it no longer does. Returns 1 if a row was written, else 0.
+
+    ``existing`` is the current Match row for this (lot, demand) pair, if
+    any — callers batch-fetch it for every candidate pair up front (one
+    query for the whole sweep) instead of this function querying for it on
+    every single call, which used to be an N+1 on the hot path of every lot/
+    demand create and edit (match_lot/match_demand run once per open
+    counterpart-crop candidate)."""
     if lot.crop.strip().lower() != demand.crop.strip().lower():
         return 0
 
@@ -277,10 +284,6 @@ def _score_and_upsert(db: Session, lot: Lot, demand: Demand,
             demand_quality_spec=demand.quality_grade_min or demand.quality_spec or "",
             demand_delivery_window=demand.delivery_window or "",
         )
-
-    existing = db.execute(
-        select(Match).where(Match.lot_id == lot.id, Match.demand_id == demand.id)
-    ).scalar_one_or_none()
 
     if vetoed or total < MIN_SCORE:
         # no longer a match — retire a stale proposal so it leaves the boards
@@ -314,10 +317,18 @@ def match_lot(db: Session, lot: Lot) -> int:
         .join(User, Demand.buyer_id == User.id)
         .where(Demand.status == "open", Demand.crop.ilike(lot.crop.strip()))
     ).all()
+    demand_ids = [demand.id for demand, _, _, _ in rows]
+    existing_by_demand = {
+        m.demand_id: m
+        for m in db.execute(
+            select(Match).where(Match.lot_id == lot.id, Match.demand_id.in_(demand_ids))
+        ).scalars().all()
+    } if demand_ids else {}
     n = 0
     for demand, bd, blat, blon in rows:
         district, coords = _demand_point(demand, bd, blat, blon)
-        n += _score_and_upsert(db, lot, demand, district, coords, settings.match_max_km)
+        n += _score_and_upsert(db, lot, demand, district, coords, settings.match_max_km,
+                                existing_by_demand.get(demand.id))
     db.commit()
     logger.info("match_lot(%s): %d matches touched", lot.id, n)
     return n
@@ -338,9 +349,17 @@ def match_demand(db: Session, demand: Demand) -> int:
     lots = db.execute(
         select(Lot).where(Lot.status == "open", Lot.crop.ilike(demand.crop.strip()))
     ).scalars().all()
+    lot_ids = [lot.id for lot in lots]
+    existing_by_lot = {
+        m.lot_id: m
+        for m in db.execute(
+            select(Match).where(Match.demand_id == demand.id, Match.lot_id.in_(lot_ids))
+        ).scalars().all()
+    } if lot_ids else {}
     n = 0
     for lot in lots:
-        n += _score_and_upsert(db, lot, demand, district, coords, settings.match_max_km)
+        n += _score_and_upsert(db, lot, demand, district, coords, settings.match_max_km,
+                                existing_by_lot.get(lot.id))
     db.commit()
     logger.info("match_demand(%s): %d matches touched", demand.id, n)
     return n
@@ -380,10 +399,21 @@ def run_matching(db: Session) -> int:
         for row in open_demands_with_buyer
     ]
 
+    # One query for every existing Match touching any open lot, instead of
+    # one query per (lot, demand) pair scored below — this loop is
+    # O(open_lots × open_demands), so that used to be the same multiple in
+    # extra DB round trips.
+    lot_ids = [lot.id for lot in open_lots]
+    existing_by_pair = {
+        (m.lot_id, m.demand_id): m
+        for m in db.execute(select(Match).where(Match.lot_id.in_(lot_ids))).scalars().all()
+    } if lot_ids else {}
+
     upserted = 0
     for lot in open_lots:
         for demand, district, coords in demand_points:
-            upserted += _score_and_upsert(db, lot, demand, district, coords, max_km)
+            upserted += _score_and_upsert(db, lot, demand, district, coords, max_km,
+                                           existing_by_pair.get((lot.id, demand.id)))
 
     db.commit()
     logger.info("run_matching: %d matches touched", upserted)

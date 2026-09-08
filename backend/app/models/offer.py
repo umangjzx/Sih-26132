@@ -27,7 +27,7 @@ class Offer(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"))
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), index=True)
     from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     price: Mapped[float] = mapped_column(Float)
     quantity: Mapped[float] = mapped_column(Float)

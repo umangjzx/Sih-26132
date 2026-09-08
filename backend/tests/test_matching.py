@@ -303,3 +303,43 @@ class TestGetMatchesMine:
     def test_no_auth_returns_401(self, auth_client):
         resp = auth_client.get("/api/matches/mine")
         assert resp.status_code == 401
+
+    def test_query_count_does_not_scale_with_match_count(self, db, farmer_client, farmer_user):
+        """list_my_matches used to run one extra completed-deals COUNT query
+        per counterparty shown (an N+1: _completed_deals_count called once
+        per row inside _counterparty) — N matches for N different buyers
+        must not issue O(N) additional queries."""
+        from sqlalchemy import event
+
+        from app.models.user import User
+
+        buyers = [
+            User(role="buyer", name=f"Buyer{i}", phone=f"+9188{i:08d}",
+                 district="Nashik", taluka="Nashik", kyc_status="verified", is_active=True)
+            for i in range(8)
+        ]
+        db.add_all(buyers)
+        db.commit()
+        for i, buyer in enumerate(buyers):
+            _make_lot(db, farmer_user, crop=f"Crop{i}")
+            _make_demand(db, buyer, crop=f"Crop{i}")
+        run_matching(db)
+
+        queries: list[str] = []
+
+        def _count(conn, cursor, statement, parameters, context, executemany):
+            queries.append(statement)
+
+        engine = db.get_bind()
+        event.listen(engine, "before_cursor_execute", _count)
+        try:
+            resp = farmer_client.get("/api/matches/mine")
+        finally:
+            event.remove(engine, "before_cursor_execute", _count)
+
+        assert resp.status_code == 200
+        assert len(resp.json()) == 8
+        # Before the fix this scaled as 1 (list matches) + 8 (one COUNT per
+        # counterparty) = 9 queries; after batching it stays small and flat
+        # regardless of how many matches/counterparties are on the page.
+        assert len(queries) <= 3, f"expected O(1) queries, got {len(queries)}: {queries}"

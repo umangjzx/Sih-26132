@@ -126,7 +126,8 @@ export default function FarmerPage() {
     setQueueCount(getQueue().length);
   }, []);
 
-  // Online/offline events
+  // Online/offline events — mount-once; this used to have no dependency
+  // array, tearing down and re-adding these window listeners on every render.
   useEffect(() => {
     const onOnline = () => { setIsOnline(true); flushQueue(); };
     const onOffline = () => setIsOnline(false);
@@ -136,19 +137,21 @@ export default function FarmerPage() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  });
+  }, []);
 
   const loadLots = useCallback(async () => {
     if (!token) return;
     setLoadingLots(true);
+    // Independent requests — fire concurrently instead of one after another.
+    const [lotsResult, matchesResult] = await Promise.allSettled([
+      listMyLots(token),
+      listMyMatches(token),
+    ]);
     let ok = true;
-    try {
-      const data = await listMyLots(token);
-      setLots(data);
-    } catch { ok = false; }
-    try {
-      setMatches(await listMyMatches(token));
-    } catch { ok = false; }
+    if (lotsResult.status === "fulfilled") setLots(lotsResult.value);
+    else ok = false;
+    if (matchesResult.status === "fulfilled") setMatches(matchesResult.value);
+    else ok = false;
     setLoadErr(!ok);
     setLoadingLots(false);
   }, [token]);

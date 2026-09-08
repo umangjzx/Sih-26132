@@ -34,6 +34,30 @@ def test_falls_back_when_live_raises(monkeypatch):
     assert len(rows) > 0
 
 
+def test_failed_pull_does_not_leak_the_api_key_into_logs(monkeypatch, caplog):
+    """A failed data.gov.in call must never write the live api-key into the
+    application log. httpx.HTTPStatusError's own message includes the full
+    request URL — and every request in ingestion.py carries `api-key` as a
+    query parameter — so logging the raw exception (rather than
+    ingestion._safe_exc(exc)) would leak it on any failed pull."""
+    secret = "SECRET-KEY-DO-NOT-LOG"
+
+    def _raise_http_status_error(*_args, **_kwargs):
+        request = httpx.Request("GET", f"https://api.data.gov.in/resource/x?api-key={secret}")
+        # raise_for_status(), not a hand-built HTTPStatusError — its message
+        # is what actually embeds the request URL in production.
+        httpx.Response(403, request=request).raise_for_status()
+
+    monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", secret)
+    monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", _raise_http_status_error)
+
+    with caplog.at_level("WARNING"):
+        source, rows = ingestion.resolve_ingestion_rows()
+
+    assert source in {"snapshot", "fixture"}
+    assert secret not in caplog.text
+
+
 def test_falls_back_when_live_empty(monkeypatch):
     monkeypatch.setattr(ingestion.settings, "data_gov_in_api_key", "x")
     monkeypatch.setattr(ingestion, "fetch_agmarknet_rows", lambda *a, **k: [])

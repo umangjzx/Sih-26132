@@ -67,7 +67,7 @@ export function DatabaseSection() {
     <JudgeSection
       id="database"
       eyebrow="Data model"
-      title="Database design — 20 tables, 24 migrations"
+      title="Database design — 20 tables, 25 migrations"
       quickAnswer="A real relational schema (not a document store bolted onto a marketplace) — every foreign key below exists as an actual constraint, managed exclusively through Alembic migrations, never create_all()."
     >
       <div className="al-card-plain p-4 sm:p-6">

@@ -3,9 +3,22 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api", () => ({
   listMyLots: vi.fn().mockResolvedValue([]),
+  // loadLots() fires listMyLots + listMyMatches concurrently (Promise.allSettled)
+  // — both must resolve for the component to mount cleanly under test.
+  listMyMatches: vi.fn().mockResolvedValue([]),
   createLot: vi.fn().mockResolvedValue({ id: 1, crop: "Onion", quantity_kg: 500, quality_grade: "A", expected_price: 2400, available_from: "2026-10-01", location: "Pune", status: "open", farmer_id: 1, photo_url: null }),
+  updateLot: vi.fn(),
+  withdrawLot: vi.fn(),
+  scanLotSlip: vi.fn(),
   fetchStorageNearby: vi.fn().mockResolvedValue([]),
   fetchFpoNearby: vi.fn().mockResolvedValue([]),
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+    }
+  },
 }));
 
 vi.mock("next/navigation", () => ({

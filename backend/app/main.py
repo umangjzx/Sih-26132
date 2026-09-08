@@ -1,4 +1,5 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -132,6 +133,21 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def timing_log(request: Request, call_next):
+    """Minimal request-timing observability — this app has no tracing/APM
+    (deliberately, for a single-VM deployment this size), so without this
+    there was no way to answer "where did the time go" for a slow request
+    short of re-instrumenting and reproducing it. Logs only the slow tail
+    (>1s) so this doesn't itself become per-request overhead/log noise."""
+    start = time.monotonic()
+    response = await call_next(request)
+    duration_ms = (time.monotonic() - start) * 1000
+    if duration_ms > 1000:
+        logger.warning("SLOW %s %s took %.0fms", request.method, request.url.path, duration_ms)
+    return response
+
 
 @app.exception_handler(OperationalError)
 async def db_operational_error_handler(request: Request, exc: OperationalError) -> JSONResponse:

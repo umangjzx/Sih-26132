@@ -7,7 +7,7 @@
  * login() / logout() update both localStorage and React state atomically.
  */
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   clearAuth,
   getRefreshToken,
@@ -67,42 +67,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setAuthListeners({});
   }, []);
 
-  function login(
-    accessToken: string,
-    refreshToken: string,
-    newUser: StoredUser,
-  ): void {
+  const login = useCallback((accessToken: string, refreshToken: string, newUser: StoredUser): void => {
     saveAuth(accessToken, refreshToken, newUser);
     setToken(accessToken);
     setUser(newUser);
-  }
+  }, []);
 
-  function updateUser(next: StoredUser): void {
+  const updateUser = useCallback((next: StoredUser): void => {
     const at = getToken();
     const rt = getRefreshToken();
     if (at && rt) saveAuth(at, rt, next);
     setUser(next);
-  }
+  }, []);
 
-  function logout(): void {
+  const logout = useCallback((): void => {
     clearAuth();
     setToken(null);
     setUser(null);
-  }
+  }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!token && !!user,
-        ready,
-        login,
-        updateUser,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  // Every page in the app calls useAuth() for its own auth-guard/redirect
+  // logic, so an unmemoized value object here re-rendered the entire tree
+  // on every token refresh (token changes fairly often via silent refresh)
+  // and on every AuthProvider render otherwise, regardless of whether a
+  // given consumer cared about anything but e.g. `ready`.
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      token,
+      isAuthenticated: !!token && !!user,
+      ready,
+      login,
+      updateUser,
+      logout,
+    }),
+    [user, token, ready, login, updateUser, logout],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

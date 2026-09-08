@@ -19,6 +19,16 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_exc(exc: Exception) -> str:
+    """Exception summary safe to log — the OpenWeatherMap request below
+    carries ``appid`` as a query parameter, and httpx's own exception
+    messages (notably HTTPStatusError, via resp.raise_for_status()) include
+    the full request URL. Logging the raw exception would write the live
+    key to the application log on any failed call."""
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    return f"{type(exc).__name__}" + (f" ({status})" if status else "")
+
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 
@@ -63,7 +73,7 @@ def _openweather_current(lat: float, lon: float) -> dict | None:
             resp.raise_for_status()
             j = resp.json()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("OpenWeatherMap current failed (%s)", exc)
+        logger.warning("OpenWeatherMap current failed (%s)", _safe_exc(exc))
         return None
 
     main = j.get("main", {})

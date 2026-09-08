@@ -83,4 +83,30 @@ def test_forecast_with_key_but_owm_down_degrades(monkeypatch):
     fc = wx.get_forecast(18.52, 73.85)
     assert fc["source"] == "open-meteo"
     assert "current" not in fc
+
+
+def test_owm_failure_does_not_leak_the_api_key_into_logs(monkeypatch, caplog):
+    """The OpenWeatherMap request carries `appid` as a query parameter, and
+    httpx.HTTPStatusError's own message includes the full request URL —
+    logging the raw exception (rather than weather._safe_exc(exc)) would
+    write the live key to the application log on any failed call."""
+    secret = "SECRET-APPID-DO-NOT-LOG"
+    wx._CACHE.clear()
+    monkeypatch.setattr(wx.settings, "weather_api_key", secret)
+
+    def fake_get(self, url, params=None, **kw):
+        if "openweathermap" in url:
+            request = httpx.Request("GET", url, params={"appid": secret})
+            # raise_for_status(), not a hand-built HTTPStatusError — its
+            # message is what actually embeds the request URL in production.
+            httpx.Response(401, request=request).raise_for_status()
+        return _Resp(_METEO_DAILY)
+
+    monkeypatch.setattr(httpx.Client, "get", fake_get)
+
+    with caplog.at_level("WARNING"):
+        fc = wx.get_forecast(18.52, 73.85)
+
+    assert fc["source"] == "open-meteo"
+    assert secret not in caplog.text
     assert len(fc["days"]) == 7

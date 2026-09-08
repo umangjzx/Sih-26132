@@ -24,7 +24,7 @@ from sqlalchemy import select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.matching import _counterparty, _demand_summary, _lot_summary
+from app.api.matching import _completed_deals_counts, _counterparty, _demand_summary, _lot_summary
 from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.models.deal import Deal
@@ -90,18 +90,18 @@ def _load_deal_with_access(
     return deal, match, lot, demand
 
 
-def _assemble_detail(
-    deal: Deal, lot: Lot, demand: Demand, viewer: User, db: Session
-) -> DealDetailResponse:
-    """Build a DealDetailResponse with the counterparty resolved for ``viewer``."""
+def _counterparty_id(lot: Lot, demand: Demand, viewer: User) -> int:
     if viewer.id == lot.farmer_id:
-        cp_id = demand.buyer_id
-    elif viewer.id == demand.buyer_id:
-        cp_id = lot.farmer_id
-    else:
-        # admin viewer — default the counterparty view to the buyer
-        cp_id = demand.buyer_id
-    cp_user = db.execute(select(User).where(User.id == cp_id)).scalar_one_or_none()
+        return demand.buyer_id
+    if viewer.id == demand.buyer_id:
+        return lot.farmer_id
+    # admin viewer — default the counterparty view to the buyer
+    return demand.buyer_id
+
+
+def _build_detail(
+    deal: Deal, lot: Lot, demand: Demand, cp_user: User | None, completed_deals: int
+) -> DealDetailResponse:
     return DealDetailResponse(
         id=deal.id,
         match_id=deal.match_id,
@@ -115,8 +115,42 @@ def _assemble_detail(
         created_at=deal.created_at,
         lot=_lot_summary(lot),
         demand=_demand_summary(demand),
-        counterparty=_counterparty(cp_user, db) if cp_user else None,
+        counterparty=_counterparty(cp_user, completed_deals) if cp_user else None,
     )
+
+
+def _assemble_detail(
+    deal: Deal, lot: Lot, demand: Demand, viewer: User, db: Session
+) -> DealDetailResponse:
+    """Single-deal convenience wrapper — resolves the one counterparty inline.
+    For a *list* of deals, use ``_assemble_details_batch`` instead (see
+    list_my_deals / get_my_history) — calling this once per row in a loop
+    was an N+1 (a separate User lookup + a separate completed-deals COUNT
+    per deal, unbounded for an admin viewing every deal on the platform)."""
+    cp_id = _counterparty_id(lot, demand, viewer)
+    cp_user = db.execute(select(User).where(User.id == cp_id)).scalar_one_or_none()
+    completed = _completed_deals_counts(db, {cp_id}).get(cp_id, 0) if cp_user else 0
+    return _build_detail(deal, lot, demand, cp_user, completed)
+
+
+def _assemble_details_batch(
+    rows: list[tuple[Deal, Lot, Demand]], viewer: User, db: Session
+) -> list[DealDetailResponse]:
+    """Batched version of ``_assemble_detail`` for list endpoints — one query
+    for every counterparty User and one grouped query for all their
+    completed-deal counts, instead of two queries per row."""
+    if not rows:
+        return []
+    cp_ids = [_counterparty_id(lot, demand, viewer) for _, lot, demand in rows]
+    cp_id_set = set(cp_ids)
+    cp_users = {
+        u.id: u for u in db.execute(select(User).where(User.id.in_(cp_id_set))).scalars().all()
+    }
+    counts = _completed_deals_counts(db, cp_id_set)
+    return [
+        _build_detail(deal, lot, demand, cp_users.get(cp_id), counts.get(cp_id, 0))
+        for (deal, lot, demand), cp_id in zip(rows, cp_ids)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -142,10 +176,7 @@ def list_my_deals(
     stmt = stmt.order_by(Deal.created_at.desc(), Deal.id.desc())
 
     rows = db.execute(stmt).all()
-    return [
-        _assemble_detail(deal, lot, demand, current_user, db)
-        for deal, lot, demand in rows
-    ]
+    return _assemble_details_batch(rows, current_user, db)
 
 
 # ---------------------------------------------------------------------------

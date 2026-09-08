@@ -23,9 +23,9 @@ class Match(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     lot_id: Mapped[int] = mapped_column(ForeignKey("lots.id"))
-    demand_id: Mapped[int] = mapped_column(ForeignKey("demands.id"))
+    demand_id: Mapped[int] = mapped_column(ForeignKey("demands.id"), index=True)
     score: Mapped[float] = mapped_column(Float)
-    status: Mapped[str] = mapped_column(String(20), default="proposed")
+    status: Mapped[str] = mapped_column(String(20), default="proposed", index=True)
     # JSON string storing per-component score breakdown for explainability (Phase 2).
     score_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     # v1.22 — lets the frontend flag a match that's sat unanswered for a

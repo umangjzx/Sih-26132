@@ -31,7 +31,7 @@ class Dispute(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    deal_id: Mapped[int] = mapped_column(ForeignKey("deals.id"))
+    deal_id: Mapped[int] = mapped_column(ForeignKey("deals.id"), index=True)
     raised_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     reason: Mapped[str] = mapped_column(String(1000))
     # a photo / document URL the raiser attaches as evidence

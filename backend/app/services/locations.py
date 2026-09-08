@@ -101,10 +101,15 @@ def ensure_state_ingested(db: Session, state: str) -> dict:
     rows: list[dict] = []
     reason = "no-live-data"
     try:
-        # Best-effort, bounded: the upstream API is slow, and this runs on a
-        # user action. Fail fast, then fall back to a synthetic demo series.
+        # Best-effort, bounded: the upstream API is slow, and this runs
+        # inline on a user action (GET /api/location/resolve), not the
+        # scheduled/off-request ingestion job — 4 pages x 8s was a ~32s
+        # worst case (every page stalling to its own timeout) blocking one
+        # request thread on a cold path (a genuinely new state, or a judge
+        # demoing from an unusual region). Fail fast, then fall back to a
+        # synthetic demo series either way.
         raw = ingestion.fetch_agmarknet_rows(
-            settings.data_gov_in_api_key, [state], timeout=8.0, max_pages=4
+            settings.data_gov_in_api_key, [state], timeout=5.0, max_pages=2
         )
         rows = [
             r for r in ingestion.normalize_rows(raw)

@@ -12,7 +12,7 @@ class Lot(Base):
     __tablename__ = "lots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    farmer_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    farmer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     crop: Mapped[str] = mapped_column(String(120))
     quantity_kg: Mapped[float] = mapped_column(Float)
     quality_grade: Mapped[str] = mapped_column(String(50))
@@ -28,4 +28,4 @@ class Lot(Base):
     # set when this lot is the aggregate of an FPO Pool (organizer-created).
     # Plain int, not a FK — avoids a pools↔deals↔matches↔lots cycle.
     pool_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="open")
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)

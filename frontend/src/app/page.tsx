@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -11,11 +12,26 @@ import { useAuth } from "@/components/AuthProvider";
 import { CropMarketPicker } from "@/components/CropMarketPicker";
 import { Landing } from "@/components/Landing";
 import { StateDataNotice } from "@/components/StateDataNotice";
-import { PriceTrendChart } from "@/components/PriceTrendChart";
-import { SignalGaugeChart } from "@/components/SignalGaugeChart";
-import { MarketComparisonChart } from "@/components/MarketComparisonChart";
 import { BestMarketPanel, WeatherStrip, MspBanner } from "@/components/intel";
 import { Icon, Skeleton } from "@/components/ui";
+
+// recharts is a heavy dependency, and this is the highest-traffic route in
+// the app (the pre-login landing page for exactly the rural/mobile audience
+// this project targets) — none of these render anything until data has
+// loaded anyway, so there's no reason for their code to sit in this route's
+// initial bundle.
+const PriceTrendChart = dynamic(
+  () => import("@/components/PriceTrendChart").then((m) => m.PriceTrendChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> },
+);
+const SignalGaugeChart = dynamic(
+  () => import("@/components/SignalGaugeChart").then((m) => m.SignalGaugeChart),
+  { ssr: false, loading: () => <Skeleton className="h-32 w-32" /> },
+);
+const MarketComparisonChart = dynamic(
+  () => import("@/components/MarketComparisonChart").then((m) => m.MarketComparisonChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> },
+);
 import {
   fetchBestMarkets,
   fetchMsp,

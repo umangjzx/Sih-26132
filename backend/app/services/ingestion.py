@@ -40,6 +40,17 @@ from app.services.snapshot import load_snapshot_rows
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_exc(exc: Exception) -> str:
+    """Exception summary safe to log — every request in this module carries
+    ``api-key`` as a query parameter, and httpx's own exception messages
+    (notably HTTPStatusError, via resp.raise_for_status()) include the full
+    request URL. Logging the raw exception would write the live key to the
+    application log on any failed call."""
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    return f"{type(exc).__name__}" + (f" ({status})" if status else "")
+
+
 RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
 BASE_URL = f"https://api.data.gov.in/resource/{RESOURCE_ID}"
 PAGE_SIZE = 1000
@@ -106,7 +117,7 @@ def _fetch_state(
             # have (partial national data still covers most states).
             if rows:
                 logger.warning("AGMARKNET page at offset %d failed (%s); using %d rows so far",
-                               offset, exc, len(rows))
+                               offset, _safe_exc(exc), len(rows))
                 break
             raise
         records = payload.get("records", [])
@@ -233,7 +244,7 @@ def fetch_history(
             records = resp.json().get("records", []) or []
     except Exception as exc:  # noqa: BLE001
         logger.info("Archive history lookup failed for %s/%s/%s (%s)",
-                    state, commodity, market, exc)
+                    state, commodity, market, _safe_exc(exc))
         return []
     # archive fields are Capitalised; normalize_rows expects lower_snake
     lowered = [{k.lower(): v for k, v in rec.items()} for rec in records]
@@ -305,7 +316,7 @@ def resolve_ingestion_rows(states: list[str] | None = "__default__") -> tuple[st
             raise RuntimeError("live API returned no usable rows")
         return "live", rows
     except Exception as exc:  # noqa: BLE001 - any failure falls back to snapshot/fixture
-        logger.warning("Live ingestion unavailable (%s); using snapshot/fixture data", exc)
+        logger.warning("Live ingestion unavailable (%s); using snapshot/fixture data", _safe_exc(exc))
 
     snapshot_rows = load_snapshot_rows()
     if _densest_series_points(snapshot_rows) >= SNAPSHOT_MIN_SERIES_POINTS:

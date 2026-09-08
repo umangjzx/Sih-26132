@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deals import _assemble_detail
+from app.api.deals import _assemble_details_batch
 from app.core.database import get_db
 from app.core.security import CurrentUser
 from app.models.deal import Deal
@@ -67,10 +67,7 @@ def get_my_history(
     return HistoryResponse(
         lots=[LotResponse.model_validate(lot) for lot in lots],
         demands=[DemandResponse.model_validate(d) for d in demands],
-        deals=[
-            _assemble_detail(deal, lot, demand, current_user, db)
-            for deal, lot, demand in deal_rows
-        ],
+        deals=_assemble_details_batch(deal_rows, current_user, db),
     )
 
 

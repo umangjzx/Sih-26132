@@ -132,16 +132,17 @@ export function OverviewTab() {
 
   const load = useCallback(async () => {
     setError(false);
-    try {
-      setData(await fetchPublicOverview(location?.state));
-    } catch {
-      setError(true);
-    }
-    try {
-      setRealization(await fetchPublicRealization(location?.state));
-    } catch {
-      setRealization(null); // optional card — never blocks the rest of the page
-    }
+    // Independent, public, no-login reads — this is the highest-traffic
+    // page for exactly the rural/mobile audience this app targets, so
+    // fire both concurrently instead of one after another.
+    const [dataResult, realizationResult] = await Promise.allSettled([
+      fetchPublicOverview(location?.state),
+      fetchPublicRealization(location?.state),
+    ]);
+    if (dataResult.status === "fulfilled") setData(dataResult.value);
+    else setError(true);
+    // optional card — never blocks the rest of the page
+    setRealization(realizationResult.status === "fulfilled" ? realizationResult.value : null);
   }, [location?.state, warmTick]);
 
   useEffect(() => {

@@ -15,7 +15,7 @@ const CHART = `flowchart LR
       Sched["APScheduler — 6-hourly ingestion + alert eval"]
     end
 
-    DB[("PostgreSQL 16\\n20 tables · 24 migrations")]
+    DB[("PostgreSQL 16\\n20 tables · 25 migrations")]
 
     subgraph Ext["11 external sources — every one has an offline fallback"]
       AGMARKNET["data.gov.in AGMARKNET"]
