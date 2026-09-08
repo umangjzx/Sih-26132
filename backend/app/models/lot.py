@@ -24,6 +24,13 @@ class Lot(Base):
     # A short http(s) URL, or a `data:image/...;base64,...` photo (v1.9) — Text
     # because a base64-encoded photo is far larger than any URL.
     photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # v1.37 — a genuinely small (~96px) thumbnail generated client-side
+    # alongside photo_url. Match/deal list responses (LotSummary) expose
+    # only this, never the full photo_url, since every place that shows a
+    # counterparty's lot photo (buyer dashboard, match thread) only ever
+    # renders it at 40-64px anyway — embedding the full compressed photo in
+    # every row of those list endpoints was pure payload bloat.
+    photo_thumb_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     expected_price: Mapped[float] = mapped_column(Float)
     available_from: Mapped[date] = mapped_column(Date)
     location: Mapped[str] = mapped_column(String(120))

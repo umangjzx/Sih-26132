@@ -550,10 +550,10 @@ export default function BuyerPage() {
                   className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 flex flex-col gap-3">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      {match.lot.photo_url ? (
+                      {match.lot.photo_thumb_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={match.lot.photo_url}
+                          src={match.lot.photo_thumb_url}
                           alt=""
                           className="h-10 w-10 shrink-0 rounded-xl object-cover"
                         />

@@ -100,6 +100,8 @@ export type LotCreate = {
   available_from: string; // ISO date string "YYYY-MM-DD"
   location: string;
   photo_url?: string | null;
+  // A small (~96px) thumbnail generated alongside photo_url — see lib/image.ts.
+  photo_thumb_url?: string | null;
 };
 
 export type LotResponse = {
@@ -109,6 +111,7 @@ export type LotResponse = {
   quantity_kg: number;
   quality_grade: string;
   photo_url: string | null;
+  photo_thumb_url?: string | null;
   expected_price: number;
   available_from: string;
   location: string;
@@ -175,7 +178,9 @@ export type LotSummary = {
   expected_price: number;
   location: string;
   status: string;
-  photo_url?: string | null;
+  // Only the small thumbnail — match/deal list responses never embed the
+  // full lot photo (see backend app/schemas/match.py::LotSummary).
+  photo_thumb_url?: string | null;
 };
 
 export type DemandSummary = {

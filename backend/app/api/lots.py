@@ -102,7 +102,15 @@ def update_lot(
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "This lot is already in a deal and can't be edited.")
 
-    data = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    # photo_url/photo_thumb_url are the only fields where explicitly clearing
+    # to null is a real, intended operation (removing an attached photo) —
+    # every other field only ever gets a real replacement value from the
+    # frontend, so filtering out None elsewhere is still correct.
+    raw = body.model_dump(exclude_unset=True)
+    data = {
+        k: v for k, v in raw.items()
+        if v is not None or k in ("photo_url", "photo_thumb_url")
+    }
     loc_changed = "location" in data and data["location"] != lot.location
     for field, value in data.items():
         setattr(lot, field, value)

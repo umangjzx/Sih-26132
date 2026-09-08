@@ -218,10 +218,10 @@ export default function MatchThreadPage() {
       <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            {match.lot.photo_url && (
+            {match.lot.photo_thumb_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={match.lot.photo_url}
+                src={match.lot.photo_thumb_url}
                 alt=""
                 className="h-16 w-16 shrink-0 rounded-xl object-cover"
               />

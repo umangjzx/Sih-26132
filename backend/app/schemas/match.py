@@ -14,7 +14,12 @@ class LotSummary(BaseModel):
     expected_price: float
     location: str
     status: str
-    photo_url: str | None = None
+    # Only the small (~96px) thumbnail, never the full photo_url — this
+    # shape backs list endpoints (GET /api/matches/mine, /api/deals/mine,
+    # /api/history) where every row would otherwise embed the full
+    # compressed photo even though the UI only ever renders it at
+    # thumbnail size (see Lot.photo_thumb_url).
+    photo_thumb_url: str | None = None
 
 
 class DemandSummary(BaseModel):

@@ -304,6 +304,26 @@ class TestGetMatchesMine:
         resp = auth_client.get("/api/matches/mine")
         assert resp.status_code == 401
 
+    def test_lot_summary_exposes_only_the_thumbnail_not_the_full_photo(
+        self, db, farmer_client, farmer_user, buyer_user
+    ):
+        """LotSummary (embedded in MatchResponse) must never carry the full
+        lot photo — only the small thumbnail. Otherwise every match shown
+        embeds the full compressed photo bytes, the exact payload bloat the
+        v1.35 performance audit flagged and this thumbnail pipeline fixes."""
+        lot = _make_lot(db, farmer_user)
+        lot.photo_url = "data:image/jpeg;base64," + ("F" * 500)
+        lot.photo_thumb_url = "data:image/jpeg;base64," + ("T" * 20)
+        db.commit()
+        _make_demand(db, buyer_user)
+        run_matching(db)
+
+        resp = farmer_client.get("/api/matches/mine")
+        assert resp.status_code == 200
+        body = resp.json()[0]["lot"]
+        assert body["photo_thumb_url"] == lot.photo_thumb_url
+        assert "photo_url" not in body
+
     def test_query_count_does_not_scale_with_match_count(self, db, farmer_client, farmer_user):
         """list_my_matches used to run one extra completed-deals COUNT query
         per counterparty shown (an N+1: _completed_deals_count called once

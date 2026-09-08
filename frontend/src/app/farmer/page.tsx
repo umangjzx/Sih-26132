@@ -58,6 +58,7 @@ type FormState = {
   available_from: string;
   location: string;
   photo_url: string;
+  photo_thumb_url: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -68,6 +69,7 @@ const EMPTY_FORM: FormState = {
   available_from: "",
   location: "",
   photo_url: "",
+  photo_thumb_url: "",
 };
 
 function getQueue(): LotCreate[] {
@@ -206,10 +208,16 @@ export default function FarmerPage() {
     // Attach the photo itself to the lot (downscaled client-side, so it never
     // hits the backend's per-lot size cap) — independent of whether OCR can
     // read any text off it. A buyer gets to see the produce either way.
+    // Also generate a genuinely tiny thumbnail alongside it — match/deal
+    // list views (buyer dashboard, match thread) only ever render this at
+    // 40-64px, so they read photo_thumb_url instead of the full photo.
     let withPhoto = form;
     try {
-      const dataUrl = await compressImageToDataUrl(file);
-      withPhoto = { ...form, photo_url: dataUrl };
+      const [dataUrl, thumbUrl] = await Promise.all([
+        compressImageToDataUrl(file),
+        compressImageToDataUrl(file, 96, 0.5),
+      ]);
+      withPhoto = { ...form, photo_url: dataUrl, photo_thumb_url: thumbUrl };
       setForm(withPhoto);
       if (editingId === null) localStorage.setItem(DRAFT_KEY, JSON.stringify(withPhoto));
     } catch {
@@ -250,7 +258,7 @@ export default function FarmerPage() {
   }
 
   function removePhoto() {
-    const next = { ...form, photo_url: "" };
+    const next = { ...form, photo_url: "", photo_thumb_url: "" };
     setForm(next);
     if (editingId === null) localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
   }
@@ -281,6 +289,7 @@ export default function FarmerPage() {
       available_from: form.available_from,
       location: form.location,
       photo_url: form.photo_url || null,
+      photo_thumb_url: form.photo_thumb_url || null,
     };
   }
 
@@ -300,6 +309,7 @@ export default function FarmerPage() {
       available_from: lot.available_from,
       location: lot.location,
       photo_url: lot.photo_url ?? "",
+      photo_thumb_url: lot.photo_thumb_url ?? "",
     });
     document.getElementById("create-lot")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }

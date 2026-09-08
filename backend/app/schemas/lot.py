@@ -17,8 +17,13 @@ _MAX_PRICE = 5_000_000
 _MAX_PHOTO_B64_LEN = 2_000_000
 _PHOTO_DATA_URL_RE = re.compile(r"^data:image/(jpeg|png|webp);base64,")
 
+# The thumbnail is generated client-side at ~96px/low quality specifically so
+# it stays small — a generous cap that still catches a client sending the
+# full photo by mistake instead of a real thumbnail.
+_MAX_THUMB_B64_LEN = 30_000
 
-def _valid_photo_url(v: str | None) -> str | None:
+
+def _valid_photo_url(v: str | None, *, max_len: int = _MAX_PHOTO_B64_LEN, field: str = "photo_url") -> str | None:
     if v is None:
         return None
     v = v.strip()
@@ -27,15 +32,19 @@ def _valid_photo_url(v: str | None) -> str | None:
     if v.startswith("data:"):
         if not _PHOTO_DATA_URL_RE.match(v):
             raise ValueError("Unsupported photo format — use JPEG, PNG, or WebP")
-        if len(v) > _MAX_PHOTO_B64_LEN:
+        if len(v) > max_len:
             raise ValueError("Photo is too large — please retake it")
         return v
     if len(v) > 500:
-        raise ValueError("photo_url is too long")
+        raise ValueError(f"{field} is too long")
     # http(s) or a same-origin relative path only — no javascript:/file:
     if not (v.startswith("https://") or v.startswith("http://") or v.startswith("/")):
-        raise ValueError("photo_url must be an http(s) URL or a relative path")
+        raise ValueError(f"{field} must be an http(s) URL or a relative path")
     return v
+
+
+def _valid_photo_thumb_url(v: str | None) -> str | None:
+    return _valid_photo_url(v, max_len=_MAX_THUMB_B64_LEN, field="photo_thumb_url")
 
 
 def _valid_grade(v: str) -> str:
@@ -82,6 +91,7 @@ class LotCreate(BaseModel):
     available_from: date
     location: str = Field(min_length=1, max_length=120)
     photo_url: str | None = None
+    photo_thumb_url: str | None = None
 
     @field_validator("crop", "location")
     @classmethod
@@ -116,6 +126,11 @@ class LotCreate(BaseModel):
     def photo(cls, v: str | None) -> str | None:
         return _valid_photo_url(v)
 
+    @field_validator("photo_thumb_url")
+    @classmethod
+    def photo_thumb(cls, v: str | None) -> str | None:
+        return _valid_photo_thumb_url(v)
+
 
 class LotUpdate(BaseModel):
     """Fields a farmer may change on their own still-open lot. Crop is fixed —
@@ -127,6 +142,7 @@ class LotUpdate(BaseModel):
     available_from: date | None = None
     location: str | None = Field(default=None, min_length=1, max_length=120)
     photo_url: str | None = None
+    photo_thumb_url: str | None = None
 
     @field_validator("quantity_kg")
     @classmethod
@@ -161,6 +177,11 @@ class LotUpdate(BaseModel):
     def _photo(cls, v: str | None) -> str | None:
         return _valid_photo_url(v)
 
+    @field_validator("photo_thumb_url")
+    @classmethod
+    def _photo_thumb(cls, v: str | None) -> str | None:
+        return _valid_photo_thumb_url(v)
+
 
 class LotResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -171,6 +192,7 @@ class LotResponse(BaseModel):
     quantity_kg: float
     quality_grade: str
     photo_url: str | None
+    photo_thumb_url: str | None = None
     expected_price: float
     available_from: date
     location: str

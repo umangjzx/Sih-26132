@@ -154,6 +154,51 @@ def test_update_lot_rejects_bad_values(farmer_client, db):
     assert farmer_client.patch(f"/api/lots/{lot_id}", json={"photo_url": "javascript:alert(1)"}).status_code == 422
 
 
+_TINY_JPEG_DATA_URL = "data:image/jpeg;base64," + ("A" * 100)
+
+
+def test_create_lot_with_photo_and_thumbnail(farmer_client, db):
+    body = {**LOT_BODY, "photo_url": _TINY_JPEG_DATA_URL, "photo_thumb_url": _TINY_JPEG_DATA_URL}
+    resp = farmer_client.post("/api/lots/", json=body)
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["photo_url"] == _TINY_JPEG_DATA_URL
+    assert data["photo_thumb_url"] == _TINY_JPEG_DATA_URL
+
+
+def test_update_lot_rejects_an_oversized_thumbnail(farmer_client, db):
+    """photo_thumb_url is meant to be a genuinely small (~96px) image — a
+    client sending something thumbnail-sized-in-name-only (e.g. the full
+    photo by mistake) must be rejected, not silently accepted and stored,
+    which would defeat the whole point of match/deal responses only
+    exposing this field instead of the full photo_url."""
+    lot_id = farmer_client.post("/api/lots/", json=LOT_BODY).json()["id"]
+    oversized = "data:image/jpeg;base64," + ("A" * 40_000)
+    resp = farmer_client.patch(f"/api/lots/{lot_id}", json={"photo_thumb_url": oversized})
+    assert resp.status_code == 422
+
+
+def test_update_lot_can_clear_a_previously_attached_photo(farmer_client, db):
+    """update_lot's field filter used to drop any explicitly-sent null,
+    which meant removing an attached photo via edit silently no-op'd — the
+    old photo_url just stayed in the database. Both photo_url and
+    photo_thumb_url must actually clear when the client explicitly sends
+    null for them."""
+    body = {**LOT_BODY, "photo_url": _TINY_JPEG_DATA_URL, "photo_thumb_url": _TINY_JPEG_DATA_URL}
+    lot_id = farmer_client.post("/api/lots/", json=body).json()["id"]
+
+    resp = farmer_client.patch(
+        f"/api/lots/{lot_id}", json={"photo_url": None, "photo_thumb_url": None},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["photo_url"] is None
+    assert data["photo_thumb_url"] is None
+
+    lot = db.get(Lot, lot_id)
+    assert lot.photo_url is None and lot.photo_thumb_url is None
+
+
 def test_cannot_edit_a_matched_lot(farmer_client, db):
     lot_id = farmer_client.post("/api/lots/", json=LOT_BODY).json()["id"]
     db.get(Lot, lot_id).status = "matched"
