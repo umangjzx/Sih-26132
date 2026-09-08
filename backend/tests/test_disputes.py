@@ -88,6 +88,35 @@ def test_raise_duplicate_open_dispute_rejected(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_raise_dispute_rejects_a_second_open_dispute_race(db, farmer_user, buyer_user):
+    """raise_dispute's "no open dispute yet" check can be raced past by a
+    double-submit (two near-simultaneous raises both reading "none open
+    yet"). This proves the DB constraint backing "one open dispute per
+    deal" actually catches what the check misses, by inserting the second
+    row directly rather than relying on ORM-level timing."""
+    deal = _seed_deal(db, farmer_user, buyer_user)
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        r1 = client.post(f"/api/deals/{deal.id}/disputes", json={"reason": "First issue"})
+        assert r1.status_code == 201, r1.text
+
+        # Simulate the losing half of a race: a second open dispute on the
+        # same deal inserted directly, bypassing the app-level check that
+        # the winning request already passed.
+        dupe = Dispute(deal_id=deal.id, raised_by=buyer_user.id, reason="Race dupe", status="open")
+        db.add(dupe)
+        try:
+            db.flush()
+            assert False, "expected the partial unique index to reject a second open dispute"
+        except Exception as e:
+            assert "uq_dispute_open_per_deal" in str(e) or "UNIQUE" in str(e)
+        finally:
+            db.rollback()
+    finally:
+        app.dependency_overrides.clear()
+
+
 # ---------------------------------------------------------------------------
 # GET /api/deals/{deal_id}/disputes
 # ---------------------------------------------------------------------------

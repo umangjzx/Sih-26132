@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -97,7 +98,18 @@ def raise_dispute(
         status="open",
     )
     db.add(dispute)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # Two near-simultaneous raises on this deal (double-submit, or both
+        # parties raising at the same instant) both passed the "no open
+        # dispute yet" check above — the uq_dispute_open_per_deal constraint
+        # catches what the read missed.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An open dispute already exists for this deal",
+        )
     log_event(
         db, actor_id=current_user.id, entity_type="deal", entity_id=deal_id,
         action="dispute_raised",

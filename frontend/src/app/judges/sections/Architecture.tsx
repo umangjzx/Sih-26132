@@ -15,7 +15,7 @@ const CHART = `flowchart LR
       Sched["APScheduler — 6-hourly ingestion + alert eval"]
     end
 
-    DB[("PostgreSQL 16\\n20 tables · 21 migrations")]
+    DB[("PostgreSQL 16\\n20 tables · 22 migrations")]
 
     subgraph Ext["11 external sources — every one has an offline fallback"]
       AGMARKNET["data.gov.in AGMARKNET"]
@@ -158,7 +158,7 @@ const LAYERS = [
         tech: "SQLAlchemy 2.0 typed Mapped[] models, deterministic constraint naming",
         input: "Every write path in the app",
         output: "Durable relational storage",
-        deps: "21-migration linear chain, head d730f5bc2c6d",
+        deps: "22-migration linear chain, head 62fd33ddca7e",
       },
       {
         title: "geo_cache",

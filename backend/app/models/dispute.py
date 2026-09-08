@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -14,6 +14,21 @@ class Dispute(Base):
     """
 
     __tablename__ = "disputes"
+    __table_args__ = (
+        # raise_dispute enforces "only one open dispute per deal" in Python —
+        # a double-submit (multi-tab, retried request) could race past that
+        # check and open two. This backs the invariant at the DB level.
+        # Resolved/withdrawn rows are intentionally excluded so a deal can
+        # have a full dispute history across multiple raised-and-resolved
+        # rounds.
+        Index(
+            "uq_dispute_open_per_deal",
+            "deal_id",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
+            sqlite_where=text("status = 'open'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     deal_id: Mapped[int] = mapped_column(ForeignKey("deals.id"))

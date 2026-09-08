@@ -500,6 +500,37 @@ def test_cannot_stack_your_own_pending_offer(db, farmer_user, buyer_user):
         app.dependency_overrides.clear()
 
 
+def test_post_offer_rejects_a_second_pending_offer_race(db, farmer_user, buyer_user):
+    """post_offer's "no pending offer of mine" check only looks at the
+    caller's own offers — it can be raced past by two near-simultaneous
+    posts (double-submit, or both parties posting at once) that each read
+    "no pending offer on this match yet" before either commits. This proves
+    the DB constraint backing "at most one pending offer per match" actually
+    catches what the check misses, by inserting the second row directly
+    rather than relying on ORM-level timing."""
+    match = _seed_match(db, farmer_user, buyer_user)
+    client, _ = _make_clients(db, farmer_user, buyer_user)
+    try:
+        _as_buyer(buyer_user)
+        r = client.post(f"/api/matches/{match.id}/offers", json=OFFER_BODY)
+        assert r.status_code == 201, r.text
+
+        # Simulate the losing half of a race: a second pending offer on the
+        # same match inserted directly, bypassing the app-level check that
+        # the winning request already passed.
+        dupe = Offer(match_id=match.id, from_user_id=farmer_user.id, price=2700, quantity=500, status="pending")
+        db.add(dupe)
+        try:
+            db.flush()
+            assert False, "expected the partial unique index to reject a second pending offer"
+        except Exception as e:
+            assert "uq_offer_pending_per_match" in str(e) or "UNIQUE" in str(e)
+        finally:
+            db.rollback()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_offer_price_upper_bound(db, farmer_user, buyer_user):
     match = _seed_match(db, farmer_user, buyer_user)
     client, _ = _make_clients(db, farmer_user, buyer_user)

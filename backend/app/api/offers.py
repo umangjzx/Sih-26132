@@ -11,6 +11,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -205,7 +206,18 @@ def post_offer(
     )
     db.add(offer)
     match.status = "offered"
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # Two near-simultaneous posts on this match (double-submit, or both
+        # parties posting at the same instant) both passed the "no pending
+        # offer of mine" check above — the uq_offer_pending_per_match
+        # constraint catches what the read missed.
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Someone just posted an offer on this match — refresh and try again.",
+        )
     log_event(
         db, actor_id=current_user.id, entity_type="match", entity_id=match_id,
         action="offer_countered" if pending else "offer_made",
