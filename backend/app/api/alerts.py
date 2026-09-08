@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core import ratelimit
@@ -92,7 +93,14 @@ def create_alert(
         active=True,
     )
     db.add(alert)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two near-simultaneous creates (double-submit, multi-tab) both
+        # passed the exact-duplicate check above — the uq_price_alert_dedup
+        # constraint catches what the read missed.
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "You already have this exact alert.")
     db.refresh(alert)
     return alert
 

@@ -96,6 +96,37 @@ def test_duplicate_alert_is_rejected(db, farmer_user):
         app.dependency_overrides.clear()
 
 
+def test_create_alert_rejects_a_second_exact_duplicate_race(db, farmer_user):
+    """create_alert's exact-duplicate check can be raced past by a
+    double-submit (two near-simultaneous creates both reading "no duplicate
+    yet"). This proves the DB constraint backing that check actually catches
+    what the read misses, by inserting the second row directly rather than
+    relying on ORM-level timing — including the case-insensitive match the
+    functional index has to replicate."""
+    _seed_price(db)
+    client = _client(db)
+    try:
+        _as(farmer_user)
+        body = {"crop": "Onion", "market": "Pune", "direction": "above", "threshold": 2000}
+        assert client.post("/api/alerts", json=body).status_code == 201
+
+        # Simulate the losing half of a race: a case-variant duplicate
+        # inserted directly, bypassing the app-level check that the winning
+        # request already passed.
+        dupe = PriceAlert(user_id=farmer_user.id, crop="ONION", market="pune",
+                          direction="above", threshold=2000, active=True)
+        db.add(dupe)
+        try:
+            db.flush()
+            assert False, "expected the functional unique index to reject a case-variant duplicate"
+        except Exception as e:
+            assert "uq_price_alert_dedup" in str(e) or "UNIQUE" in str(e)
+        finally:
+            db.rollback()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_alert_count_is_capped(db, farmer_user):
     from app.api.alerts import _MAX_ALERTS_PER_USER
 

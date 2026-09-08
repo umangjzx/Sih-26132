@@ -25,13 +25,13 @@ const STACK: { category: string; icon: string; items: Tech[] }[] = [
     items: [
       { name: "FastAPI", version: "0.115.6", why: "Async-first, automatic OpenAPI docs at /docs, and Pydantic validation built into the request lifecycle", alt: "Flask/Django — more manual wiring for async + validation" },
       { name: "SQLAlchemy", version: "2.0.36 (typed Mapped[])", why: "Type-checked ORM models catch column-type mistakes before runtime; parameterised queries by construction (no raw SQL string interpolation found anywhere in the codebase)", alt: "raw SQL / a lighter query builder — loses the type safety" },
-      { name: "Alembic", version: "1.19.1", why: "Every schema change is a reviewable, revertible migration — 22 revisions, linear chain, no drift between environments", alt: "—" },
+      { name: "Alembic", version: "1.19.1", why: "Every schema change is a reviewable, revertible migration — 23 revisions, linear chain, no drift between environments", alt: "—" },
       { name: "Pydantic v2 / pydantic-settings", version: "2.10.4 / 2.7.0", why: "Request/response validation and typed settings from one library — e.g. phone-format regex and password length are enforced before a handler ever runs", alt: "—" },
       { name: "APScheduler", version: "3.11.0", why: "In-process scheduled jobs (6-hourly ingestion, alert evaluation) without standing up a separate worker/queue for a single-VM deployment", alt: "Celery + Redis — real overkill at this scale" },
       { name: "httpx", version: "0.28.1", why: "Async HTTP client for the 11 external integrations, with per-call timeouts so one slow provider can't hang a request", alt: "requests — sync-only" },
       { name: "python-jose[cryptography]", version: "3.5.0", why: "JWT encode/decode (HS256) for access + refresh tokens", alt: "PyJWT — comparable; jose was already pulled in for the crypto backend" },
       { name: "stdlib hashlib (PBKDF2-HMAC-SHA256)", version: "—", why: "600,000-iteration password hashing using only the Python standard library — no bcrypt/passlib dependency, so the build stays installable offline", alt: "bcrypt/argon2 — stronger per-hash cost tuning, but an extra native dependency for a hackathon-offline-safe build" },
-      { name: "pytest", version: "9.1.1", why: "480 backend tests run against an in-memory SQLite DB — no container needed to run the suite", alt: "—" },
+      { name: "pytest", version: "9.1.1", why: "481 backend tests run against an in-memory SQLite DB — no container needed to run the suite", alt: "—" },
     ],
   },
   {
