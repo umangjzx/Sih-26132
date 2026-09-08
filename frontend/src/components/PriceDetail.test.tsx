@@ -10,6 +10,18 @@ vi.mock("@/lib/api", () => ({
   fetchBestMarkets: vi.fn(),
   fetchForecast: vi.fn().mockResolvedValue({ available: false, points: [] }),
 }));
+const mockUser = { id: 1, phone: "+910000000001", name: "Farmer", role: "farmer", district: "Pune", taluka: "Pune", kyc_status: "verified", is_active: true };
+vi.mock("@/components/AuthProvider", () => ({
+  useAuth: () => ({
+    user: mockUser,
+    token: "mock-token",
+    isAuthenticated: true,
+    ready: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 vi.mock("recharts", () => {
   const Wrap = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
   const Nil = () => null;
@@ -48,6 +60,7 @@ const trend = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUser.role = "farmer";
   vi.mocked(api.fetchTrend).mockResolvedValue(trend);
   vi.mocked(api.fetchNearby).mockResolvedValue([]);
   vi.mocked(api.fetchBestMarkets).mockRejectedValue(new Error("skip"));
@@ -66,4 +79,13 @@ it("recovers from an error via Retry", async () => {
   expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: /retry/i }));
   expect(await screen.findByRole("heading", { name: /Onion/i })).toBeInTheDocument();
+});
+
+it("shows a browse-lots pointer instead of the seller's best-market panel for a buyer", async () => {
+  mockUser.role = "buyer";
+  renderWithIntl(<PriceDetail cm={cm} />);
+  expect(await screen.findByRole("heading", { name: /Onion/i })).toBeInTheDocument();
+  expect(screen.getByText(/nearby sellers/i)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /browse lots/i })).toBeInTheDocument();
+  expect(api.fetchBestMarkets).not.toHaveBeenCalled();
 });

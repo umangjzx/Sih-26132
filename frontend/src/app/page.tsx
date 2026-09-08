@@ -530,7 +530,7 @@ function HomeInner() {
       <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--green-700)] p-6 text-white sm:grid-cols-4">
         {[
           { icon: "chart", label: t("vp1Label"), sub: t("vp1Sub") },
-          { icon: "spark", label: t("vp2Label"), sub: t("vp2Sub") },
+          { icon: "spark", label: t("vp2Label"), sub: isBuyer ? t("vp2SubBuyer") : t("vp2Sub") },
           { icon: "connection", label: t("vp3Label"), sub: t("vp3Sub") },
           { icon: "shield", label: t("vp4Label"), sub: t("vp4Sub") },
         ].map((f) => (

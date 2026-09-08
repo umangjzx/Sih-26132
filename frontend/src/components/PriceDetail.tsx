@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
+import { useAuth } from "@/components/AuthProvider";
 import {
   fetchBestMarkets,
   fetchForecast,
@@ -18,13 +20,16 @@ import { DataProvenance } from "./DataProvenance";
 import { BestMarketPanel } from "./intel";
 import { MarketComparisonChart } from "./MarketComparisonChart";
 import { PriceTrendChart } from "./PriceTrendChart";
-import { Card, SectionHeader, Skeleton } from "./ui";
+import { Card, Icon, SectionHeader, Skeleton } from "./ui";
 
 const DAY_OPTIONS = [7, 30, 90] as const;
 
 export function PriceDetail({ cm }: { cm: CropMarketState }) {
   const t = useTranslations("dashboard");
   const tc = useTranslations("common");
+  const th = useTranslations("home");
+  const { user } = useAuth();
+  const isBuyer = user?.role === "buyer";
   const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
 
   const [trend, setTrend] = useState<PriceTrendResponse | null>(null);
@@ -48,14 +53,16 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
       fetchForecast(cm.crop, cm.market, 30)
         .then((f) => setForecast(f.available ? f : null))
         .catch(() => setForecast(null));
-      const b = await fetchBestMarkets(cm.crop, cm.market, true).catch(() => null);
+      // "best market to sell at" (net price after transport) is a farmer's
+      // decision — meaningless for a buyer, who isn't selling anything here.
+      const b = isBuyer ? null : await fetchBestMarkets(cm.crop, cm.market, true).catch(() => null);
       setBest(b);
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [cm.crop, cm.market, cm.district, days]);
+  }, [cm.crop, cm.market, cm.district, days, isBuyer]);
 
   useEffect(() => {
     load();
@@ -147,7 +154,21 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
             <Card>{t("noData")}</Card>
           )}
 
-          <BestMarketPanel data={best} />
+          {isBuyer ? (
+            <Card>
+              <SectionHeader icon="truck" title={th("nearbySellersTitle")} />
+              <p className="text-sm text-[var(--ink-soft)]">{th("nearbySellersNote")}</p>
+              <Link
+                href="/browse"
+                className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[var(--green-800)]"
+              >
+                <Icon name="map" size={15} />
+                {th("browseLots")}
+              </Link>
+            </Card>
+          ) : (
+            <BestMarketPanel data={best} />
+          )}
           {nearby.length > 0 && last && (
             <Card>
               <SectionHeader icon="map" title="Nearby Markets Comparison" />
