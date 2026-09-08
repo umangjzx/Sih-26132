@@ -7,7 +7,7 @@ and a 30-day average-modal-price series across all crops (reused from PriceCache
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -550,9 +550,13 @@ def admin_close_lot(
     lot = db.get(Lot, lot_id)
     if lot is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lot not found")
-    if lot.status != "open":
+    claimed = db.execute(
+        update(Lot).where(Lot.id == lot.id, Lot.status == "open").values(status="closed")
+    ).rowcount
+    if not claimed:
+        db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, f"Lot is '{lot.status}', not open")
-    lot.status = "closed"
+    db.refresh(lot)
     for m in db.execute(
         select(Match).where(Match.lot_id == lot.id, Match.status.in_(("proposed", "offered")))
     ).scalars().all():
@@ -611,9 +615,13 @@ def admin_close_demand(
     demand = db.get(Demand, demand_id)
     if demand is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Demand not found")
-    if demand.status != "open":
+    claimed = db.execute(
+        update(Demand).where(Demand.id == demand.id, Demand.status == "open").values(status="closed")
+    ).rowcount
+    if not claimed:
+        db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, f"Demand is '{demand.status}', not open")
-    demand.status = "closed"
+    db.refresh(demand)
     for m in db.execute(
         select(Match).where(Match.demand_id == demand.id, Match.status.in_(("proposed", "offered")))
     ).scalars().all():
