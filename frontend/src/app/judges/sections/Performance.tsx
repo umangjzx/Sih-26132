@@ -1,14 +1,14 @@
 "use client";
 
 import { Icon } from "@/components/ui";
-import { EvidenceBadge, JudgeSection } from "./shared";
+import { EvidenceBadge, JudgeSection, JudgeTable } from "./shared";
 
 const METRICS = [
   { metric: "API average response time", value: "189–316ms median across 5 read endpoints (trend/forecast/signal/nearby/options), single request, real seeded Postgres data (re-measured 2026-09-07; the dataset has grown to 23,598 crop/market combos, up from 20,901 on 2026-09-04)", kind: "verified" as const },
   { metric: "API latency under load", value: "200 requests / 20 concurrent workers per endpoint: p50 127–579ms, p99 177–886ms (scripts/perf_bench.py, re-run 2026-09-07 — /api/options excluded, see the dedicated callout below)", kind: "verified" as const },
   { metric: "Frontend page load time", value: "Not benchmarked", kind: "pending" as const },
   { metric: "Database query performance", value: "Not profiled with EXPLAIN ANALYZE, but one real bottleneck was found and fixed this run (see below)", kind: "verified" as const },
-  { metric: "Concurrent users tested", value: "20 concurrent workers, 200 requests/endpoint, local benchmark — not a production-scale load test", kind: "verified" as const },
+  { metric: "Concurrent users tested", value: "Ramped 5 → 120 concurrent requests against a live single-worker instance on real seeded Postgres data (scripts/load_test.py, 2026-09-08) — found the deployment's actual saturation point, see the dedicated section below", kind: "verified" as const },
   { metric: "Error rate", value: "0 failures across 554 automated test runs (not the same as a production error rate)", kind: "verified" as const },
   { metric: "Uptime", value: "Not applicable — no long-running production deployment with an SLA yet", kind: "pending" as const },
   { metric: "Backend test-suite runtime", value: "503 tests in 38–95s (in-memory SQLite, re-run 2026-09-08 — runtime varies noticeably with what else is running on the machine)", kind: "verified" as const },
@@ -113,6 +113,67 @@ export function PerformanceSection() {
           </div>
         ))}
       </div>
+
+      <h3 className="mt-8 font-heading text-base font-bold text-[var(--ink)]">
+        Load test: finding this deployment&apos;s real saturation point (2026-09-08)
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">
+        Not k6/Locust — a new dependency that isn&apos;t justified at this app&apos;s scale — but
+        the same lightweight httpx + <code>ThreadPoolExecutor</code> approach as{" "}
+        <code>scripts/perf_bench.py</code>, ramping concurrency (5 → 120) instead of one fixed
+        load point, against a live single-worker instance on the real seeded Postgres dataset.
+        Two scenarios were pushed until p99 latency crossed 3s: a public, computation-heavy read
+        (<code>GET /api/prices/forecast</code>) and an authenticated, DB-joined read (
+        <code>GET /api/matches/mine</code>). Both show the same shape — flat latency through
+        concurrency≈20, then a sharp climb:
+      </p>
+      <div className="mt-3">
+        <JudgeTable>
+          <thead>
+            <tr className="border-b border-[var(--line)] bg-[var(--paper)] text-left text-xs font-bold uppercase tracking-wide text-[var(--ink-soft)]">
+              <th className="px-4 py-3">Concurrency</th>
+              <th className="px-4 py-3">Throughput</th>
+              <th className="px-4 py-3">p99 — public forecast</th>
+              <th className="px-4 py-3">p99 — authenticated matches</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["5", "~90–150 req/s", "95ms", "87ms"],
+              ["20", "~130–150 req/s", "251ms", "191ms"],
+              ["40", "~115–135 req/s", "922ms", "661ms"],
+              ["80", "~120–140 req/s", "1,750ms", "2,458ms"],
+              ["120", "~115–140 req/s", "3,440ms", "4,010ms"],
+            ].map((r, i) => (
+              <tr key={r[0]} className={i % 2 ? "bg-[var(--paper)]/50" : ""}>
+                {r.map((c, j) => (
+                  <td key={j} className="px-4 py-3 text-[var(--ink-soft)]">{c}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </JudgeTable>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
+        Throughput plateaus in the ~90–150 req/s range (the exact number shifted between runs
+        with how much else was competing for the CPU — a second full run, launched right after
+        the 503-test backend suite, measured a lower ~85 req/s plateau on the same code) while
+        latency keeps climbing — the classic queueing signature of a server already at its
+        processing ceiling. Two concrete, cheap-to-test hypotheses were checked and ruled out
+        rather than assumed: raising Starlette&apos;s default 40-thread sync-endpoint limit to
+        100, and widening the DB connection pool from the SQLAlchemy default (5 + 10 overflow) to
+        20 + 20 — re-running the identical ramp afterward showed no measurable change, so both
+        changes were reverted rather than kept as an unverified &quot;fix&quot;. That confirms the
+        ceiling is per-request compute cost on one worker (matching the same GIL-bound queuing
+        already found in the <code>GET /api/options</code> case above), not a tunable thread or
+        connection limit — real, load-bearing evidence for the &quot;single-VM, single-worker by
+        choice&quot; scalability tradeoff stated elsewhere on this page, not just an assertion.
+        A separate, single-point write-path check (<code>PATCH /api/lots/&#123;id&#125;</code>,
+        round-robined across the 4 demo farmer accounts to stay under their own 40-writes/10-min
+        rate limit) measured p50 143ms / p99 230ms at concurrency 10 with zero errors — bounded
+        deliberately rather than ramped further, since only 4 real accounts exist to spread load
+        across without polluting the shared demo dataset with throwaway ones.
+      </p>
 
       <h3 className="mt-8 font-heading text-base font-bold text-[var(--ink)]">
         Architectural choices made for performance (verifiable in code, not measured yet)

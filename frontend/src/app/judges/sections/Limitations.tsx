@@ -30,6 +30,7 @@ const GROUPS: { title: string; icon: string; cls: string; items: string[] }[] = 
       "Diesel pricing — investigated this session: no free live diesel-price API for India was found. The curated per-state reference (with an as_of date) is the honest fallback rather than faking a live feed with a stale number.",
       "Weather enrichment — the free Open-Meteo/NASA POWER path always works; the OpenWeatherMap current-conditions overlay needs an optional key",
       "Forward-contract settlement — fixed this session from a bare gap to real visibility: an accepted commitment now gets a settlement_due date, and an overdue deal (still not delivered) triggers a debounced in-app notification to both farmer and buyer, plus an on_track/overdue/settled badge on the contract. This is not escrow or a financial penalty — the platform still never holds money or crop — it surfaces a stalled commitment instead of it silently going nowhere.",
+      "Production-scale load test — investigated this session: not k6/Locust (a new dependency unjustified at this scale), but a real concurrency ramp (scripts/load_test.py) against a live single-worker instance on real seeded Postgres data. It found the actual saturation point (throughput plateaus, p99 climbs sharply past concurrency≈20-40), then tested and ruled out two plausible fixes — a wider thread limit and a bigger DB connection pool — before concluding the ceiling is per-request compute cost on one worker, not a tunable limit (see Performance). Still not the literal k6/Locust-against-a-deployed-VM version named in the roadmap, but a genuine, verified saturation-point measurement rather than an unrun placeholder.",
     ],
   },
   {
@@ -48,7 +49,6 @@ const GROUPS: { title: string; icon: string; cls: string; items: string[] }[] = 
     items: [
       "Cordova Android wrap — not built; the frontend's all-client-component architecture is deliberately ready for it",
       "Financing disbursement — the platform tracks a request and an admin decision only; it never holds or transfers money, so a real product still needs a licensed bank/NBFC or warehouse partner",
-      "A full production-scale load test (k6/Locust against a deployed instance) — not run; what has run is a local concurrent benchmark that found and fixed one real bottleneck (see Performance)",
       "Forward-contract breach escrow — a dispute resolution can mark a commitment breached and compute a penalty figure (10% of contract value by default), but no money is ever actually held or collected — it's an auditable number, not real escrow",
       "digest/system notification kinds — the SMS digest job reads existing unread notifications to text a summary, it doesn't create its own digest row, and nothing yet produces a system-kind notification",
     ],
