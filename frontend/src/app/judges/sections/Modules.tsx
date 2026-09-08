@@ -93,7 +93,7 @@ const MODULES: Module[] = [
     status: "production",
     purpose: "Score every farmer×buyer pairing transparently",
     users: "Farmers and buyers, automatically on every new lot/demand",
-    features: "Quantity fit (30) + price overlap (40) + distance (30) = 100-point score, breakdown shown on the match page",
+    features: "Quantity fit (30) + price overlap (40) + distance (30) = 100-point score, breakdown shown on the match page; a stale/at-risk banner once a proposed or offered match sits unanswered for 3+/7+ days, and a counterparty trust line (completed deals, member since) (v1.22)",
     input: "Every open lot × every open demand sharing a crop",
     output: "Match rows scoring ≥30, with score_detail JSON",
     processing: "score_pair() — a pure function, fully unit-tested",

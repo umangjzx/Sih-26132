@@ -24,7 +24,7 @@ Built **Maharashtra-first** (the SIH problem statement is Govt. of Maharashtra /
 MSInS) but **location-aware across India** — detect or pick a location and prices
 re-scope to that state; MSP and the storage/FPO directory are national.
 
-**Status — Phases 1–3 complete, plus v1.1 through v1.19 (last updated 2026-09-07):**
+**Status — Phases 1–3 complete, plus v1.1 through v1.22 (last updated 2026-09-08):**
 
 | Phase / Release | Scope | State |
 |---|---|---|
@@ -53,6 +53,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.19 · Navigation & IA overhaul | role-gated Advisor link, admin home + overview/activity tabs, dedicated `/admin/financing` and `/notifications` pages, terminology sync | ✅ |
 | v1.20 · Full-lifecycle notifications | offer accept/decline, financing approve/reject, deal-pipeline advance, and dispute resolution now each create a real notification, not just price alerts and forward settlement | ✅ |
 | v1.21 · Financing ↔ deal traceability | `financing_requests.deal_id` is stamped once the pledged lot actually sells (via a 1:1 offer accept or a pool acceptance), with a "View deal" link on both the farmer and admin financing screens | ✅ |
+| v1.22 · History filters, match risk & trust signals | status-filter pills on `/history` (lots/demands/deals); a stale/at-risk banner on `/matches` when a proposed or offered match sits unanswered for 3+/7+ days; counterparty completed-deals count and member-since date shown alongside the verified badge | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -381,14 +382,14 @@ aren't a client component top-to-bottom; see [Architecture](#architecture).
 | `/login` | any | Two tabs on one screen: **Sign in** (phone + password) or **Create account** (phone + name + role + district + state + password). Returns access + refresh tokens. Passwords are PBKDF2-hashed; no OTP / SMS. |
 | `/farmer` | farmer | List produce **lots** (crop, quantity, grade, expected price, availability date, location). **OCR assist** — photograph a mandi slip and the fields auto-fill from the image. Offline-safe: drafts autosave, submissions queue in `localStorage` and sync on reconnect. Shows nearby storage/FPOs. |
 | `/buyer` | buyer | Post **demands** (crop, quantity, quality spec, price band, delivery window, delivery district). |
-| `/matches/[id]` | farmer/buyer | Scored lot×demand match with a component breakdown; an **offer thread** (propose price/quantity, counter, accept, decline). A **"Counter"** action pre-fills the form from the other side's offer, alongside a price-references strip — mandi modal, MSP, asking band, current spread, and a one-tap "use midpoint". Accepting an offer creates a **deal**. |
+| `/matches/[id]` | farmer/buyer | Scored lot×demand match with a component breakdown; an **offer thread** (propose price/quantity, counter, accept, decline). A **"Counter"** action pre-fills the form from the other side's offer, alongside a price-references strip — mandi modal, MSP, asking band, current spread, and a one-tap "use midpoint". Accepting an offer creates a **deal**. **v1.22** — a trust-signal line (counterparty's completed-deal count and member-since date) sits below the verified badge. |
 | `/forward` | farmer/buyer | **Forward contracts.** A buyer posts a pre-harvest bid (crop, quantity, price band, future delivery window); a farmer growing that crop commits part of the not-yet-harvested lot at a locked price. A crop-calendar check warns when the ready date misses the crop's harvest months. On acceptance the commitment materialises straight into the deal pipeline. |
 | `/browse` | farmer/buyer | **Discovery board** — buyers browse open lots nearby; farmers browse open demands nearby. Radius filter (nearby / all-India), crop filter, verified-seller badge, and a one-tap "Express interest" that opens a match or explains why no match yet. |
 | `/pools` | farmer | **FPO-style pooled lots** — create or join a collective for one crop. The pool aggregates committed members into a single virtual lot (quantity-weighted price, floored at the organizer's floor price) and scores it against open buyer demands, showing ranked candidates. |
 | `/pools/[id]` | farmer | Pool detail: aggregate stats (fill %, effective price), member list, and — for the organizer — the ranked demand candidates to negotiate with. |
 | `/financing` | farmer | **Warehouse-receipt financing (v1.17)** — pledge an open, unsold lot as collateral and request a cash advance (capped at 75% of the lot's estimated value); track pending/approved/rejected requests and withdraw a pending one. No real money moves — an admin approves/rejects, same as account verification. |
 | `/profile` | any | **User profile & verification** — set trading location (GPS, header chip, or manual entry) so distance-aware matching and radius filters work accurately. Request admin verification (unverified → pending → verified), optionally citing a PM-Kisan ID / Aadhaar reference. |
-| `/history` | farmer/buyer | Your lots, demands, and deals ("Deals & History" in navigation). Farmers also get a **price-realisation scorecard** — realised ₹/qtl vs the AGMARKNET mandi average and MSP for every completed deal, with a volume-weighted uplift headline and a per-deal bar chart. |
+| `/history` | farmer/buyer | Your lots, demands, and deals ("Deals & History" in navigation). Farmers also get a **price-realisation scorecard** — realised ₹/qtl vs the AGMARKNET mandi average and MSP for every completed deal, with a volume-weighted uplift headline and a per-deal bar chart. **v1.22** — status-filter pills on each of the three lists. |
 | `/deals/[id]` | farmer/buyer/admin | Advance the deal through its pipeline; view and update the **logistics plan** (mode, transporter from the directory, vehicle, pickup/drop points, diesel-indexed cost estimate); record **instalment payments**; see the append-only **transaction timeline**; open a printable **receipt**; raise or view disputes. |
 | `/notifications` | any | **v1.19** — full notification history (the header bell only ever showed a handful): All/Unread tabs, mark-all-read, click-to-open-and-mark-read. |
 | `/` (admin) | admin | **v1.19** — admins land on a dedicated `AdminHome` greeting + KPI tiles (open disputes, pending financing, open lots, total deals) and quick links, instead of the farmer/buyer one-crop price snapshot that has nothing for them to act on. |
