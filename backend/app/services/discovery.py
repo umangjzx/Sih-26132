@@ -5,7 +5,9 @@ the matcher so what you see here is what could actually match.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+import math
+
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.demand import Demand
@@ -13,6 +15,22 @@ from app.models.lot import Lot
 from app.models.match import Match
 from app.models.user import User
 from app.services.geo import _district_coord, haversine_km
+
+_KM_PER_DEGREE_LAT = 111.32
+
+
+def _bounding_box(origin: tuple[float, float], radius_km: float) -> tuple[float, float, float, float]:
+    """A conservative lat/lon box containing every point within radius_km of
+    origin — a cheap SQL-level pre-filter so a radius search doesn't load
+    every open lot/demand on the platform before the precise haversine
+    check below. Deliberately generous (a box is a superset of the true
+    circle, and cos(lat) is floored so the box never collapses near the
+    poles) — it can only ever include extra rows the exact check then
+    discards, never exclude a real match."""
+    lat, lon = origin
+    lat_delta = radius_km / _KM_PER_DEGREE_LAT
+    lon_delta = radius_km / (_KM_PER_DEGREE_LAT * max(math.cos(math.radians(lat)), 0.01))
+    return (lat - lat_delta, lat + lat_delta, lon - lon_delta, lon + lon_delta)
 
 # a match in one of these states already links the two parties — the listing
 # shouldn't show up on the other side's discovery board as "new".
@@ -74,6 +92,16 @@ def browse_lots(
     )
     if crop:
         stmt = stmt.where(Lot.crop.ilike(crop))
+    if origin is not None and radius_km is not None:
+        lat_min, lat_max, lon_min, lon_max = _bounding_box(origin, radius_km)
+        stmt = stmt.where(
+            or_(
+                # no stored coords — needs the district-centroid fallback
+                # below, so it must stay a candidate regardless of the box.
+                Lot.latitude.is_(None),
+                and_(Lot.latitude.between(lat_min, lat_max), Lot.longitude.between(lon_min, lon_max)),
+            )
+        )
     rows = db.execute(stmt).all()
     engaged = _lots_already_engaged_with(db, viewer.id)
 
@@ -126,6 +154,17 @@ def browse_demands(
     )
     if crop:
         stmt = stmt.where(Demand.crop.ilike(crop))
+    if origin is not None and radius_km is not None:
+        lat_min, lat_max, lon_min, lon_max = _bounding_box(origin, radius_km)
+        stmt = stmt.where(
+            or_(
+                # no stored coords — needs the delivery-district/buyer-
+                # district centroid fallback below, so it must stay a
+                # candidate regardless of the box.
+                Demand.latitude.is_(None),
+                and_(Demand.latitude.between(lat_min, lat_max), Demand.longitude.between(lon_min, lon_max)),
+            )
+        )
     rows = db.execute(stmt).all()
     engaged = _demands_already_engaged_with(db, viewer.id)
 

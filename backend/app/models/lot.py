@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -10,6 +10,11 @@ class Lot(Base):
     """status: open | matched | closed."""
 
     __tablename__ = "lots"
+    __table_args__ = (
+        # Supports discovery.py's bounding-box pre-filter on browse_lots'
+        # radius search (a lat/lon BETWEEN range on both columns).
+        Index("ix_lots_lat_lon", "latitude", "longitude"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     farmer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)

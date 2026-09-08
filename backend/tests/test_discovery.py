@@ -75,6 +75,75 @@ def test_buyer_browse_lots_filters_by_radius(db):
         app.dependency_overrides.clear()
 
 
+def test_browse_lots_radius_includes_a_lot_with_no_stored_coords(db):
+    """A lot with no latitude/longitude of its own relies on
+    discovery.py's district-centroid fallback to find its true position —
+    the SQL-level bounding-box pre-filter (added to avoid loading every
+    open lot before geo-filtering) must not exclude it before that fallback
+    ever runs. Prove it still shows up under a radius search alongside a
+    same-district lot that does have coords."""
+    farmer = _cbe_farmer(db)
+    no_coords_lot = Lot(farmer_id=farmer.id, crop="Onion", quantity_kg=800, quality_grade="A",
+                        expected_price=2300, available_from=date(2026, 10, 1), location="Coimbatore",
+                        latitude=None, longitude=None, status="open")
+    db.add(no_coords_lot); db.flush()
+    buyer = _cbe_buyer(db)
+    db.commit()
+    client = _client(db)
+    try:
+        _as(buyer)
+        rows = client.get("/api/lots/browse", params={"radius_km": 50}).json()
+        assert any(r["id"] == no_coords_lot.id for r in rows), \
+            "a no-coords lot resolvable via the district fallback must not be excluded by the bbox pre-filter"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_farmer_browse_demands_filters_by_radius(db):
+    """browse_demands has no prior dedicated test at all — added alongside
+    its own bounding-box pre-filter (the same fix as browse_lots above) so
+    that new SQL-level filter is actually exercised, not just the lot side."""
+    buyer = _cbe_buyer(db)
+    db.add(Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=1000, quality_spec="Grade A",
+                  price_band_min=2200, price_band_max=2700, delivery_window="Within 7 days",
+                  delivery_district="Coimbatore", latitude=11.0168, longitude=76.9558, status="open"))
+    near, far = _cbe_farmer(db), User(role="farmer", name="Chennai Farmer", phone="+91chnf",
+                                       district="Chennai", taluka="", state="Tamil Nadu",
+                                       latitude=13.0827, longitude=80.2707)
+    db.add(far); db.commit()
+    client = _client(db)
+    try:
+        _as(near)
+        rows = client.get("/api/demands/browse", params={"radius_km": 200}).json()
+        assert len(rows) == 1 and rows[0]["buyer_name"] == "Kovai"
+
+        _as(far)
+        assert client.get("/api/demands/browse", params={"radius_km": 200}).json() == []
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_browse_demands_radius_includes_a_demand_with_no_stored_coords(db):
+    """Mirrors the browse_lots no-coords test: a demand relying on the
+    delivery-district/buyer-district centroid fallback must not be excluded
+    by the SQL-level bounding-box pre-filter before that fallback runs."""
+    buyer = _cbe_buyer(db)
+    no_coords_demand = Demand(buyer_id=buyer.id, crop="Onion", quantity_kg=900, quality_spec="Grade A",
+                              price_band_min=2200, price_band_max=2700, delivery_window="Within 7 days",
+                              delivery_district="Coimbatore", latitude=None, longitude=None, status="open")
+    db.add(no_coords_demand)
+    farmer = _cbe_farmer(db)
+    db.commit()
+    client = _client(db)
+    try:
+        _as(farmer)
+        rows = client.get("/api/demands/browse", params={"radius_km": 50}).json()
+        assert any(r["id"] == no_coords_demand.id for r in rows), \
+            "a no-coords demand resolvable via the district fallback must not be excluded by the bbox pre-filter"
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_browse_lots_requires_buyer(db):
     farmer = _cbe_farmer(db)
     db.commit()

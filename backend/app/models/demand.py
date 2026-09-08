@@ -1,4 +1,4 @@
-from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy import Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -8,6 +8,11 @@ class Demand(Base):
     """status: open | matched | closed."""
 
     __tablename__ = "demands"
+    __table_args__ = (
+        # Supports discovery.py's bounding-box pre-filter on browse_demands'
+        # radius search (a lat/lon BETWEEN range on both columns).
+        Index("ix_demands_lat_lon", "latitude", "longitude"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     buyer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
