@@ -149,18 +149,24 @@ def read_lot_slip(
             parsed_date = None
 
     qty = _num(obj.get("quantity_kg"))
+    qty = qty if qty and qty > 0 else None
     price = _num(obj.get("expected_price"))
+    price = price if price and price > 0 else None
     conf = _num(obj.get("confidence"))
     if conf is not None:
         conf = max(0.0, min(1.0, conf))
 
+    # Computed from the same filtered values returned below — a stray 0 or
+    # negative quantity/price would otherwise count as "extracted" here
+    # while showing up as a blank field in the response below, producing a
+    # confusing available=true draft with nothing actually filled in.
     got_any = any(v is not None for v in (crop, qty, grade, price, parsed_date))
     return OcrLotDraft(
         available=got_any,
         crop=crop,
-        quantity_kg=qty if qty and qty > 0 else None,
+        quantity_kg=qty,
         grade=grade,
-        expected_price=price if price and price > 0 else None,
+        expected_price=price,
         available_from=parsed_date,
         confidence=conf,
         note=None if got_any else "Nothing readable was found. Enter the details by hand.",

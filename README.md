@@ -24,7 +24,7 @@ Built **Maharashtra-first** (the SIH problem statement is Govt. of Maharashtra /
 MSInS) but **location-aware across India** — detect or pick a location and prices
 re-scope to that state; MSP and the storage/FPO directory are national.
 
-**Status — Phases 1–3 complete, plus v1.1 through v1.33 (last updated 2026-09-08):**
+**Status — Phases 1–3 complete, plus v1.1 through v1.34 (last updated 2026-09-08):**
 
 | Phase / Release | Scope | State |
 |---|---|---|
@@ -65,6 +65,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.31 · Cordova-safe admin reason prompts | Three admin moderation flows (close lot, close demand, reject verification) collected a free-text reason via `window.prompt()`, which is disabled/throws in embedded WebViews — including the Cordova Android wrap this app is headed toward, where these actions would have silently failed to collect a reason. Replaced all three with a new `ReasonPromptModal` in-page dialog, passing the same trimmed reason through to the existing API calls unchanged | ✅ |
 | v1.32 · Dispute/settlement race guards | Two more sibling-endpoint gaps found while re-auditing the financing and disputes admin pages: `withdraw_dispute` (the raiser's own withdraw) plain-wrote `Dispute.status` while its sibling `close_dispute` (admin resolution) already atomically claimed it — a raiser withdrawing at the same instant an admin resolved could silently revert an already-resolved dispute (with a forward penalty possibly already applied) back to "withdrawn". And `check_settlement_risk` (overdue forward-contract reminders) turned out to share `evaluate_alerts`' exact three-trigger-path debounce race (v1.30) — same fix, same reasoning, just a different debounced field. Both closed with the same atomic conditional UPDATE / compare-and-swap pattern (no schema changes needed) | ✅ |
 | v1.33 · Financing rate-limit key fix | `create_request` (financing) was the only authenticated write endpoint in the codebase rate-limiting by client IP instead of by user — every sibling (`lot_write`, `demand_write`, `alert_write`, `pool_create`, `fwd_bid`) keys on the user. For farmers sharing one IP (a village kiosk, a carrier's NAT'd mobile data — a realistic setup for this app's actual users), one farmer's requests could exhaust the shared quota and block a completely unrelated farmer's legitimate ones. Fixed to key on the user, matching every other write endpoint | ✅ |
+| v1.34 · OCR draft consistency fix | `read_lot_slip`'s `available` flag was computed from the *raw* extracted quantity/price, before a stray `0` or negative value got filtered out of the actual response — a farmer could see an "available" scan result with every field blank. `available` now reflects the same filtered values the response actually returns. Re-audited `/assistant` (Ask AgriLink + advisor summary) alongside it: rate-limit key granularity, context construction, and frontend rendering (plain-text, no `dangerouslySetInnerHTML`) all confirmed correct — no changes needed there | ✅ |
 | 4 · Cordova Android wrap | (planned — nearly every route is already a client component; no server actions or server-only data fetching anywhere) | ⏳ |
 
 `.planning/` holds the full roadmap, research, and per-phase plans/summaries.
@@ -545,7 +546,7 @@ agrilink/
 │   │       └── district_coords.py / market_towns.py   curated all-India lat/lon lookups
 │   ├── alembic/versions/       24 revisions, 0001_initial → cc8b832e753a_v1_27_match_lot_demand_race_guard
 │   │                           (see Database schema → Migrations for the full chain)
-│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 489 tests
+│   ├── tests/                  pytest suite (SQLite in-memory) — 42 test files, 490 tests
 │   └── .env.example
 ├── frontend/
 │   └── src/
@@ -1551,7 +1552,7 @@ cd frontend && npm run test          # vitest run (one pass)
 cd frontend && npm run test:watch    # watch mode
 ```
 
-**Backend** (42 test files, 489 tests): signal cases and MSP/weather factors;
+**Backend** (42 test files, 490 tests): signal cases and MSP/weather factors;
 price forecast (trend+seasonality, prediction band, short-history degradation);
 the **Decision Brief** (assembly, urgency ordering, reference-market inference,
 thin-history 404, and the v1.18 buyer-perspective mirror — headline action,

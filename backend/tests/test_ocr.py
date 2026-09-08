@@ -74,6 +74,24 @@ def test_parses_and_normalises_fields(farmer_client, monkeypatch):
     assert body["confidence"] == 1.0  # clamped into 0..1
 
 
+def test_zero_quantity_does_not_falsely_report_available(farmer_client, monkeypatch):
+    """A stray 0 (or negative) quantity/price is filtered out of the response
+    the same as it would be if never extracted at all — `available` must
+    agree with what's actually in the body, not with the pre-filtered raw
+    value, or the farmer sees an "available" draft with every field blank."""
+    monkeypatch.setattr(ocr.llm, "available", lambda: True)
+    monkeypatch.setattr(
+        ocr.llm, "vision",
+        lambda *a, **k: '{"quantity_kg": 0, "expected_price": -50}',
+    )
+    r = farmer_client.post("/api/ocr/lot-slip", files=_upload())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["quantity_kg"] is None and body["expected_price"] is None
+    assert body["available"] is False
+    assert body["note"]
+
+
 def test_unreadable_photo_degrades(farmer_client, monkeypatch):
     monkeypatch.setattr(ocr.llm, "available", lambda: True)
     monkeypatch.setattr(ocr.llm, "vision", lambda *a, **k: "I can't make anything out.")
