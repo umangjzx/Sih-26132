@@ -234,6 +234,19 @@ docker compose -f docker-compose.prod.yml --profile seed run --rm seed
 - **First HTTPS request can take a few seconds** while Caddy provisions the
   certificate. If it never succeeds: DNS isn't pointing at the box yet, or ports
   80/443 are closed in the cloud firewall.
+- **`OPENROUTER_MODEL` availability is region-dependent.** OpenRouter geo-gates
+  some models per the underlying provider's compliance rules — `openai/*`
+  models in particular have returned `403 This model is not available in your
+  region` from VMs in some Asian datacenters (seen from an Azure East Asia
+  box), even with a valid, funded key. The failure is silent from the app's
+  point of view: `llm.chat()` catches it and every endpoint just degrades to
+  its non-AI fallback (`available:false` / a null `answer`) rather than
+  erroring, so it's easy to miss. If the advisor summary / Ask HarvestIQ stay
+  silent despite a working key, check `docker compose logs backend` for
+  `OpenRouter call failed (... 403 ...)`, then try a non-`openai/*` model —
+  `qwen/qwen2.5-vl-72b-instruct` and `mistralai/mistral-small-3.1-24b-instruct`
+  are both vision-capable (needed for mandi-slip OCR too) and worked fine from
+  the same region in testing.
 
 ---
 
