@@ -21,7 +21,7 @@ it("changes locale, persists it, and updates <html lang>", async () => {
   const select = await screen.findByLabelText(/language/i);
   await userEvent.selectOptions(select, "hi");
 
-  expect(localStorage.getItem("agrilink.locale")).toBe("hi");
+  expect(localStorage.getItem("harvestiq.locale")).toBe("hi");
   expect(document.documentElement.lang).toBe("hi");
 });
 
@@ -33,7 +33,7 @@ it("restores the persisted locale on a fresh mount", async () => {
   );
 
   await userEvent.selectOptions(await screen.findByLabelText(/language/i), "mr");
-  expect(localStorage.getItem("agrilink.locale")).toBe("mr");
+  expect(localStorage.getItem("harvestiq.locale")).toBe("mr");
 
   first.unmount();
 

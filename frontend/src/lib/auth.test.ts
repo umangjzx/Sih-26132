@@ -69,7 +69,7 @@ describe("getStoredUser", () => {
   });
 
   it("returns null without throwing on invalid JSON", () => {
-    localStorage.setItem("agrilink.user", "not-valid-json{{{");
+    localStorage.setItem("harvestiq.user", "not-valid-json{{{");
     expect(() => getStoredUser()).not.toThrow();
     expect(getStoredUser()).toBeNull();
   });

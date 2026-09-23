@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AgriLink public landing page — "/" for logged-out visitors.
+ * HarvestIQ public landing page — "/" for logged-out visitors.
  *
  * Premium SaaS landing experience:
  *   1. Hero — Full-bleed gradient with bg-image, dual CTAs, live stats panel

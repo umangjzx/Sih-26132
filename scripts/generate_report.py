@@ -1,6 +1,6 @@
 """
-AgriLink Project Report — PDF generator
-Produces AgriLink_Project_Report.pdf in the repo root.
+HarvestIQ Project Report — PDF generator
+Produces HarvestIQ_Project_Report.pdf in the repo root.
 
 Run from anywhere:
     python scripts/generate_report.py
@@ -47,14 +47,14 @@ MARGIN = 2 * cm
 
 # ── document ────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
-OUT  = ROOT / "AgriLink_Project_Report.pdf"
+OUT  = ROOT / "HarvestIQ_Project_Report.pdf"
 
 doc = SimpleDocTemplate(
     str(OUT),
     pagesize=A4,
     leftMargin=MARGIN, rightMargin=MARGIN,
     topMargin=2.5 * cm, bottomMargin=2 * cm,
-    title="AgriLink — SIH 2026 Project Report",
+    title="HarvestIQ — SIH 2026 Project Report",
     author="Team SIH-26132",
     subject="Market-linkage & price-discovery platform for smallholder farmers",
 )
@@ -230,7 +230,7 @@ def cover_page(story):
 
     # Overlay content as a nested table
     inner = [
-        [Paragraph("AgriLink", COVER_TITLE)],
+        [Paragraph("HarvestIQ", COVER_TITLE)],
         [Paragraph("SIH 2026 · Problem Statement PS-26132", COVER_SUB)],
         [sp(8)],
         [Paragraph(
@@ -271,7 +271,7 @@ def build() -> list:
 
     # ── COVER ────────────────────────────────────────────────────────────────
     cover_inner = [
-        [Paragraph("AgriLink", COVER_TITLE)],
+        [Paragraph("HarvestIQ", COVER_TITLE)],
         [sp(4)],
         [Paragraph("SIH 2026 · Problem Statement PS-26132", COVER_SUB)],
         [sp(6)],
@@ -317,7 +317,7 @@ def build() -> list:
     # ── 1. EXECUTIVE SUMMARY ─────────────────────────────────────────────────
     story += h1("1. Executive Summary")
     story.append(p(
-        "AgriLink is a full-stack web platform (Maharashtra-first, India-wide location support) "
+        "HarvestIQ is a full-stack web platform (Maharashtra-first, India-wide location support) "
         "built for SIH 2026 Problem Statement PS-26132 (Govt. of Maharashtra / MSInS). "
         "It aggregates official AGMARKNET mandi prices from data.gov.in and turns them into "
         "decisions a smallholder farmer can act on — in English, Hindi, or Marathi — without "
@@ -339,7 +339,7 @@ def build() -> list:
         "plan), replaced the flat transport constant with a <b>diesel-indexed, explainable "
         "freight rate</b>, and gave the assistant a <b>grounded knowledge base</b> (offline "
         "keyword + fuzzy retrieval over curated policy notes). v1.6 focused on market linkage: "
-        "a <b>price-realisation tracker</b> (did an AgriLink deal beat the mandi?), "
+        "a <b>price-realisation tracker</b> (did an HarvestIQ deal beat the mandi?), "
         "<b>price-referenced counter-offers</b>, and <b>forward contracts</b> — a buyer's "
         "pre-harvest bid that a farmer commits to at a locked price, which materialises straight "
         "into the deal pipeline on acceptance. The whole stack ships as a one-command Docker "
@@ -355,7 +355,7 @@ def build() -> list:
         ("3 · Deal Tracking & Admin",  "Deal pipeline, disputes, admin dashboard",                    "✅ Complete"),
         ("v1.1 · Intelligence",        "Weather, MSP, calendar, best-market, storage/FPO, alerts",    "✅ Complete"),
         ("v1.2 · Location",            "Geo/place picker, state-scoped prices, all-India directory",  "✅ Complete"),
-        ("v1.3 · LLM, OCR & Pools",   "Plain-language advisor, Ask AgriLink, OCR, pooled lots",      "✅ Complete"),
+        ("v1.3 · LLM, OCR & Pools",   "Plain-language advisor, Ask HarvestIQ, OCR, pooled lots",      "✅ Complete"),
         ("v1.4 · Identity & Logistics","Discovery board, profiles, verification, logistics, forecast","✅ Complete"),
         ("v1.4 · Payments & Audit",    "Instalment payments, transporter directory, append-only transaction ledger, structured grading", "✅ Complete"),
         ("v1.5 · Intelligence Orch.", "Diesel-indexed freight, Decision Brief (/api/brief), grounded knowledge retrieval (RAG)", "✅ Complete"),
@@ -386,7 +386,7 @@ def build() -> list:
         "<b>Identity & trust</b> — user profile with GPS-linked trading location, admin-driven verification workflow (unverified → pending → verified), verified badge on all listings, and an append-only transaction ledger behind every deal.",
         "<b>Decision Brief</b> — one endpoint fuses the sell/wait signal, forecast, diesel-costed best market, MSP gap, weather, crop calendar, mandi holidays and nearby verified buyers into a single list of actions ranked by urgency.",
         "<b>Diesel-indexed freight</b> — the transport cost that feeds the best-market ranking and deal logistics is computed from a per-state diesel reference, not a flat constant, and its working is shown.",
-        "<b>Grounded assistant</b> — Ask AgriLink answers how-it-works / policy questions (MSP procurement, eNAM, FPOs, warehouse receipts, schemes) from a curated corpus with offline keyword + fuzzy retrieval; it cites its sources.",
+        "<b>Grounded assistant</b> — Ask HarvestIQ answers how-it-works / policy questions (MSP procurement, eNAM, FPOs, warehouse receipts, schemes) from a curated corpus with offline keyword + fuzzy retrieval; it cites its sources.",
         "<b>Price realisation</b> — after each deal a farmer sees the price they got versus the AGMARKNET mandi average and MSP, with a volume-weighted uplift figure.",
         "<b>Forward contracts</b> — a buyer posts a pre-harvest bid; a farmer commits part of a growing crop at a locked price; on acceptance it becomes a normal deal, so pre-harvest price certainty runs through the same pipeline.",
         "<b>Offline-safe</b> — every external call has a fallback; the app runs fully air-gapped on fixture data.",
@@ -399,7 +399,7 @@ def build() -> list:
     # ── 4. ARCHITECTURE ──────────────────────────────────────────────────────
     story += h1("4. Architecture")
     story.append(p(
-        "AgriLink is a three-tier application: a client-rendered Next.js SPA, a FastAPI "
+        "HarvestIQ is a three-tier application: a client-rendered Next.js SPA, a FastAPI "
         "REST backend, and a PostgreSQL 16 database. Every route is a "
         "<i>use client</i> component — no server-side rendering — so the frontend can be "
         "wrapped in Apache Cordova unchanged for Phase 4."
@@ -433,13 +433,13 @@ def build() -> list:
         ["geo / geocode","District + state centroids, haversine, nearest_state, forward/reverse geocoding cached in geo_cache."],
         ["locations",    "resolve_location, ensure_state_ingested (rate-limited, 1/hour/state)."],
         ["reference",    "Curated MSP (CACP 2024-25/25-26), crop calendar (MH-tuned), cold-storage/FPO directory."],
-        ["knowledge",    "Ask AgriLink corpus (MSP procurement, eNAM, FPOs, grading, warehouse receipts, schemes) + TF-IDF/fuzzy retrieval. No embeddings, no network."],
+        ["knowledge",    "Ask HarvestIQ corpus (MSP procurement, eNAM, FPOs, grading, warehouse receipts, schemes) + TF-IDF/fuzzy retrieval. No embeddings, no network."],
         ["grading",      "Shared A/B/FAQ/C quality-grade rubric; normalize_grade maps free text to a canonical code."],
         ["holidays",     "Nager.Date mandi holidays + built-in 2026 fallback."],
         ["audit",        "log_event writes an append-only transaction_events row per action; get_deal_timeline unions deal + payment + logistics + match + offer events."],
         ["transporters", "Curated transporter directory (name, base, vehicles, service states), seeded on boot; nearest-N lookup for the logistics card."],
         ["alerts",       "Evaluate price_alerts → write notifications (20-hour debounce)."],
-        ["llm",          "Thin OpenRouter client: chat (advisor summary, Decision-Brief phrasing, Ask AgriLink), vision (OCR), translate. All degrade to None."],
+        ["llm",          "Thin OpenRouter client: chat (advisor summary, Decision-Brief phrasing, Ask HarvestIQ), vision (OCR), translate. All degrade to None."],
     ]
     story.append(std_table(svc_data, col_widths=[3.2 * cm, 13.8 * cm]))
     story.append(sp(6))
@@ -451,7 +451,7 @@ def build() -> list:
         ["Backend",    "Python 3.13 · FastAPI 0.115 · SQLAlchemy 2.0 (typed Mapped[]) · Alembic 1.19 · APScheduler 3.11 · httpx 0.28 · python-jose HS256 JWT · Pydantic 2 / pydantic-settings · python-multipart"],
         ["Database",   "PostgreSQL 16 (Docker, host port 5433)"],
         ["Frontend",   "Next.js 16.3 (App Router, Turbopack) · React 19 · TypeScript · next-intl 4 · recharts 3 · Tailwind CSS v4"],
-        ["LLM",        "OpenRouter API (optional), default model openai/gpt-4o-mini — any vision-capable model; used for the advisor summary, Decision-Brief phrasing, Ask AgriLink chat, OCR, live-string translation"],
+        ["LLM",        "OpenRouter API (optional), default model openai/gpt-4o-mini — any vision-capable model; used for the advisor summary, Decision-Brief phrasing, Ask HarvestIQ chat, OCR, live-string translation"],
         ["Deployment", "Docker + Docker Compose · Caddy 2 reverse proxy (one origin, auto-HTTPS) · Next.js standalone output image · single Uvicorn worker"],
         ["Tests",      "pytest 9 (SQLite in-memory), 37 files / 295 tests · Vitest 4 + Testing Library 16, 43 tests"],
         ["Fonts",      "Space Grotesk (headings) · DM Sans (body) · Noto Sans Devanagari (Hindi/Marathi)"],
@@ -468,7 +468,7 @@ def build() -> list:
         ["/",          "Hero, crop/market picker, latest modal price, sell/wait gauge, statewide price snapshot."],
         ["/prices",    "7/30/90-day trend chart with dashed 30-day forecast line and prediction band; min/modal/max; nearest-market bar comparison; diesel-costed best-market panel with the freight working."],
         ["/advisor",   "Decision Brief (one urgency-ranked action plan) + the full sell/wait/hold reasoning: price momentum, weather, MSP gap, crop calendar, next holiday. Optional LLM plain-language summary (en/hi/mr)."],
-        ["Ask AgriLink", "Floating LLM chat (optional). Answers from live crop/market data AND a curated retrieval-backed knowledge base (MSP procurement, eNAM, FPOs, grading, schemes); cites source chips. Without a key it still returns the grounded reference text."],
+        ["Ask HarvestIQ", "Floating LLM chat (optional). Answers from live crop/market data AND a curated retrieval-backed knowledge base (MSP procurement, eNAM, FPOs, grading, schemes); cites source chips. Without a key it still returns the grounded reference text."],
         ["/directory", "Cold storage / FPO facilities near a district or state, with distance and capacity."],
         ["/explore",   "Price transparency: top gainers/fallers (7-day), 30-day avg trend, all-crops table, activity counters. State-scoped."],
         ["/alerts",    "Create price alert rules (crop × market × direction × threshold). In-app notification bell polls unread count."],
@@ -576,7 +576,7 @@ def build() -> list:
     llm_data = [
         [Paragraph("<b>Feature</b>", BADGE), Paragraph("<b>Endpoint</b>", BADGE), Paragraph("<b>Notes</b>", BADGE)],
         ["Plain-language advisor", "GET /api/advisor/summary",  "2-3 sentences restating sell/wait reasoning in en/hi/mr. Cached 6 h."],
-        ["Ask AgriLink chat",      "POST /api/assistant/ask",   "Grounded Q&A. Context = live price/signal/weather/MSP/calendar. Never invents numbers."],
+        ["Ask HarvestIQ chat",      "POST /api/assistant/ask",   "Grounded Q&A. Context = live price/signal/weather/MSP/calendar. Never invents numbers."],
         ["Mandi-slip OCR",         "POST /api/ocr/lot-slip",    "Vision call. Returns draft {crop, qty, grade, price, date}. Farmer reviews before posting."],
         ["Live-string translation","llm.translate()",           "Translates short UI strings (weather conditions) to hi/mr server-side."],
     ]
@@ -661,7 +661,7 @@ def build() -> list:
 
     story += h2("7.15 Grounded Knowledge Retrieval — RAG (v1.5)")
     story.append(p(
-        "app/services/knowledge.py — a curated, offline corpus so Ask AgriLink can answer "
+        "app/services/knowledge.py — a curated, offline corpus so Ask HarvestIQ can answer "
         "how-it-works and policy questions from real text. ~13 hand-written notes (MSP "
         "procurement, APMC/eNAM, FPOs, grading/FAQ, warehouse receipts & pledge finance, direct "
         "selling, PMFBY, PM-KISAN, how the signal and freight are computed) plus documents "
@@ -858,13 +858,13 @@ def build() -> list:
     story += h2("10.1 backend/.env")
     env_data = [
         [Paragraph("<b>Variable</b>", BADGE), Paragraph("<b>Default</b>", BADGE), Paragraph("<b>Notes</b>", BADGE)],
-        ["DATABASE_URL",             "…@localhost:5433/agrilink", "Local dev on :5433; in prod compose points at the internal db:5432."],
+        ["DATABASE_URL",             "…@localhost:5433/harvestiq", "Local dev on :5433; in prod compose points at the internal db:5432."],
         ["JWT_SECRET_KEY",           "(blank)",    "Required for auth — openssl rand -hex 32. Blank ⇒ every login fails."],
         ["DATA_GOV_IN_API_KEY",      "(blank)",    "Blank → snapshot / fixtures fallback. App is fully functional without it."],
         ["INGEST_STATES",            "ALL",        "ALL (whole national feed) or comma-separated states."],
         ["INGEST_TRIGGER_SECRET",    "(blank)",    "Blank → POST /api/ingest/run is disabled (403)."],
         ["WEATHER_API_KEY",          "(blank)",    "Optional OpenWeatherMap key — adds current conditions to the forecast."],
-        ["OPENROUTER_API_KEY",       "(blank)",    "Optional. Enables advisor summary, Decision-Brief phrasing, Ask AgriLink, OCR, translation."],
+        ["OPENROUTER_API_KEY",       "(blank)",    "Optional. Enables advisor summary, Decision-Brief phrasing, Ask HarvestIQ, OCR, translation."],
         ["OPENROUTER_MODEL",         "openai/gpt-4o-mini", "Any vision-capable OpenRouter model."],
         ["TRANSPORT_COST_PER_QTL_KM","0.4",       "Legacy flat fallback. Since v1.5 markets/best and deal logistics use the diesel-indexed rate in freight.py."],
         ["CORS_ORIGINS",             "http://localhost:3000", "Comma-separated allowed origins (set to the deployed origin in prod)."],
@@ -898,8 +898,8 @@ def build() -> list:
         ["Nager.Date /PublicHolidays",       "Upcoming mandi holidays.",                                                "Built-in 2026 holiday list."],
         ["Curated reference.py",             "MSP (CACP 2024-25/25-26), crop calendar (MH-tuned), cold-storage/FPO directory.", "— (static)"],
         ["Curated freight.py",               "Per-state retail diesel reference (₹/L, indicative, with an as_of date) → the diesel-indexed freight rate.", "_DIESEL_DEFAULT (₹92.0/L)."],
-        ["Curated knowledge.py",             "Ask AgriLink corpus — ~13 policy/how-it-works notes + docs generated from the MSP / calendar / grading / holiday data.", "— (static, offline retrieval)."],
-        ["OpenRouter (key needed)",          "Advisor summary, Decision-Brief phrasing, Ask AgriLink chat, OCR, live-string translation.", "Features hidden; rule output / grounded reference text / English shown."],
+        ["Curated knowledge.py",             "Ask HarvestIQ corpus — ~13 policy/how-it-works notes + docs generated from the MSP / calendar / grading / holiday data.", "— (static, offline retrieval)."],
+        ["OpenRouter (key needed)",          "Advisor summary, Decision-Brief phrasing, Ask HarvestIQ chat, OCR, live-string translation.", "Features hidden; rule output / grounded reference text / English shown."],
     ]
     story.append(std_table(ds_data, col_widths=[3.8 * cm, 7.2 * cm, 6 * cm]))
     story.append(sp(6))
@@ -981,7 +981,7 @@ def build() -> list:
         "<b>Crop calendar is Maharashtra-tuned</b> — Sowing/harvest/peak windows outside Maharashtra will be approximate.",
         "<b>Price forecast is statistical</b> — Trend+seasonality won't capture sudden policy shocks or weather events. It is transparent, not predictive.",
         "<b>Diesel prices are a curated reference, not a live feed</b> — freight.py holds an indicative per-state table with an as_of date; no daily retail-diesel API is wired in.",
-        "<b>Ask AgriLink retrieval is keyword + fuzzy, not semantic</b> — The knowledge base is deliberately embedding-free (offline-safe); a paraphrase with no shared vocabulary can miss.",
+        "<b>Ask HarvestIQ retrieval is keyword + fuzzy, not semantic</b> — The knowledge base is deliberately embedding-free (offline-safe); a paraphrase with no shared vocabulary can miss.",
         "<b>Forward contracts have no settlement enforcement</b> — An accepted commitment becomes a normal 'matched' deal; honouring it at harvest runs through the ordinary pipeline (disputes included). No escrow or penalty mechanism.",
         "<b>FPO pool → deal is still manual</b> — The organizer converts a ranked demand candidate into a deal by hand (accept-demand); pools don't auto-negotiate. (Forward contracts, by contrast, do materialise a deal on acceptance.)",
         "<b>Satellite crop-health (GEE) is deferred</b> — Credentials may be in .env but nothing reads them.",
@@ -993,11 +993,11 @@ def build() -> list:
 
     # ── 15. REPOSITORY LAYOUT ────────────────────────────────────────────────
     story += h1("15. Repository Layout")
-    story.append(code("agrilink/"))
+    story.append(code("harvestiq/"))
     story.append(code("├── docker-compose.yml        local dev: Postgres 16 → host :5433"))
     story.append(code("├── docker-compose.prod.yml   production: db + backend + frontend + Caddy"))
     story.append(code("├── Caddyfile                 reverse proxy — one origin"))
-    story.append(code("├── DEPLOYMENT.md · README.md · AgriLink_Project_Report.pdf"))
+    story.append(code("├── DEPLOYMENT.md · README.md · HarvestIQ_Project_Report.pdf"))
     story.append(code("├── backend/"))
     story.append(code("│   ├── Dockerfile · .dockerignore"))
     story.append(code("│   ├── app/"))
@@ -1076,7 +1076,7 @@ def build() -> list:
         "scripts/generate_report.py. Re-run after any README or code update."
     ))
     story.append(p(
-        "AgriLink · SIH 2026 · Problem Statement PS-26132 · "
+        "HarvestIQ · SIH 2026 · Problem Statement PS-26132 · "
         "Govt. of Maharashtra / MSInS · Team SIH-26132"
     ))
 
@@ -1093,7 +1093,7 @@ def _header_footer(canvas, doc):
         canvas.rect(0, h - 1.4 * cm, w, 1.4 * cm, fill=1, stroke=0)
         canvas.setFillColor(WHITE)
         canvas.setFont("Helvetica-Bold", 9)
-        canvas.drawString(MARGIN, h - 0.9 * cm, "AgriLink · SIH 2026 · PS-26132")
+        canvas.drawString(MARGIN, h - 0.9 * cm, "HarvestIQ · SIH 2026 · PS-26132")
         canvas.setFont("Helvetica", 9)
         canvas.drawRightString(w - MARGIN, h - 0.9 * cm, "v1.6 · September 2026")
 

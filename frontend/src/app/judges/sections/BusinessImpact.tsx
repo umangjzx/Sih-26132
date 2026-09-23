@@ -9,7 +9,7 @@ export function BusinessImpactSection() {
       id="business"
       eyebrow="Beyond the code"
       title="Business viability & impact"
-      quickAnswer="AgriLink is a working product today, not yet an operating business — this section is explicit about which parts are real capability (target users, cost drivers) and which are a proposed plan (revenue, partnerships), not blended together as if both were equally certain."
+      quickAnswer="HarvestIQ is a working product today, not yet an operating business — this section is explicit about which parts are real capability (target users, cost drivers) and which are a proposed plan (revenue, partnerships), not blended together as if both were equally certain."
     >
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="al-card-plain p-6">

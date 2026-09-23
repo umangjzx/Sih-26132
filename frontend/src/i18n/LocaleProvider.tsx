@@ -10,7 +10,7 @@ import hi from "./messages/hi.json";
 import mr from "./messages/mr.json";
 
 const messagesByLocale: Record<Locale, Record<string, unknown>> = { en, hi, mr };
-const STORAGE_KEY = "agrilink.locale";
+const STORAGE_KEY = "harvestiq.locale";
 
 type LocaleContextValue = {
   locale: Locale;

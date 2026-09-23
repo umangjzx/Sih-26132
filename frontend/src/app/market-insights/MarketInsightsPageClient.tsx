@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /market-insights — Showcase AgriLink's data intelligence capabilities.
+ * /market-insights — Showcase HarvestIQ's data intelligence capabilities.
  *
  * Layout: Hero → Live stats banner → Data showcase cards → Interactive
  * preview section → CTA to /explore.

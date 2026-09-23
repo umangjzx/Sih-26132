@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * v1.1 market-intelligence widgets, restyled on the AgriLink UI kit.
+ * v1.1 market-intelligence widgets, restyled on the HarvestIQ UI kit.
  * Each degrades to null on missing data so a page never breaks.
  */
 

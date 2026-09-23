@@ -1,4 +1,4 @@
-"""Optional semantic re-ranking for Ask AgriLink retrieval (v1.10).
+"""Optional semantic re-ranking for Ask HarvestIQ retrieval (v1.10).
 
 ``knowledge.py``'s TF-IDF + fuzzy + curated-synonym retrieval is deliberately
 offline-safe and needs nothing here to work — every retrieval test in this

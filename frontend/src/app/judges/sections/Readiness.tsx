@@ -38,7 +38,7 @@ const SCORES = [
 
 const SUMMARY = [
   { label: "The Problem", text: "Smallholder farmers sell at a price they can't verify, because the government data that could tell them better exists but isn't actionable." },
-  { label: "The Solution", text: "AgriLink turns that raw data into an explainable sell/wait call, a transport-adjusted best market, and a direct line to a verified, tracked buyer." },
+  { label: "The Solution", text: "HarvestIQ turns that raw data into an explainable sell/wait call, a transport-adjusted best market, and a direct line to a verified, tracked buyer." },
   { label: "Innovation", text: "It is the one tool in its category that carries a farmer past information and all the way to a paid, audited deal." },
   { label: "Technical Strength", text: "111 real endpoints, a 20-table relational schema under Alembic, 554/554 tests passing, and 11 external integrations that all degrade gracefully." },
   { label: "Impact", text: "Directly targets under-selling and post-harvest loss for smallholders, at zero marginal API cost per user." },

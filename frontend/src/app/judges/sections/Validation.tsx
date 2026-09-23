@@ -8,7 +8,7 @@ const FUNCTIONAL_TESTS = [
   { feature: "Price forecast", scenario: "Trend+seasonality math, prediction band, short-history rejection", result: "pass" as const },
   { feature: "Decision Brief", scenario: "Action assembly, urgency ordering, reference-market inference, thin-history 404", result: "pass" as const },
   { feature: "Diesel-indexed freight", scenario: "Breakdown sums correctly, rate stays in range, district-pair distance", result: "pass" as const },
-  { feature: "Knowledge retrieval (Ask AgriLink)", scenario: "Top-hit relevance per query, generated docs present, keyless reference fallback", result: "pass" as const },
+  { feature: "Knowledge retrieval (Ask HarvestIQ)", scenario: "Top-hit relevance per query, generated docs present, keyless reference fallback", result: "pass" as const },
   { feature: "Geo distance + nearest_state", scenario: "Haversine correctness, fallback chain resolution", result: "pass" as const },
   { feature: "Ingestion pipeline", scenario: "Row normalisation, live→snapshot→fixture fallback, state override", result: "pass" as const },
   { feature: "Auth", scenario: "Login, token refresh, phone/password validation, inactive-account 403", result: "pass" as const },

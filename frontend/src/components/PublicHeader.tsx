@@ -195,7 +195,7 @@ export function PublicHeader() {
           {/* Logo */}
           <Link
             href="/"
-            aria-label="AgriLink home"
+            aria-label="HarvestIQ home"
             className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--green-400)]"
           >
             <Logo size={36} variant={showLight ? "sidebar" : "full"} />

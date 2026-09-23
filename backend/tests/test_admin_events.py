@@ -52,7 +52,7 @@ def test_admin_events_json_and_csv(db, farmer_user, buyer_user, admin_user):
         csv_resp = client.get("/api/admin/events.csv")
         assert csv_resp.status_code == 200
         assert "text/csv" in csv_resp.headers["content-type"]
-        assert "attachment; filename=agrilink_transaction_log.csv" in csv_resp.headers["content-disposition"]
+        assert "attachment; filename=harvestiq_transaction_log.csv" in csv_resp.headers["content-disposition"]
         body = csv_resp.text
         assert body.splitlines()[0].startswith("created_at,entity_type,entity_id,action")
         assert "deal_created" in body

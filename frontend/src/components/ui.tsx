@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AgriLink UI kit — icons + layout primitives.
+ * HarvestIQ UI kit — icons + layout primitives.
  * Every icon is a 24 px stroke SVG (strokeWidth 1.8, round caps/joins).
  * All surface colours, shadows, and radii reference CSS design tokens — no raw hex.
  */

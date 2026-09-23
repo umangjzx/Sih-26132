@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * "Storage near you" + "FPOs near you" (v1.1), styled on the AgriLink UI kit.
+ * "Storage near you" + "FPOs near you" (v1.1), styled on the HarvestIQ UI kit.
  */
 
 import { useEffect, useState } from "react";

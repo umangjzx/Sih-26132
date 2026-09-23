@@ -1,4 +1,4 @@
-# AgriLink backend
+# HarvestIQ backend
 
 FastAPI + SQLAlchemy 2.0 + Alembic + APScheduler + httpx.
 
@@ -128,7 +128,7 @@ the cold-storage / FPO directory are curated in `app/services/reference.py` — 
 in detail plus a national sample of the major producing states. Two more curated,
 fully-offline datasets: `app/services/freight.py` (per-state retail diesel reference,
 indicative, with an `as_of` date — drives the diesel-indexed freight rate) and
-`app/services/knowledge.py` (the Ask AgriLink corpus, retrieved with keyword + fuzzy
+`app/services/knowledge.py` (the Ask HarvestIQ corpus, retrieved with keyword + fuzzy
 matching, no embeddings).
 
 ## Environment variables
@@ -137,7 +137,7 @@ Copy `.env.example` to `.env` (gitignored — never commit it). Placeholders onl
 
 | Variable | Notes |
 |---|---|
-| `DATABASE_URL` | Must point at **:5433** — `postgresql+psycopg2://agrilink:agrilink@localhost:5433/agrilink` |
+| `DATABASE_URL` | Must point at **:5433** — `postgresql+psycopg2://harvestiq:harvestiq@localhost:5433/harvestiq` |
 | `DATA_GOV_IN_API_KEY` | Optional. Blank → snapshot/fixture fallback |
 | `INGEST_TRIGGER_SECRET` | Blank → `POST /api/ingest/run` returns 403 (disabled). Set it, then send `X-Ingest-Secret: <value>`; compared in constant time |
 | `INGEST_STATES` | Comma-separated states the scheduler ingests, or `ALL`. Default `Maharashtra` |

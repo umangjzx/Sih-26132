@@ -150,7 +150,7 @@ def reverse_geocode(lat: float, lon: float, db: Session) -> dict:
 
     # 1) OSM Nominatim — accurate, district-level.
     try:
-        with httpx.Client(timeout=8.0, headers={"User-Agent": "AgriLink-SIH/1.0 (demo)"}) as client:
+        with httpx.Client(timeout=8.0, headers={"User-Agent": "HarvestIQ-SIH/1.0 (demo)"}) as client:
             resp = client.get(
                 settings.nominatim_url,
                 params={"lat": lat, "lon": lon, "format": "json",

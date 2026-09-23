@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+psycopg2://agrilink:agrilink@localhost:5432/agrilink"
+    database_url: str = "postgresql+psycopg2://harvestiq:harvestiq@localhost:5432/harvestiq"
     data_gov_in_api_key: str = ""
     # Off by default in Phase 1 — no live arrivals source is wired yet (PRICE-07).
     arrivals_source_url: str = ""
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     forward_penalty_pct: float = 0.1
 
     # v1.3: optional LLM (OpenRouter) — a *readability layer* only. Plain-language
-    # advisor summary, the "Ask AgriLink" assistant, and live-string translation.
+    # advisor summary, the "Ask HarvestIQ" assistant, and live-string translation.
     # Blank -> those features degrade to the rule-based output / English.
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-4o-mini"
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     weather_api_key: str = ""
     openweather_url: str = "https://api.openweathermap.org/data/2.5/weather"
 
-    # v1.10: optional semantic re-ranking for Ask AgriLink retrieval
+    # v1.10: optional semantic re-ranking for Ask HarvestIQ retrieval
     # (app/services/embeddings.py). Rides on the same OPENROUTER_API_KEY — no
     # separate key. If the configured model/provider doesn't support
     # embeddings, or the key is blank, retrieval just stays on the existing

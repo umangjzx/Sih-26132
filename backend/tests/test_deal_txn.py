@@ -151,7 +151,7 @@ def test_receipt_renders_html_with_the_numbers(db, farmer_user, buyer_user):
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
         body = r.text
-        assert "AgriLink" in body and f"Deal #{d.id}" in body
+        assert "HarvestIQ" in body and f"Deal #{d.id}" in body
         assert "25,000" in body  # total deal value
     finally:
         app.dependency_overrides.clear()

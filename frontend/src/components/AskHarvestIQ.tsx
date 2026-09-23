@@ -14,7 +14,7 @@ type Turn = {
   sources?: { title: string }[];
 };
 
-export function AskAgriLink() {
+export function AskHarvestIQ() {
   const t = useTranslations("assistant");
   const { locale } = useAppLocale();
   const params = useSearchParams();

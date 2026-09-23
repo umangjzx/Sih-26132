@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * v1.2 — location awareness. AgriLink works anywhere in India; Maharashtra
+ * v1.2 — location awareness. HarvestIQ works anywhere in India; Maharashtra
  * stays the rich default. The chosen location is persisted in localStorage and
  * used to scope price options, the public overview, and the storage/FPO
  * directory. When nothing is set, `location` is null and callers fall back to
@@ -19,7 +19,7 @@ import {
 
 import { resolveLocation, type ResolvedLocation } from "@/lib/api";
 
-const STORAGE_KEY = "agrilink.location";
+const STORAGE_KEY = "harvestiq.location";
 
 export type AppLocation = {
   state: string;

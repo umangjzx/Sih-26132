@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /features — Deep-dive into every AgriLink capability.
+ * /features — Deep-dive into every HarvestIQ capability.
  *
  * Layout: Hero banner → Bento grid of feature cards → Deep-dive alternating
  * sections → Closing CTA.  Uses CSS-only animations (no JS animation libs).

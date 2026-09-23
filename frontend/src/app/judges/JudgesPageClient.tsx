@@ -147,7 +147,7 @@ function Hero() {
         <div className="mt-6 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <h1 className="font-heading text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl lg:text-5xl">
-              AgriLink — <span className="text-[var(--amber-400)]">everything on this page is verifiable</span>
+              HarvestIQ — <span className="text-[var(--amber-400)]">everything on this page is verifiable</span>
             </h1>
             <p className="mt-4 text-[1.05rem] leading-relaxed text-white/70">
               A market-linkage and price-discovery platform connecting Maharashtra&apos;s
@@ -157,7 +157,7 @@ function Hero() {
               judge can verify without asking for another document.
             </p>
             <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-white/70 sm:grid-cols-4">
-              <div><dt className="text-white/45">Team</dt><dd className="font-semibold text-white">AgriLink</dd></div>
+              <div><dt className="text-white/45">Team</dt><dd className="font-semibold text-white">HarvestIQ</dd></div>
               <div><dt className="text-white/45">Problem Statement</dt><dd className="font-semibold text-white">SIH 2026 · PS-26132</dd></div>
               <div><dt className="text-white/45">Sponsor</dt><dd className="font-semibold text-white">Govt. of Maharashtra / MSInS</dd></div>
               <div><dt className="text-white/45">Solution, in one line</dt><dd className="font-semibold text-white">Explainable sell/wait signals + a verified buyer marketplace</dd></div>
@@ -194,7 +194,7 @@ function WhyItMatters() {
       id="why-it-matters"
       eyebrow="Context"
       title="Why this project matters"
-      quickAnswer="Farmers lose money to information asymmetry, not lack of effort — AgriLink turns public government price data into a decision they can act on today, in their own language."
+      quickAnswer="Farmers lose money to information asymmetry, not lack of effort — HarvestIQ turns public government price data into a decision they can act on today, in their own language."
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="al-card-plain p-6">
@@ -226,7 +226,7 @@ function WhyItMatters() {
             <li><strong className="text-[var(--ink)]">Word-of-mouth / local traders</strong> — fast
               and trusted, but opaque, non-transparent pricing, and no audit trail if
               something goes wrong.</li>
-            <li><strong className="text-[var(--ink)]">AgriLink&apos;s approach</strong> — fuses price,
+            <li><strong className="text-[var(--ink)]">HarvestIQ&apos;s approach</strong> — fuses price,
               weather, MSP, transport cost and buyer demand into one explainable action,
               then carries the farmer through to a paid, audited deal — in their language.</li>
           </ul>
@@ -281,7 +281,7 @@ function ProblemSolutionImpact() {
   return (
     <JudgeSection
       id="problem-solution"
-      eyebrow="The case for AgriLink"
+      eyebrow="The case for HarvestIQ"
       title="Problem → Solution → Impact"
       quickAnswer="Six concrete farmer pain points, each mapped to a shipped feature and the route/file that implements it — not a roadmap slide."
     >
@@ -291,7 +291,7 @@ function ProblemSolutionImpact() {
             <tr className="border-b border-[var(--line)] bg-[var(--paper)] text-left text-xs font-bold uppercase tracking-wide text-[var(--ink-soft)]">
               <th className="px-4 py-3">Problem</th>
               <th className="px-4 py-3">Current situation</th>
-              <th className="px-4 py-3">AgriLink solution</th>
+              <th className="px-4 py-3">HarvestIQ solution</th>
               <th className="px-4 py-3">Verifiable impact</th>
             </tr>
           </thead>
@@ -330,7 +330,7 @@ function Innovation() {
       id="innovation"
       eyebrow="Differentiation"
       title="What makes this different from existing solutions"
-      quickAnswer="Every government price portal stops at showing a number. AgriLink is the only one in this comparison that turns that number into a transport-adjusted decision and then carries the farmer through to a paid, audited deal."
+      quickAnswer="Every government price portal stops at showing a number. HarvestIQ is the only one in this comparison that turns that number into a transport-adjusted decision and then carries the farmer through to a paid, audited deal."
     >
       <div className="al-card-plain overflow-x-auto !bg-[var(--surface)]">
         <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -338,7 +338,7 @@ function Innovation() {
             <tr className="border-b border-[var(--line)] bg-[var(--paper)] text-left text-xs font-bold uppercase tracking-wide text-[var(--ink-soft)]">
               <th className="px-4 py-3">Capability</th>
               <th className="px-4 py-3">Existing government / private tools</th>
-              <th className="px-4 py-3">AgriLink</th>
+              <th className="px-4 py-3">HarvestIQ</th>
             </tr>
           </thead>
           <tbody>

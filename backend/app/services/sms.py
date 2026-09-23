@@ -22,7 +22,7 @@ def send_sms(phone: str, message: str) -> bool:
     was actually sent (vs. logged because no key is configured, or failed)."""
     if not settings.sms_api_key:
         logger.warning(
-            "[AgriLink] SMS_API_KEY not set — message for ***%s not sent: %s "
+            "[HarvestIQ] SMS_API_KEY not set — message for ***%s not sent: %s "
             "(dev-only log; configure SMS_API_KEY to send a real text instead)",
             phone[-4:], message,
         )
@@ -50,5 +50,5 @@ def send_sms(phone: str, message: str) -> bool:
 
 def send_otp_sms(phone: str, otp: str) -> bool:
     """Best-effort OTP delivery for the forgot-password flow."""
-    message = f"{otp} is your AgriLink verification code. Valid for 10 minutes. Do not share it."
+    message = f"{otp} is your HarvestIQ verification code. Valid for 10 minutes. Do not share it."
     return send_sms(phone, message)

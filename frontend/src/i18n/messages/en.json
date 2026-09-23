@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "AgriLink",
+    "appName": "HarvestIQ",
     "loading": "Loading...",
     "error": "Something went wrong",
     "retry": "Retry",
@@ -81,7 +81,7 @@
     "km": "km"
   },
   "auth": {
-    "title": "Login to AgriLink",
+    "title": "Login to HarvestIQ",
     "phoneLabel": "Phone Number",
     "phonePlaceholder": "+91XXXXXXXXXX",
     "nameLabel": "Your Name",
@@ -249,7 +249,7 @@
     "matchGettingStale": "No response in {days} days — a nudge or a counter-offer might help",
     "matchAtRisk": "At risk — {days} days with no response. Consider following up or withdrawing.",
     "dealsCompleted": "{count} deals completed",
-    "newToPlatform": "New to AgriLink",
+    "newToPlatform": "New to HarvestIQ",
     "memberSince": "member since {year}",
     "offerThreadTitle": "Offer Thread",
     "makeOffer": "Make an Offer",
@@ -622,7 +622,7 @@
     "gain": "Gain",
     "loss": "Loss",
     "realizationTitle": "Price realisation vs the mandi",
-    "realizationSubtitle": "Aggregated, anonymised across every completed AgriLink deal — no names, no deal IDs.",
+    "realizationSubtitle": "Aggregated, anonymised across every completed HarvestIQ deal — no names, no deal IDs.",
     "realizationHeadlineAbove": "{count} completed deals realised {pct}% above the open mandi average",
     "realizationHeadlineBelow": "{count} completed deals realised {pct}% below the open mandi average",
     "realizationNoData": "Not enough completed deals yet to report an aggregate.",
@@ -848,7 +848,7 @@
     "gradeShort": "Grade"
   },
   "assistant": {
-    "title": "Ask AgriLink",
+    "title": "Ask HarvestIQ",
     "hint": "Ask about the current price, whether to sell or wait, weather, MSP…",
     "placeholder": "Type your question…",
     "send": "Send",
@@ -861,7 +861,7 @@
   "financing": {
     "title": "Financing Requests",
     "subtitle": "Pledge a stored, graded lot as collateral for a cash advance. An admin reviews every request.",
-    "disclaimer": "AgriLink does not lend or hold money — this only tracks your request and an admin's approve/reject decision. Actual disbursement is arranged separately with a bank, NBFC, or warehouse partner.",
+    "disclaimer": "HarvestIQ does not lend or hold money — this only tracks your request and an admin's approve/reject decision. Actual disbursement is arranged separately with a bank, NBFC, or warehouse partner.",
     "findWarehouse": "Find a warehouse or cold-storage facility near you",
     "newRequest": "New financing request",
     "cancel": "Cancel",
@@ -1287,21 +1287,21 @@
     "howEyebrow": "How it works",
     "howDetailedWalkthrough": "Detailed walkthrough →",
     "exploreEyebrow": "Explore More",
-    "exploreHeading": "Dive deeper into AgriLink",
+    "exploreHeading": "Dive deeper into HarvestIQ",
     "ecoFeaturesTitle": "Platform Features",
     "ecoFeaturesBody": "Live prices, explainable sell signals, best market routing, and more",
     "ecoHowTitle": "How It Works",
     "ecoHowBody": "Step-by-step guide for farmers, buyers, and FPOs",
     "ecoInsightsTitle": "Market Insights",
     "ecoInsightsBody": "Data intelligence, price trends, and anomaly detection",
-    "ecoAboutTitle": "About AgriLink",
+    "ecoAboutTitle": "About HarvestIQ",
     "ecoAboutBody": "Our mission, values, and the SIH 2026 story"
   },
   "featuresPage": {
     "heroBadge": "Platform Capabilities",
     "heroTitle1": "Everything you need to",
     "heroTitle2": "win in agriculture",
-    "heroSub": "From live mandi prices and explainable sell signals to verified buyer connections and end-to-end deal tracking — AgriLink gives every stakeholder the tools to make confident, data-backed decisions.",
+    "heroSub": "From live mandi prices and explainable sell signals to verified buyer connections and end-to-end deal tracking — HarvestIQ gives every stakeholder the tools to make confident, data-backed decisions.",
     "ctaStartFree": "Start Free",
     "ctaSeeLivePrices": "See Live Prices",
     "bentoEyebrow": "Core Features",
@@ -1366,7 +1366,7 @@
   "howItWorksPage": {
     "heroBadge": "Step by Step",
     "heroTitle1": "How",
-    "heroTitleBrand": "AgriLink",
+    "heroTitleBrand": "HarvestIQ",
     "heroTitle2": "works",
     "heroSub": "Three to five steps from checking a price to getting paid — tailored for farmers, buyers, and FPOs. Every action is transparent and tracked.",
     "tabFarmer": "For Farmers",
@@ -1471,7 +1471,7 @@
     "heroBadge": "Our Story",
     "heroTitle1": "Empowering farmers through",
     "heroTitle2": "data and transparency",
-    "heroSub": "AgriLink is building India's most transparent agricultural marketplace — where every price is traceable, every recommendation is explainable, and every farmer can make data-driven decisions.",
+    "heroSub": "HarvestIQ is building India's most transparent agricultural marketplace — where every price is traceable, every recommendation is explainable, and every farmer can make data-driven decisions.",
     "missionTitle": "Our Mission",
     "missionBody": "To bridge the information gap between farmers and buyers using transparent data, explainable rule-based recommendations, and a fair marketplace — so every agricultural decision is informed, not a gamble.",
     "missionNote": "Every recommendation shows the numbers behind it — nothing is a black box.",
@@ -1498,7 +1498,7 @@
     "challengeEyebrow": "The Challenge",
     "challengeHeading": "Price discovery and market linkage for farmers",
     "challengeBody1": "Indian farmers often sell at disadvantageous prices because they lack real-time market intelligence and direct access to buyers. The information asymmetry leads to post-harvest losses, below-MSP sales, and reliance on intermediaries who capture disproportionate margins.",
-    "challengeBody2": "AgriLink addresses this by making government mandi data actionable — transforming raw AGMARKNET records into clear sell/wait signals, best-market routing after transport cost, and a verified buyer-seller marketplace with end-to-end deal tracking.",
+    "challengeBody2": "HarvestIQ addresses this by making government mandi data actionable — transforming raw AGMARKNET records into clear sell/wait signals, best-market routing after transport cost, and a verified buyer-seller marketplace with end-to-end deal tracking.",
     "techEyebrow": "Built to Scale",
     "techHeading": "Technology that serves farmers",
     "tech1Title": "Multilingual",
@@ -1515,7 +1515,7 @@
     "tech6Body": "No subscriptions, no hidden fees, no premium tiers. Built as a public-good platform for agricultural communities.",
     "closingEyebrow": "Join the movement",
     "closingHeading": "Better data. Fairer markets. Stronger farmers.",
-    "closingSub": "Whether you're a farmer looking for the best price, a buyer seeking verified sellers, or an FPO pooling volume — AgriLink is built for you.",
+    "closingSub": "Whether you're a farmer looking for the best price, a buyer seeking verified sellers, or an FPO pooling volume — HarvestIQ is built for you.",
     "closingCtaStart": "Get Started",
     "closingCtaFeatures": "See All Features"
   }

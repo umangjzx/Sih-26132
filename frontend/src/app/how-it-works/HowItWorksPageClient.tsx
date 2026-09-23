@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /how-it-works — Role-based tabbed walkthrough of the AgriLink platform.
+ * /how-it-works — Role-based tabbed walkthrough of the HarvestIQ platform.
  *
  * Layout: Hero → Role tabs (Farmer / Buyer / FPO) → Step timeline →
  * Trust signals → Closing CTA.

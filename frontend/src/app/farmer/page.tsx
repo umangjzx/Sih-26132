@@ -47,8 +47,8 @@ function matchTier(m: MatchResponse): string {
   }
 }
 
-const DRAFT_KEY = "agrilink.lot_draft";
-const QUEUE_KEY = "agrilink.lot_queue";
+const DRAFT_KEY = "harvestiq.lot_draft";
+const QUEUE_KEY = "harvestiq.lot_queue";
 
 type FormState = {
   crop: string;

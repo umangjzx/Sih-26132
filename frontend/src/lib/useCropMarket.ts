@@ -9,7 +9,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const LAST_PICK_KEY = "agrilink.cropMarket";
+const LAST_PICK_KEY = "harvestiq.cropMarket";
 
 function readLastPick(): { crop: string; market: string } | null {
   try {

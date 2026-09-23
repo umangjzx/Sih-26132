@@ -17,13 +17,13 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "./AuthProvider";
-import { AskAgriLink } from "./AskAgriLink";
+import { AskHarvestIQ } from "./AskHarvestIQ";
 import { BottomNav } from "./BottomNav";
 import { PublicHeader } from "./PublicHeader";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 
-const COLLAPSE_KEY = "agrilink.sidebarCollapsed";
+const COLLAPSE_KEY = "harvestiq.sidebarCollapsed";
 
 function SiteFooter() {
   return (
@@ -31,7 +31,7 @@ function SiteFooter() {
       <div className="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between gap-3 px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-1 text-xs text-[var(--ink-soft)]">
           <span className="font-semibold text-[var(--green-700)]">
-            AgriLink · Smart India Hackathon 2026 · PS 26132 (Govt. of Maharashtra / MSInS)
+            HarvestIQ · Smart India Hackathon 2026 · PS 26132 (Govt. of Maharashtra / MSInS)
           </span>
           <span>
             Price data: data.gov.in AGMARKNET · Weather: Open-Meteo · Rainfall: NASA POWER ·
@@ -133,7 +133,7 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
 
       {/* Floating LLM assistant — lazy-loaded */}
       <Suspense fallback={null}>
-        <AskAgriLink />
+        <AskHarvestIQ />
       </Suspense>
 
       {/* Mobile bottom tab bar */}

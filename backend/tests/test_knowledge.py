@@ -1,4 +1,4 @@
-"""Grounded knowledge base + retrieval for Ask AgriLink (v1.5 #3)."""
+"""Grounded knowledge base + retrieval for Ask HarvestIQ (v1.5 #3)."""
 
 import pytest
 

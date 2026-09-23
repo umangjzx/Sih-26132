@@ -1,6 +1,6 @@
 """Price-realisation tracker (v1.6 #1).
 
-Proves the platform's core promise: did an AgriLink linkage actually get the
+Proves the platform's core promise: did an HarvestIQ linkage actually get the
 farmer a better price than the open mandi? For every deal the farmer struck,
 compare the locked price against two benchmarks around the deal date:
 

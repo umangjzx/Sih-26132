@@ -123,7 +123,7 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown(wait=False)
 
 
-app = FastAPI(title="AgriLink API", lifespan=lifespan)
+app = FastAPI(title="HarvestIQ API", lifespan=lifespan)
 
 # Phase 2: auth landed — credentials enabled, methods widened.
 app.add_middleware(

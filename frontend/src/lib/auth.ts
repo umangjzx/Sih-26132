@@ -5,9 +5,9 @@
  * AuthProvider reads these on mount to re-hydrate the session (AUTH-04).
  */
 
-const TOKEN_KEY = "agrilink.token";
-const REFRESH_KEY = "agrilink.refresh_token";
-const USER_KEY = "agrilink.user";
+const TOKEN_KEY = "harvestiq.token";
+const REFRESH_KEY = "harvestiq.refresh_token";
+const USER_KEY = "harvestiq.user";
 
 export type StoredUser = {
   id: number;

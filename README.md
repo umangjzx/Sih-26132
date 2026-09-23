@@ -1,8 +1,8 @@
-# AgriLink — SIH 2026 (PS 26132)
+# HarvestIQ — SIH 2026 (PS 26132)
 
 **A market-linkage and price-discovery platform for smallholder farmers and FPOs.**
 
-AgriLink aggregates government mandi (wholesale market) prices and turns them into
+HarvestIQ aggregates government mandi (wholesale market) prices and turns them into
 decisions a farmer can act on: localised 7/30/90-day price trends, a
 nearest-market comparison, and an **explainable** sell‑now‑vs‑wait
 recommendation where every number that drove the call is shown on screen — in
@@ -33,15 +33,15 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | 3 · Deal Tracking & Admin | deal pipeline, disputes, admin dashboard | ✅ |
 | v1.1 · Intelligence layer | weather, MSP, calendar, best-market, storage/FPO, alerts, public overview | ✅ |
 | v1.2 · Location awareness | geo/place picker, state-scoped prices, all-India directory, optional OpenWeather | ✅ |
-| v1.3 · LLM, OCR & FPO Pools | plain-language advisor, Ask AgriLink chat, mandi-slip OCR, pooled lots | ✅ |
+| v1.3 · LLM, OCR & FPO Pools | plain-language advisor, Ask HarvestIQ chat, mandi-slip OCR, pooled lots | ✅ |
 | v1.4 · Identity, Discovery & Logistics | user profiles + verification, discovery board, deal logistics, price forecast, admin analytics | ✅ |
 | v1.4 · Payments & audit ledger | deal instalment payments, transporter directory, append-only `transaction_events` timeline, structured quality grading | ✅ |
-| v1.5 · Intelligence orchestration | diesel-indexed freight, **Decision Brief** (`/api/brief`), grounded knowledge retrieval (RAG) for Ask AgriLink | ✅ |
+| v1.5 · Intelligence orchestration | diesel-indexed freight, **Decision Brief** (`/api/brief`), grounded knowledge retrieval (RAG) for Ask HarvestIQ | ✅ |
 | v1.6 · Market linkage | price-realisation tracker, price-referenced counter-offers, **forward contracts** (pre-harvest) | ✅ |
 | v1.7 · Dispute resolution | structured dispute close with `{outcome, resolution, evidence_url?}`, `resolved_by`/`resolved_at`, and a `withdrawn` status alongside `open`/`resolved` | ✅ |
 | v1.8 · Forward settlement | overdue forward-commitment reminders, visibility only | ✅ |
 | v1.9 · OCR polish, lot photos & Judges page | mandi-slip OCR hardening, `lots.photo_url`, the `/judges` evaluation hub, forgot-password OTP | ✅ |
-| v1.10 · Semantic retrieval | optional embeddings-based re-ranking bonus for Ask AgriLink (degrades to keyword+fuzzy) | ✅ |
+| v1.10 · Semantic retrieval | optional embeddings-based re-ranking bonus for Ask HarvestIQ (degrades to keyword+fuzzy) | ✅ |
 | v1.11 · Forward breach penalty | admin dispute-resolution can mark a forward commitment `breached` with a computed, non-collected penalty | ✅ |
 | v1.12 · Satellite crop health | optional Google Earth Engine NDVI reading, folded into the Decision Brief | ✅ |
 | v1.13 · Public realisation | anonymised, platform-wide price-realisation aggregate on `/explore` | ✅ |
@@ -65,7 +65,7 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 | v1.31 · Cordova-safe admin reason prompts | Three admin moderation flows (close lot, close demand, reject verification) collected a free-text reason via `window.prompt()`, which is disabled/throws in embedded WebViews — including the Cordova Android wrap this app is headed toward, where these actions would have silently failed to collect a reason. Replaced all three with a new `ReasonPromptModal` in-page dialog, passing the same trimmed reason through to the existing API calls unchanged | ✅ |
 | v1.32 · Dispute/settlement race guards | Two more sibling-endpoint gaps found while re-auditing the financing and disputes admin pages: `withdraw_dispute` (the raiser's own withdraw) plain-wrote `Dispute.status` while its sibling `close_dispute` (admin resolution) already atomically claimed it — a raiser withdrawing at the same instant an admin resolved could silently revert an already-resolved dispute (with a forward penalty possibly already applied) back to "withdrawn". And `check_settlement_risk` (overdue forward-contract reminders) turned out to share `evaluate_alerts`' exact three-trigger-path debounce race (v1.30) — same fix, same reasoning, just a different debounced field. Both closed with the same atomic conditional UPDATE / compare-and-swap pattern (no schema changes needed) | ✅ |
 | v1.33 · Financing rate-limit key fix | `create_request` (financing) was the only authenticated write endpoint in the codebase rate-limiting by client IP instead of by user — every sibling (`lot_write`, `demand_write`, `alert_write`, `pool_create`, `fwd_bid`) keys on the user. For farmers sharing one IP (a village kiosk, a carrier's NAT'd mobile data — a realistic setup for this app's actual users), one farmer's requests could exhaust the shared quota and block a completely unrelated farmer's legitimate ones. Fixed to key on the user, matching every other write endpoint | ✅ |
-| v1.34 · OCR draft consistency fix | `read_lot_slip`'s `available` flag was computed from the *raw* extracted quantity/price, before a stray `0` or negative value got filtered out of the actual response — a farmer could see an "available" scan result with every field blank. `available` now reflects the same filtered values the response actually returns. Re-audited `/assistant` (Ask AgriLink + advisor summary) alongside it: rate-limit key granularity, context construction, and frontend rendering (plain-text, no `dangerouslySetInnerHTML`) all confirmed correct — no changes needed there | ✅ |
+| v1.34 · OCR draft consistency fix | `read_lot_slip`'s `available` flag was computed from the *raw* extracted quantity/price, before a stray `0` or negative value got filtered out of the actual response — a farmer could see an "available" scan result with every field blank. `available` now reflects the same filtered values the response actually returns. Re-audited `/assistant` (Ask HarvestIQ + advisor summary) alongside it: rate-limit key granularity, context construction, and frontend rendering (plain-text, no `dangerouslySetInnerHTML`) all confirmed correct — no changes needed there | ✅ |
 | v1.35 · Full performance audit | End-to-end pass across DB/backend/frontend/infra, done via three independent research agents grounded in this app's actual single-VM/single-worker architecture (no Redis/queues invented). **DB**: added 12 missing indexes on the hottest unindexed filter/sort/join columns (`lots.status`, `demands.status`, and 10 more). **N+1s**: batched the per-counterparty completed-deals `COUNT` query in `/api/matches/mine`, `/api/deals/mine`, and `/api/history` (was one extra query per row shown); batched the per-candidate `Match` existence check in `match_lot`/`match_demand`/`run_matching`, on the hot path of every lot/demand create and edit. **`/api/markets/best`**: routed candidate markets through OSRM concurrently (`ThreadPoolExecutor`) instead of one sequential blocking call per market. **Admin analytics**: `_by_week` no longer loads the entire `Deal`/`Offer`/`User` tables just to bucket the last 8 weeks. **Security**: two log call sites could leak the live `data.gov.in`/OpenWeatherMap API keys into application logs via `httpx`'s own exception messages — now log exception type/status only. **Observability**: added a minimal slow-request-only timing middleware (logs only requests over 1s). **`/api/location/resolve`**: halved the on-demand ingest's worst-case blocking time on a cold (never-seen) state. **Frontend**: memoized `AuthProvider`'s context value (was re-rendering the whole app tree on every token refresh); dynamic-imported `recharts` out of the home page's initial bundle; parallelized independent data fetches on the admin dashboard, farmer dashboard, and public explore page; gated the notification-bell poll on tab visibility. All changes verified live and via the full test suites (494 backend + 51 frontend); one finding (embedding full-size lot photos in match/deal list payloads) was deliberately left unfixed rather than risk regressing the dashboard thumbnail feature — see Known Limitations | ✅ |
 | v1.36 · Discovery bounding-box pre-filter | The other item v1.35 deferred: `browse_lots`/`browse_demands` loaded every open lot/demand on the platform into Python before geo-filtering by radius, with no SQL-level filter at all. Added a conservative lat/lon bounding-box pre-filter (a superset of the true circle, so it can only ever include extra rows the existing precise haversine check then discards — never wrongly exclude one) plus supporting indexes on `lots`/`demands` `(latitude, longitude)`. A listing with no stored coordinates (relying on the district-centroid fallback) is explicitly kept as a candidate regardless of the box. `browse_demands` had zero prior test coverage at all — added it alongside the fix | ✅ |
 | v1.37 · Lot photo thumbnail pipeline | The last item deferred by the performance audit: `GET /api/matches/mine`, `/api/deals/mine`, and `/api/history` embedded the full (~30-80 KB) lot photo in every row, even though the buyer dashboard and match-thread page only ever render it at 40-64 px. Added `lots.photo_thumb_url` — a genuinely tiny (~96 px) thumbnail generated client-side alongside the full photo — and `LotSummary` (the shape those three endpoints use) now exposes only the thumbnail, never the full photo. Live-verified: a real match's lot payload dropped from ~37 KB to ~1.2 KB. Existing lots keep their full photo but get `photo_thumb_url = NULL` until next edited — a one-time, self-healing gap, not a break, since the UI already treats "no photo" as a normal empty state. Also fixed a real bug surfaced while wiring this up: `update_lot` silently ignored an explicit `null` for `photo_url`/`photo_thumb_url` (a farmer removing an attached photo via edit never actually cleared it in the database) | ✅ |
@@ -77,9 +77,9 @@ re-scope to that state; MSP and the storage/FPO directory are national.
 
 ---
 
-## 1. What is AgriLink?
+## 1. What is HarvestIQ?
 
-AgriLink is a market-linkage and price-discovery platform that turns government
+HarvestIQ is a market-linkage and price-discovery platform that turns government
 mandi (wholesale market) data into decisions a smallholder farmer, buyer, or
 FPO can act on, and then carries them the rest of the way to a paid, tracked
 deal. It is not a price ticker and not a listing board in isolation — it is
@@ -116,10 +116,10 @@ that would prove it isn't in a usable form:
 
 ## 3. Solution
 
-AgriLink addresses each of those gaps with a real, working feature — not a
+HarvestIQ addresses each of those gaps with a real, working feature — not a
 future promise:
 
-| Gap | AgriLink's answer |
+| Gap | HarvestIQ's answer |
 |---|---|
 | Raw prices aren't actionable | The **sell / wait / hold signal** (rule-based, every factor and weight shown) and the **Decision Brief** that fuses it with forecast, weather, MSP, and crop-calendar timing into one ranked action list |
 | No transport-adjusted comparison | **Diesel-indexed best-market ranking** — net price after a real, inspectable freight calculation, not just the highest sticker price |
@@ -175,7 +175,7 @@ what's explicitly *not* built):
   dispute-resolution workflow, and the price-realisation tracker (farmer-facing
   and as a public anonymised aggregate).
 - **Assistance** — an optional LLM readability layer (plain-language advisor
-  summary, "Ask AgriLink" grounded Q&A, OCR) that only ever rephrases numbers
+  summary, "Ask HarvestIQ" grounded Q&A, OCR) that only ever rephrases numbers
   the rule-based engine already computed — never a source of truth.
 - **Notifications** — an in-app feed covering a price-alert crossing, an
   overdue forward-contract settlement, an offer accept/decline, a financing
@@ -245,7 +245,7 @@ every request:
 ## 9. Unique Differentiators
 
 - **One ranked Decision Brief, not eight separate widgets.** The Decision
-  Brief is the single biggest thing that separates AgriLink from a
+  Brief is the single biggest thing that separates HarvestIQ from a
   price-lookup app — it fuses the sell/wait signal, forecast, diesel-costed
   best market, MSP gap, weather, crop calendar, mandi holidays, and nearby
   verified counterparties into one prioritised action list, for both a
@@ -262,7 +262,7 @@ every request:
   the exact same `Deal` row, so logistics, payments, disputes, and the audit
   ledger work identically no matter how the deal was struck.
 - **Price-realisation tracking closes the loop.** Nearly every market-linkage
-  concept ends at "deal struck" — AgriLink measures afterward whether that
+  concept ends at "deal struck" — HarvestIQ measures afterward whether that
   deal actually beat the open mandi and MSP, per farmer and as a public,
   anonymised, platform-wide aggregate.
 - **Forward contracts with a real crop-calendar check and a computed breach
@@ -305,7 +305,7 @@ in this README describes a feature that isn't in the running code.
 ## Contents
 
 **Product story**
-- [1. What is AgriLink?](#1-what-is-agrilink)
+- [1. What is HarvestIQ?](#1-what-is-harvestiq)
 - [2. Problem](#2-problem)
 - [3. Solution](#3-solution)
 - [4. User Roles](#4-user-roles)
@@ -365,7 +365,7 @@ in this README describes a feature that isn't in the running code.
 | `/` | Hero + crop/market picker, latest modal price, the sell/wait call as a gauge, and a statewide price snapshot. |
 | `/prices` | 7/30/90-day trend as a gradient area chart with a **dashed 30-day forecast line and prediction band**; min / modal / max for the latest day; a horizontal bar comparison of the selected market against the nearest markets; and the transport-adjusted "best market" panel. |
 | `/advisor` | A **Decision Brief** at the top — one ranked action plan (`now` / `soon` / `watch`) fusing the sell/wait signal, forecast, diesel-costed best market, MSP gap, weather, crop calendar, mandi holidays and nearby verified buyers — followed by the full sell / wait / hold reasoning: price momentum vs 7- and 30-day averages, weather pressure, MSP gap, crop-calendar phase (with glut-risk warning), and the next mandi holiday. An optional **"In plain words"** panel (LLM) restates the ruling in 2-3 farmer-friendly sentences in the chosen language. **v1.18** — a signed-in buyer sees the same computation mirrored for a sourcing decision (`buy_now`/`wait_to_buy`/`hold`, cheapest-market ranking, nearby sellers instead of buyers). Sidebar navigation surfaces this link for farmer/buyer accounts only; admins use the Admin Dashboard instead. |
-| **Ask AgriLink** | A floating assistant (LLM, optional) that answers from the selected crop/market's live data **and** from a curated, retrieval-backed knowledge base — MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, PMFBY/PM-KISAN, how the signal and freight are computed. Shows its source chips; says "I don't have that" when nothing matches. Without an LLM key it still returns the grounded reference text. |
+| **Ask HarvestIQ** | A floating assistant (LLM, optional) that answers from the selected crop/market's live data **and** from a curated, retrieval-backed knowledge base — MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, PMFBY/PM-KISAN, how the signal and freight are computed. Shows its source chips; says "I don't have that" when nothing matches. Without an LLM key it still returns the grounded reference text. |
 | `/directory` | Cold storage / warehouses and FPOs near a district or state, with distance and capacity. |
 | `/explore` | Statewide price transparency — top gainers/fallers (7-day), a 30-day average-price trend, all-crops table, and activity counters (markets reporting, crops tracked, open lots/demands, deals, disputes). Re-scopes to the chosen state. |
 | `/alerts` | Create "notify me when crop X at market Y goes above/below ₹Z" alerts; an in-app notification bell polls unread count. (Managing alerts needs login.) |
@@ -491,7 +491,7 @@ flowchart LR
 | Database | PostgreSQL 16 (Docker), host port **5433** |
 | Frontend | Next.js 16.3 (App Router, Turbopack) · React 19 · TypeScript · next-intl 4 · recharts 3 · Tailwind CSS v4 |
 | Tests | pytest 9 (SQLite in-memory) · Vitest 4 + Testing Library 16 |
-| LLM | OpenRouter API (optional) — any vision-capable model; used for plain-language advisor, Ask AgriLink, OCR slip-reading, live-string translation |
+| LLM | OpenRouter API (optional) — any vision-capable model; used for plain-language advisor, Ask HarvestIQ, OCR slip-reading, live-string translation |
 | Fonts | Poppins (headings + body) · Noto Sans Devanagari (Hindi/Marathi) via `next/font/google` |
 
 ---
@@ -499,7 +499,7 @@ flowchart LR
 ## Repository layout
 
 ```
-agrilink/
+harvestiq/
 ├── docker-compose.yml          local dev: Postgres 16 → host :5433
 ├── docker-compose.prod.yml     production stack: db + backend + frontend + Caddy
 ├── Caddyfile                   reverse proxy — one origin, /api → backend, else → frontend
@@ -536,14 +536,14 @@ agrilink/
 │   │       ├── geocode.py      name → lat/lon and reverse-geocode (cached in geo_cache)
 │   │       ├── locations.py    resolve_location, ensure_state_ingested (rate-limited)
 │   │       ├── reference.py    MSP · crop calendar · cold-storage / FPO directory (curated)
-│   │       ├── knowledge.py    curated corpus + TF-IDF/fuzzy retrieval for Ask AgriLink
+│   │       ├── knowledge.py    curated corpus + TF-IDF/fuzzy retrieval for Ask HarvestIQ
 │   │       ├── grading.py      shared A/B/FAQ/C quality-grade rubric
 │   │       ├── holidays.py     Nager.Date mandi holidays (+ fallback)
 │   │       ├── audit.py        append-only transaction_events + deal timeline
 │   │       ├── transporters.py curated transporter directory (seeded on boot)
 │   │       ├── alerts.py       evaluate price alerts → notifications
 │   │       ├── llm.py          OpenRouter client: chat, vision, translate (all degrade gracefully)
-│   │       ├── embeddings.py   optional semantic re-ranking for Ask AgriLink retrieval
+│   │       ├── embeddings.py   optional semantic re-ranking for Ask HarvestIQ retrieval
 │   │       ├── sms.py          OTP delivery for forgot-password (Fast2SMS-compatible, optional)
 │   │       ├── digest.py       opt-in daily SMS summary of unread notifications
 │   │       ├── satellite.py    optional Google Earth Engine NDVI crop-health reading
@@ -569,7 +569,7 @@ agrilink/
 │       │                       PriceDetail, AdvisorDetail, DecisionBrief, SellWaitSignalCard,
 │       │                       SignalGaugeChart, PriceTrendChart, MarketComparisonChart,
 │       │                       PriceRealizationCard, DealLogisticsCard, DealTransactionPanel,
-│       │                       DataProvenance, OnboardingChecklist, AskAgriLink, intel.tsx,
+│       │                       DataProvenance, OnboardingChecklist, AskHarvestIQ, intel.tsx,
 │       │                       NotificationBell, LocationChip, NavLinks,
 │       │                       LanguageSwitcher, ui.tsx (design-system kit), …
 │       ├── i18n/               LocaleProvider, config, messages/{en,hi,mr}.json, parity test
@@ -633,7 +633,7 @@ ingest trigger — not just the location-resolve case called out below.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `DATABASE_URL` | `…@localhost:5433/agrilink` | Must point at **:5433** |
+| `DATABASE_URL` | `…@localhost:5433/harvestiq` | Must point at **:5433** |
 | `DATA_GOV_IN_API_KEY` | *(blank)* | Optional. Blank → ingestion uses the committed snapshot / fixtures |
 | `INGEST_TRIGGER_SECRET` | *(blank)* | Blank → `POST /api/ingest/run` is disabled (403). Set a long random string, then send it as `X-Ingest-Secret` (constant-time compared) |
 | `INGEST_STATES` | `Maharashtra` | States the scheduler ingests — comma-separated (`Maharashtra,Karnataka`) or `ALL` for the whole national feed |
@@ -642,9 +642,9 @@ ingest trigger — not just the location-resolve case called out below.
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | |
 | `WEATHER_API_KEY` | *(blank)* | Optional OpenWeatherMap key — enriches the forecast with current conditions. Blank → keyless Open-Meteo only |
-| `OPENROUTER_API_KEY` | *(blank)* | Optional. Enables the plain-language advisor summary, Ask AgriLink chat, mandi-slip OCR, and live-string translation. Blank → all LLM features hidden; rule output / English shown |
+| `OPENROUTER_API_KEY` | *(blank)* | Optional. Enables the plain-language advisor summary, Ask HarvestIQ chat, mandi-slip OCR, and live-string translation. Blank → all LLM features hidden; rule output / English shown |
 | `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Any vision-capable OpenRouter model. Used for both text and image (OCR) calls |
-| `EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Optional — rides on `OPENROUTER_API_KEY`. Only used if that key is set and the model actually serves embeddings; otherwise Ask AgriLink retrieval stays keyword+fuzzy (see [Grounded knowledge retrieval](#grounded-knowledge-retrieval-rag)) |
+| `EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Optional — rides on `OPENROUTER_API_KEY`. Only used if that key is set and the model actually serves embeddings; otherwise Ask HarvestIQ retrieval stays keyword+fuzzy (see [Grounded knowledge retrieval](#grounded-knowledge-retrieval-rag)) |
 | `EMBEDDING_URL` | OpenRouter embeddings endpoint | Override to point at a different embeddings-compatible endpoint |
 | `TRANSPORT_COST_PER_QTL_KM` | `0.4` | Legacy flat fallback. Since v1.5 `markets/best` and deal-logistics cost use the **diesel-indexed** rate from `services/freight.py` instead (see [Diesel-indexed freight](#diesel-indexed-freight)) |
 | `SMS_API_KEY` | *(blank)* | Optional Fast2SMS-compatible "quick SMS" key for the forgot-password OTP (`services/sms.py`). Blank → the OTP is logged server-side instead of texted, so `/auth/forgot-password` + `/auth/reset-password` still work end-to-end for a local/offline demo |
@@ -679,8 +679,8 @@ All free; all with an offline fallback so the app runs air-gapped.
 | **Nager.Date** `/PublicHolidays` | upcoming mandi holidays | built-in 2026 holiday list |
 | **curated** (`app/services/reference.py`) | MSP (₹/quintal, official CACP 2024‑25 / 2025‑26), crop calendar (MH-tuned), cold-storage / FPO directory (MH in detail + national sample) | — (static) |
 | **curated** (`app/services/freight.py`) | per-state retail diesel reference (₹/L, ~35 states/UTs, indicative — state VAT makes it vary 87–98 ₹/L), used to compute the freight rate | `_DIESEL_DEFAULT` (₹92.0/L) |
-| **curated** (`app/services/knowledge.py`) | Ask AgriLink corpus — ~13 how-it-works / policy notes (MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, PMFBY, PM-KISAN) + docs generated from the MSP / calendar / grading / holiday data | — (static, offline retrieval) |
-| **OpenRouter** *(needs `OPENROUTER_API_KEY`)* | readability layer only — plain-language advisor summary, the Decision-Brief summary, the "Ask AgriLink" assistant (phrasing retrieved chunks), mandi-slip OCR, live-string translation, and (v1.10, optional) an embeddings call that re-ranks knowledge retrieval. Never a source of truth — the embeddings call only scores which chunks to hand the LLM/user, it never generates the answer text. | features hidden; rule output / grounded reference text / English shown; retrieval stays keyword+fuzzy |
+| **curated** (`app/services/knowledge.py`) | Ask HarvestIQ corpus — ~13 how-it-works / policy notes (MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, PMFBY, PM-KISAN) + docs generated from the MSP / calendar / grading / holiday data | — (static, offline retrieval) |
+| **OpenRouter** *(needs `OPENROUTER_API_KEY`)* | readability layer only — plain-language advisor summary, the Decision-Brief summary, the "Ask HarvestIQ" assistant (phrasing retrieved chunks), mandi-slip OCR, live-string translation, and (v1.10, optional) an embeddings call that re-ranks knowledge retrieval. Never a source of truth — the embeddings call only scores which chunks to hand the LLM/user, it never generates the answer text. | features hidden; rule output / grounded reference text / English shown; retrieval stays keyword+fuzzy |
 
 ---
 
@@ -979,7 +979,7 @@ plain, farmer-friendly language.
 `app/services/brief.py` + `GET /api/brief` — one endpoint that assembles every
 signal the platform computes in isolation into a single **prioritised action
 list** a farmer can work top-to-bottom. This is the single biggest thing that
-separates AgriLink from a price-lookup app: nothing else in this space fuses
+separates HarvestIQ from a price-lookup app: nothing else in this space fuses
 price, weather, freight, MSP, calendar and buyer-demand into one ranked call.
 
 ```mermaid
@@ -1229,7 +1229,7 @@ boot) that the logistics card uses to fill in transporter contact + vehicle.
 ## Price-realisation tracker
 
 `app/services/realization.py` + `GET /api/history/realization` — the feature
-that shows whether an AgriLink linkage actually beat the open mandi.
+that shows whether an HarvestIQ linkage actually beat the open mandi.
 
 For every deal a farmer struck, it compares the locked ₹/qtl against two
 benchmarks around the deal date: the **AGMARKNET mandi modal** for that crop
@@ -1316,7 +1316,7 @@ verification (`POST /auth/me/request-verification` →
    pending, so a stale cap can't be silently approved.
 3. The farmer can **withdraw** their own request while it's still `pending`.
 
-**This is a request tracker, not a lender** — AgriLink never disburses,
+**This is a request tracker, not a lender** — HarvestIQ never disburses,
 transfers, or holds any money. Real disbursement needs a licensed bank/NBFC
 or warehouse partner integration (see [Known limitations](#known-limitations)).
 Every request and review is written to `transaction_events`.
@@ -1382,7 +1382,7 @@ produced.
 | Feature | Route | Notes |
 |---|---|---|
 | Plain-language advisor | `GET /api/advisor/summary` | 2-3 sentences restating the sell/wait reasoning in English, Hindi, or Marathi. Cached 6 hours by prompt hash. |
-| Ask AgriLink | `POST /api/assistant/ask` | Grounded Q&A. The LLM receives a structured context block (price, signal, weather, MSP, calendar) and is instructed to say "I don't have that" when the answer isn't in it. Not cached. |
+| Ask HarvestIQ | `POST /api/assistant/ask` | Grounded Q&A. The LLM receives a structured context block (price, signal, weather, MSP, calendar) and is instructed to say "I don't have that" when the answer isn't in it. Not cached. |
 | Live-string translation | `llm.translate()` | Translates short UI strings (weather conditions, API notes) to Hindi/Marathi. Called server-side. |
 
 **OCR** (`POST /api/ocr/lot-slip`) uses the same OpenRouter client with a **vision
@@ -1398,7 +1398,7 @@ errors.
 
 ## Grounded knowledge retrieval (RAG)
 
-`app/services/knowledge.py` — a curated, **offline** corpus so Ask AgriLink can
+`app/services/knowledge.py` — a curated, **offline** corpus so Ask HarvestIQ can
 answer how-it-works and policy questions ("how does MSP procurement work?",
 "what is a warehouse receipt?", "when is tur sown?") from real text rather than
 only the selected crop/market's numbers.
@@ -1421,7 +1421,7 @@ only the selected crop/market's numbers.
 - **Wiring** — `POST /api/assistant/ask` injects the top chunks as a `REFERENCE`
   block and returns `sources[]`; without an LLM key it returns the `reference[]`
   text itself. `GET /api/assistant/search` exposes the raw retrieval with scores.
-  `AskAgriLink.tsx` shows source chips under each answer.
+  `AskHarvestIQ.tsx` shows source chips under each answer.
 
 ---
 
@@ -1514,7 +1514,7 @@ debounce per alert).
 
 - **Frontend** — `LocationProvider` / `useLocation` (in `lib/useLocation.tsx`)
   keeps `{state, district, label, lat, lon, source}` in
-  `localStorage['agrilink.location']`. The header `LocationChip` offers browser
+  `localStorage['harvestiq.location']`. The header `LocationChip` offers browser
   geolocation, a place search, and an all-India state `<select>` (from
   `/api/location/states`).
 - **Scoping** — `useCropMarket`, the home page, and `/explore` pass the chosen
@@ -1534,7 +1534,7 @@ debounce per alert).
 
 ## Internationalisation
 
-- **Client-only** — locale in `localStorage['agrilink.locale']`, no `/[locale]`
+- **Client-only** — locale in `localStorage['harvestiq.locale']`, no `/[locale]`
   routing, no next-intl middleware (keeps the app Cordova/static-export safe).
 - `LocaleProvider` gates render behind a `ready` flag (shows `AppShellSkeleton`)
   so there's no flash of English on refresh. Header switcher: English / हिंदी / मराठी.

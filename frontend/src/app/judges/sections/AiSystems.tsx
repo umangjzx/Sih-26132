@@ -55,7 +55,7 @@ const SYSTEMS = [
     future: "A labeled set of real mandi slips would let this be benchmarked properly rather than reviewed case-by-case",
   },
   {
-    name: "Ask AgriLink — Knowledge Retrieval",
+    name: "Ask HarvestIQ — Knowledge Retrieval",
     kind: "retrieval" as Kind,
     problem: "Answer 'how does X work' questions from real reference text, not just live numbers",
     input: "Free-text question + optional crop/market context",
@@ -86,7 +86,7 @@ export function AiSystemsSection() {
       id="ai-systems"
       eyebrow="Transparency"
       title="AI / intelligence systems — what's actually AI, and what isn't"
-      quickAnswer="Two of AgriLink's five 'intelligent' features are genuine AI (a vision LLM for OCR, an optional LLM for phrasing) — the recommendation engine itself is deliberately rule-based and statistical so every number is explainable, not a model's guess."
+      quickAnswer="Two of HarvestIQ's five 'intelligent' features are genuine AI (a vision LLM for OCR, an optional LLM for phrasing) — the recommendation engine itself is deliberately rule-based and statistical so every number is explainable, not a model's guess."
     >
       <div className="al-card-plain mb-6 flex flex-wrap items-start gap-2.5 !bg-[var(--amber-50)] !border-[var(--amber-200)] p-4">
         <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-[var(--amber-700)]" />
@@ -95,7 +95,7 @@ export function AiSystemsSection() {
           a farmer needs to trust the number enough to act on it. A rule-based formula can be
           fully explained — every weight is visible in <code className="rounded bg-white/60 px-1">reasons[]</code>.
           An ML model&apos;s confidence score can&apos;t be explained the same way, and training one
-          well needs far more historical data than a hackathon timeline allows. So AgriLink
+          well needs far more historical data than a hackathon timeline allows. So HarvestIQ
           only reaches for a real LLM where it&apos;s genuinely the right tool — reading an
           image, or phrasing an already-correct number — never to produce the number itself.
         </p>

@@ -41,8 +41,8 @@ import * as api from "@/lib/api";
 import { renderWithIntl, screen } from "@/test/render";
 import FarmerPage from "./page";
 
-const QUEUE_KEY = "agrilink.lot_queue";
-const DRAFT_KEY = "agrilink.lot_draft";
+const QUEUE_KEY = "harvestiq.lot_queue";
+const DRAFT_KEY = "harvestiq.lot_draft";
 
 beforeEach(() => {
   vi.clearAllMocks();

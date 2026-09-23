@@ -3,18 +3,18 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: agrilink
-      POSTGRES_PASSWORD: agrilink
-      POSTGRES_DB: agrilink
+      POSTGRES_USER: harvestiq
+      POSTGRES_PASSWORD: harvestiq
+      POSTGRES_DB: harvestiq
     ports:
       - "5433:5432"
     volumes:
-      - agrilink_pgdata:/var/lib/postgresql/data
+      - harvestiq_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agrilink"]
+      test: ["CMD-SHELL", "pg_isready -U harvestiq"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  agrilink_pgdata:
+  harvestiq_pgdata:

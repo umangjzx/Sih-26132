@@ -1,4 +1,4 @@
-"""Grounded knowledge base for "Ask AgriLink" (v1.5 #3).
+"""Grounded knowledge base for "Ask HarvestIQ" (v1.5 #3).
 
 A small, curated corpus of how-it-works / policy notes plus text generated from
 the reference datasets (MSP, crop calendar, grading rubric, mandi holidays).
@@ -154,7 +154,7 @@ _NOTES: list[Doc] = [
             "market yard. Produce is sold by open auction or tender through a "
             "licensed commission agent (arhtiya) to licensed traders. The mandi "
             "deducts a market fee and commission. Prices, arrivals and the modal "
-            "rate are recorded and reported to AGMARKNET, which is the data AgriLink "
+            "rate are recorded and reported to AGMARKNET, which is the data HarvestIQ "
             "aggregates. Many states now also allow sales outside the mandi yard and "
             "direct purchase from farmers under a unified or direct-marketing "
             "licence."
@@ -187,7 +187,7 @@ _NOTES: list[Doc] = [
             "grading cost. India's Central Sector Scheme targets forming and "
             "supporting 10,000 FPOs with equity grants and a credit guarantee. To "
             "join, approach an existing FPO or a promoting agency (NABARD, SFAC, "
-            "state agencies) in your district. AgriLink's demand pools are a "
+            "state agencies) in your district. HarvestIQ's demand pools are a "
             "lightweight version of the same idea."
         ),
         tags=["fpo", "producer organisation", "pooling", "aggregation", "nabard", "sfac", "10000 fpo"],
@@ -203,7 +203,7 @@ _NOTES: list[Doc] = [
             "standard mandi-acceptance grade — reasonably clean and dry with mixed "
             "sizing. Drying to safe moisture, removing foreign matter and sorting out "
             "damaged pieces before you bring produce to market usually pays for "
-            "itself in a better rate. AgriLink uses A / B / FAQ / C so a lot's grade "
+            "itself in a better rate. HarvestIQ uses A / B / FAQ / C so a lot's grade "
             "and a buyer's minimum grade can be compared directly."
         ),
         tags=["grading", "quality", "faq", "fair average quality", "moisture", "premium", "sorting"],
@@ -232,7 +232,7 @@ _NOTES: list[Doc] = [
             "processor, exporter, retailer or FPO under a direct-marketing or "
             "unified licence, often saving the mandi fee and commission. Agree crop, "
             "quantity, quality grade, price, delivery point and payment terms in "
-            "writing before dispatch, and confirm who bears transport. AgriLink's "
+            "writing before dispatch, and confirm who bears transport. HarvestIQ's "
             "demand board and deal flow are built for exactly this: browse verified "
             "buyers seeking your crop nearby, express interest, and record the "
             "agreed terms and payment."
@@ -241,8 +241,8 @@ _NOTES: list[Doc] = [
     ),
     Doc(
         id="signal-explained",
-        title="How AgriLink's sell / wait signal is calculated",
-        topic="agrilink",
+        title="How HarvestIQ's sell / wait signal is calculated",
+        topic="harvestiq",
         text=(
             "The signal is rule-based, not a black box. It compares today's modal "
             "price to its 7-day and 30-day averages (price momentum, weighted 2x), "
@@ -256,8 +256,8 @@ _NOTES: list[Doc] = [
     ),
     Doc(
         id="freight-explained",
-        title="How AgriLink estimates transport cost",
-        topic="agrilink",
+        title="How HarvestIQ estimates transport cost",
+        topic="harvestiq",
         text=(
             "Freight is diesel-indexed: rate per quintal per km = a fixed handling "
             "base plus diesel price per litre divided by (truck mileage x quintals "
@@ -276,7 +276,7 @@ _NOTES: list[Doc] = [
             "APMC mandis close on major public holidays and often on the weekly "
             "market off-day. Arrivals bunch up just before and just after a long "
             "holiday, which can push the rate down on the reopening day. Plan a sale "
-            "before the break or a few days after the reopening rush. AgriLink lists "
+            "before the break or a few days after the reopening rush. HarvestIQ lists "
             "the next upcoming market holidays."
         ),
         tags=["holiday", "mandi closed", "market closed", "off day"],
@@ -367,10 +367,10 @@ def _generated_docs() -> list[Doc]:
     grade_lines = "; ".join(f"{g['code']} = {g['desc']}" for g in GRADES)
     docs.append(Doc(
         id="grading-rubric",
-        title="AgriLink quality-grade rubric",
+        title="HarvestIQ quality-grade rubric",
         topic="grading",
         text=(
-            f"AgriLink grades: {grade_lines}. FAQ (Fair Average Quality) sits at the "
+            f"HarvestIQ grades: {grade_lines}. FAQ (Fair Average Quality) sits at the "
             f"B level. A buyer sets a minimum grade on a demand; a lot at or above "
             f"that grade can match."
         ),

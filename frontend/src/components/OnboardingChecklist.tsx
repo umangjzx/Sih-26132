@@ -24,7 +24,7 @@ export function OnboardingChecklist({
   hasMatch: boolean;
 }) {
   const t = useTranslations("onboarding");
-  const storageKey = `agrilink.onboarding.${role}`;
+  const storageKey = `harvestiq.onboarding.${role}`;
   const [dismissed, setDismissed] = useState(true); // assume hidden until we read storage
 
   useEffect(() => {

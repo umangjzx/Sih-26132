@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AgriLink authenticated sidebar.
+ * HarvestIQ authenticated sidebar.
  *
  * Three states:
  *   expanded  — 18rem wide, icons + labels                    (desktop)

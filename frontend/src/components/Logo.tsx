@@ -2,11 +2,11 @@ import Image from "next/image";
 import React from "react";
 
 /**
- * AgriLink logo — the brand mark, from /public/logo.png.
+ * HarvestIQ logo — the brand mark, from /public/logo.png.
  *
  * Three variants:
  *   "icon"    — mark only (no wordmark)
- *   "full"    — mark + "AgriLink" wordmark (light backgrounds)
+ *   "full"    — mark + "HarvestIQ" wordmark (light backgrounds)
  *   "sidebar" — mark + wordmark, white palette (dark sidebar background)
  */
 
@@ -39,7 +39,7 @@ export function Logo({ className = "", size = 36, variant = "full" }: LogoProps)
         className={`inline-flex shrink-0 overflow-hidden rounded-[28%] ${className}`}
         style={{ width: size, height: size }}
         role="img"
-        aria-label="AgriLink"
+        aria-label="HarvestIQ"
       >
         <Image src="/logo.png" alt="" width={size} height={size} className="h-full w-full object-cover" />
       </span>
@@ -61,7 +61,7 @@ export function Logo({ className = "", size = 36, variant = "full" }: LogoProps)
             lineHeight: 1,
           }}
         >
-          AgriLink
+          HarvestIQ
         </span>
         <span
           style={{

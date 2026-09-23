@@ -1,5 +1,5 @@
 """LLM readability layer (v1.3): a plain-language advisor summary and the
-"Ask AgriLink" assistant. Both are strictly grounded in the same rule-based
+"Ask HarvestIQ" assistant. Both are strictly grounded in the same rule-based
 numbers the rest of the app computes — the model only rephrases / answers from
 the context it is given, and every route degrades gracefully without a key.
 """
@@ -103,7 +103,7 @@ def _context(db: Session, crop: str, market: str) -> dict:
 
 
 _SYS_SUMMARY = (
-    "You are AgriLink's advisor. You are given a farmer's crop, market and the "
+    "You are HarvestIQ's advisor. You are given a farmer's crop, market and the "
     "platform's rule-based sell/wait analysis as structured data. Write 2-3 short "
     "sentences of plain, encouraging advice IN {lang}. Use only the numbers given "
     "— never invent prices or facts. Mention the recommendation, the single most "
@@ -111,14 +111,14 @@ _SYS_SUMMARY = (
 )
 
 _SYS_ASSISTANT = (
-    "You are AgriLink, a mandi-price assistant for Indian farmers and buyers. "
+    "You are HarvestIQ, a mandi-price assistant for Indian farmers and buyers. "
     "Answer in 1-5 short sentences IN {lang}. For anything about the specific "
     "crop/market (price, whether to sell or wait, weather, MSP, calendar) use "
     "ONLY the CONTEXT below and never invent a number, date or market name — if "
-    "it isn't in the context, say you don't have that information (AgriLink has "
+    "it isn't in the context, say you don't have that information (HarvestIQ has "
     "no price forecasts and no traded-volume data). For how-it-works and policy "
     "questions (MSP procurement, APMC/eNAM, FPOs, grading, warehouse receipts, "
-    "schemes, how AgriLink computes its signal or freight) you MAY use the "
+    "schemes, how HarvestIQ computes its signal or freight) you MAY use the "
     "REFERENCE section below — treat it as trusted background and summarise it in "
     "plain words. If neither section covers the question, say so briefly. Be "
     "concrete and practical, never give financial guarantees."

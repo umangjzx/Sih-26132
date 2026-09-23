@@ -864,5 +864,5 @@ def admin_events_csv(
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=agrilink_transaction_log.csv"},
+        headers={"Content-Disposition": "attachment; filename=harvestiq_transaction_log.csv"},
     )

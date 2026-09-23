@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client-only Mermaid diagram renderer, themed to match the AgriLink design
+ * Client-only Mermaid diagram renderer, themed to match the HarvestIQ design
  * tokens in globals.css (mermaid needs literal color values, not CSS vars,
  * since it bakes them into the generated SVG at render time).
  */

@@ -64,7 +64,7 @@ const MODULES: Module[] = [
     name: "Decision Brief",
     status: "production",
     purpose: "One ranked action plan instead of eight separate signals to interpret",
-    users: "Farmers, on /advisor and via Ask AgriLink",
+    users: "Farmers, on /advisor and via Ask HarvestIQ",
     features: "Fuses signal + forecast + best market + MSP gap + weather + calendar + holidays + nearby buyers into now/soon/watch actions",
     input: "crop, district or lat/lon, radius_km, lang",
     output: "headline, score, confidence, actions[]",
@@ -203,7 +203,7 @@ const MODULES: Module[] = [
   {
     name: "Price-Realisation Tracker",
     status: "production",
-    purpose: "Prove, per deal, whether AgriLink actually beat the open mandi",
+    purpose: "Prove, per deal, whether HarvestIQ actually beat the open mandi",
     users: "Farmers, on /history",
     features: "Realised ₹/qtl vs AGMARKNET mandi average and MSP, volume-weighted uplift headline, per-deal chart",
     input: "A farmer's closed deals",
@@ -229,7 +229,7 @@ const MODULES: Module[] = [
     validation: "parity.test.ts fails the build on any missing or stray translation key",
   },
   {
-    name: "Ask AgriLink & Knowledge Retrieval",
+    name: "Ask HarvestIQ & Knowledge Retrieval",
     status: "production",
     purpose: "Answer how-it-works and policy questions from real text, not just the selected crop's numbers",
     users: "Everyone, floating assistant",

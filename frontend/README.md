@@ -1,4 +1,4 @@
-# AgriLink frontend
+# HarvestIQ frontend
 
 Next.js 16 (App Router, Turbopack) + React 19 + TypeScript, `next-intl` for i18n,
 `recharts` for charts, Tailwind v4. Mobile-first, built to wrap unchanged in Apache
@@ -37,7 +37,7 @@ solid frosted-glass everywhere else. `Landing` (used by `/`) and the four
 marketing pages share a fixed, translucent parallax photo backdrop.
 
 A header **location chip** (`useLocation` / `LocationProvider`) detects or picks a place,
-persists it to `localStorage['agrilink.location']`, and re-scopes prices to that state.
+persists it to `localStorage['harvestiq.location']`, and re-scopes prices to that state.
 
 ## Run
 
@@ -76,7 +76,7 @@ smoke test per authed page (`farmer`, `buyer`, `deals`, `history`, `login`, `ale
 
 ## Internationalisation
 
-- Locale is **client-only**: stored in `localStorage['agrilink.locale']`, no `/[locale]`
+- Locale is **client-only**: stored in `localStorage['harvestiq.locale']`, no `/[locale]`
   routing and no `next-intl` middleware/plugin (keeps the app Cordova/static-export safe).
 - `LocaleProvider` gates render behind a `ready` flag and shows `AppShellSkeleton` until the
   stored locale resolves — no flash of English on refresh.

@@ -1401,7 +1401,7 @@ export async function downloadAdminEventsCsv(token: string): Promise<void> {
   const url = URL.createObjectURL(await res.blob());
   const a = document.createElement("a");
   a.href = url;
-  a.download = "agrilink_transaction_log.csv";
+  a.download = "harvestiq_transaction_log.csv";
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }

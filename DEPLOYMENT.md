@@ -1,4 +1,4 @@
-# Deploying AgriLink
+# Deploying HarvestIQ
 
 A single-VM deployment with Docker Compose. One reverse proxy (Caddy) puts the
 whole app on **one origin**: the browser loads the UI at `/` and calls the API
@@ -34,7 +34,7 @@ a college/hackathon server.
 
 **Open ports** in the cloud firewall / security group: `22` (SSH), `80`, `443`.
 
-**(Optional) domain** — add a DNS `A` record for e.g. `agrilink.example.com`
+**(Optional) domain** — add a DNS `A` record for e.g. `harvestiq.example.com`
 pointing at the VM's public IP. With a domain, Caddy fetches a Let's Encrypt
 certificate on first boot. Without one, the app is reachable at
 `http://<VM-IP>/` over plain HTTP (fine for a demo).
@@ -54,8 +54,8 @@ docker compose version                             # expect v2.x
 ## 3 · Get the code
 
 ```bash
-git clone https://github.com/umangjzx/Sih-26132.git agrilink
-cd agrilink
+git clone https://github.com/umangjzx/Sih-26132.git harvestiq
+cd harvestiq
 ```
 
 ---
@@ -73,10 +73,10 @@ POSTGRES_PASSWORD=CHANGE_ME_TOO
 
 # ---- reverse proxy ----
 # A hostname => automatic HTTPS. Use ":80" for an IP-only box (plain HTTP).
-SITE_ADDRESS=agrilink.example.com
+SITE_ADDRESS=harvestiq.example.com
 # Public origin of the app, used for the backend CORS allow-list.
-# Must match SITE_ADDRESS: https://agrilink.example.com  OR  http://<VM-IP>
-SITE_URL=https://agrilink.example.com
+# Must match SITE_ADDRESS: https://harvestiq.example.com  OR  http://<VM-IP>
+SITE_URL=https://harvestiq.example.com
 
 # ---- optional external data (blank = offline fallback / feature hidden) ----
 DATA_GOV_IN_API_KEY=
@@ -101,11 +101,11 @@ sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
 |---|:--:|---|
 | `JWT_SECRET_KEY` | ✅ | Long random string. Blank ⇒ every login fails (`openssl rand -hex 32`). |
 | `POSTGRES_PASSWORD` | ✅ | DB password. The container is not published to the host, but still don't ship the default. |
-| `SITE_ADDRESS` | ✅ | `agrilink.example.com` for auto-HTTPS, or `:80` for HTTP on the IP. |
+| `SITE_ADDRESS` | ✅ | `harvestiq.example.com` for auto-HTTPS, or `:80` for HTTP on the IP. |
 | `SITE_URL` | ✅ | Full public origin (`https://…` or `http://<IP>`). Becomes `CORS_ORIGINS`. |
 | `INGEST_STATES` | | `ALL` (whole national AGMARKNET feed) or a comma list (`Maharashtra,Tamil Nadu`). |
 | `DATA_GOV_IN_API_KEY` | | Enables live price ingestion. Blank ⇒ committed snapshot → synthetic fixtures. |
-| `OPENROUTER_API_KEY` | | Enables the plain-language advisor, the Decision-Brief summary phrasing, Ask AgriLink, and mandi-slip OCR. Blank ⇒ rule output / grounded reference text / English. |
+| `OPENROUTER_API_KEY` | | Enables the plain-language advisor, the Decision-Brief summary phrasing, Ask HarvestIQ, and mandi-slip OCR. Blank ⇒ rule output / grounded reference text / English. |
 | `OPENROUTER_MODEL` | | Any vision-capable OpenRouter model. Default `openai/gpt-4o-mini`. |
 | `WEATHER_API_KEY` | | OpenWeatherMap key — adds current conditions to the forecast. Blank ⇒ keyless Open-Meteo only. |
 | `INGEST_TRIGGER_SECRET` | | Blank ⇒ `POST /api/ingest/run` is disabled (403). Set it, then send it as `X-Ingest-Secret`. |
@@ -131,7 +131,7 @@ Check health:
 
 ```bash
 curl -sf http://localhost:8000/health          # {"status":"ok"}  (from the VM)
-curl -sf https://agrilink.example.com/health    # via Caddy, once DNS + TLS are up
+curl -sf https://harvestiq.example.com/health    # via Caddy, once DNS + TLS are up
 ```
 
 ---
@@ -161,7 +161,7 @@ docker compose -f docker-compose.prod.yml --profile seed run --rm seed
 
 ## 7 · Verify
 
-Open `https://agrilink.example.com` (or `http://<VM-IP>`):
+Open `https://harvestiq.example.com` (or `http://<VM-IP>`):
 
 - `/` loads, prices show, the sell/wait gauge renders
 - `/advisor` shows the Decision Brief
@@ -194,13 +194,13 @@ docker compose -f docker-compose.prod.yml up -d --build
 **Back up the database**
 ```bash
 docker compose -f docker-compose.prod.yml exec db \
-  pg_dump -U agrilink agrilink | gzip > backup-$(date +%F).sql.gz
+  pg_dump -U harvestiq harvestiq | gzip > backup-$(date +%F).sql.gz
 ```
 
 **Restore**
 ```bash
 gunzip -c backup-YYYY-MM-DD.sql.gz | \
-  docker compose -f docker-compose.prod.yml exec -T db psql -U agrilink -d agrilink
+  docker compose -f docker-compose.prod.yml exec -T db psql -U harvestiq -d harvestiq
 ```
 
 **Wipe and start fresh**

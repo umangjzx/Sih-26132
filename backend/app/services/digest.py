@@ -53,7 +53,7 @@ def send_sms_digests(db: Session) -> int:
 
         top = unread[0]
         extra = f" +{len(unread) - 1} more" if len(unread) > 1 else ""
-        message = f"AgriLink: {top.title}.{extra} Open the app for details."
+        message = f"HarvestIQ: {top.title}.{extra} Open the app for details."
 
         if send_sms(user.phone, message):
             user.sms_digest_sent_at = now

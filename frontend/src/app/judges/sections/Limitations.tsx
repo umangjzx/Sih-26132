@@ -16,7 +16,7 @@ const GROUPS: { title: string; icon: string; cls: string; items: string[] }[] = 
       "Price-realisation tracking against mandi average and MSP, farmer-facing and as a public anonymised aggregate",
       "Optional satellite (NDVI) crop-health reading, folded into the Decision Brief",
       "Trilingual UI (en/hi/mr) with automated parity enforcement",
-      "OCR mandi-slip assist and the Ask AgriLink grounded assistant",
+      "OCR mandi-slip assist and the Ask HarvestIQ grounded assistant",
       "Admin dashboard, analytics, and an append-only audit ledger",
       "Notifications for a price-alert crossing, an overdue forward settlement, an offer accept/decline, a financing approve/reject, a deal-pipeline advance, and a dispute resolution",
     ],
@@ -39,7 +39,7 @@ const GROUPS: { title: string; icon: string; cls: string; items: string[] }[] = 
     cls: "border-blue-300 bg-blue-50",
     items: [
       "KYC/verification — investigated this session: no free/self-serve e-KYC API (DigiLocker, PM-Kisan, Aadhaar UIDAI) is usable without a paid production tie-up, so admin-manual document review remains the correct approach for this build rather than an unfinished automated flow",
-      "Ask AgriLink's retrieval is keyword + fuzzy matching, not semantic search — a real gap (a pooling question missing the FPO doc entirely) was found and fixed this session with a curated synonym expansion, but a paraphrase with no shared vocabulary and no hand-curated synonym can still miss (see AI Systems)",
+      "Ask HarvestIQ's retrieval is keyword + fuzzy matching, not semantic search — a real gap (a pooling question missing the FPO doc entirely) was found and fixed this session with a curated synonym expansion, but a paraphrase with no shared vocabulary and no hand-curated synonym can still miss (see AI Systems)",
     ],
   },
   {

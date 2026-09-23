@@ -140,7 +140,7 @@ const LAYERS = [
         deps: "OPENROUTER_API_KEY (optional — degrades to unavailable)",
       },
       {
-        title: "Ask AgriLink — retrieval + optional LLM phrasing",
+        title: "Ask HarvestIQ — retrieval + optional LLM phrasing",
         purpose: "Grounded Q&A over live crop data and a curated knowledge base",
         tech: "TF-IDF + difflib fuzzy retrieval (knowledge.py) — no embeddings, no network; LLM only phrases the answer",
         input: "Free-text question + optional crop/market context",

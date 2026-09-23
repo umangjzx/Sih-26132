@@ -63,7 +63,7 @@ _MAX_PAGES_HARD = 60
 # single market+commodity on demand instead of synthesising it.
 HISTORY_RESOURCE_ID = "35985678-0d79-46b4-9ed6-6f13308a1d24"
 HISTORY_URL = f"https://api.data.gov.in/resource/{HISTORY_RESOURCE_ID}"
-_DGV_HEADERS = {"User-Agent": "AgriLink/1.0 (SIH 2026; +https://data.gov.in)"}
+_DGV_HEADERS = {"User-Agent": "HarvestIQ/1.0 (SIH 2026; +https://data.gov.in)"}
 
 # The snapshot is preferred over fixtures only if it can stand alone — i.e. it has
 # at least one market+crop series with enough dated points for the 7-day signal

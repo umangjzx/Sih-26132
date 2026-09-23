@@ -596,7 +596,7 @@ def _summarise(brief: dict, lang: str) -> str:
     try:
         text = llm.chat(
             (
-                "You are AgriLink's advisor. Given a farmer's ranked decision brief "
+                "You are HarvestIQ's advisor. Given a farmer's ranked decision brief "
                 f"as structured data, write 2-3 short sentences of plain advice IN "
                 f"{llm.lang_name(lang)}. Use ONLY the facts given, lead with the top "
                 "action, no headings or lists."

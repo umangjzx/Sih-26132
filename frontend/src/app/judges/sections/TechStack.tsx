@@ -45,8 +45,8 @@ const STACK: { category: string; icon: string; items: Tech[] }[] = [
     category: "AI / Intelligence",
     icon: "spark",
     items: [
-      { name: "OpenRouter (optional)", version: "any vision-capable model, default openai/gpt-4o-mini", why: "One API for both text (advisor summary, Ask AgriLink phrasing) and vision (OCR) calls; every feature it powers is explicitly a readability layer, never the source of a number", alt: "A self-hosted model — infeasible for a hackathon timeline and offline-safety goal" },
-      { name: "TF-IDF + difflib (stdlib-adjacent)", version: "—", why: "Ask AgriLink's knowledge retrieval is deliberately embedding-free — keeps the knowledge base fully offline-searchable with zero network dependency", alt: "Vector embeddings — better semantic recall, but breaks the offline guarantee" },
+      { name: "OpenRouter (optional)", version: "any vision-capable model, default openai/gpt-4o-mini", why: "One API for both text (advisor summary, Ask HarvestIQ phrasing) and vision (OCR) calls; every feature it powers is explicitly a readability layer, never the source of a number", alt: "A self-hosted model — infeasible for a hackathon timeline and offline-safety goal" },
+      { name: "TF-IDF + difflib (stdlib-adjacent)", version: "—", why: "Ask HarvestIQ's knowledge retrieval is deliberately embedding-free — keeps the knowledge base fully offline-searchable with zero network dependency", alt: "Vector embeddings — better semantic recall, but breaks the offline guarantee" },
     ],
   },
   {
@@ -68,7 +68,7 @@ const INTEGRATIONS = [
   { name: "OSRM", purpose: "Road distance/time for best-market + logistics", freq: "Per request", fallback: "Haversine straight-line distance", auth: "None (public demo server)", status: "operational" as const },
   { name: "Nominatim + BigDataCloud", purpose: "Reverse geocode (lat/lon → district)", freq: "Per request, cached in geo_cache", fallback: "60-city nearest-place table → nearest_state", auth: "None (keyless)", status: "operational" as const },
   { name: "Nager.Date", purpose: "Mandi holiday awareness", freq: "Cached per year", fallback: "Built-in 2026 holiday list", auth: "None (keyless)", status: "operational" as const },
-  { name: "OpenRouter", purpose: "Advisor summary, Ask AgriLink, OCR, translation", freq: "Per request, 6h-cached advisor summary", fallback: "Features hidden / rule output shown", auth: "Optional API key", status: "limited" as const },
+  { name: "OpenRouter", purpose: "Advisor summary, Ask HarvestIQ, OCR, translation", freq: "Per request, 6h-cached advisor summary", fallback: "Features hidden / rule output shown", auth: "Optional API key", status: "limited" as const },
   { name: "Google Earth Engine", purpose: "NDVI crop-health overlay (MODIS/061/MOD13Q1) on the Decision Brief", freq: "Per request", fallback: "crop_health omitted (available: false)", auth: "Optional service-account key", status: "limited" as const },
   { name: "Fast2SMS-compatible gateway", purpose: "OTP password reset, optional price-alert/deal SMS digest", freq: "Per event", fallback: "Message logged server-side instead of sent", auth: "Optional API key", status: "limited" as const },
 ];

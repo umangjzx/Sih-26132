@@ -1,24 +1,24 @@
-# AgriLink — production stack for a single VM.
+# HarvestIQ — production stack for a single VM.
 #
 #   docker compose -f docker-compose.prod.yml up -d --build
 #   docker compose -f docker-compose.prod.yml --profile seed run --rm seed   # once
 #
 # Variables are read from a .env file next to this one — see DEPLOYMENT.md.
 
-name: agrilink
+name: harvestiq
 
 services:
   db:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: agrilink
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agrilink}
-      POSTGRES_DB: agrilink
+      POSTGRES_USER: harvestiq
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harvestiq}
+      POSTGRES_DB: harvestiq
     volumes:
-      - agrilink_pgdata:/var/lib/postgresql/data
+      - harvestiq_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agrilink"]
+      test: ["CMD-SHELL", "pg_isready -U harvestiq"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -33,7 +33,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://agrilink:${POSTGRES_PASSWORD:-agrilink}@db:5432/agrilink
+      DATABASE_URL: postgresql+psycopg2://harvestiq:${POSTGRES_PASSWORD:-harvestiq}@db:5432/harvestiq
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env (openssl rand -hex 32)}
       CORS_ORIGINS: ${SITE_URL:-http://localhost}
       INGEST_STATES: ${INGEST_STATES:-ALL}
@@ -92,10 +92,10 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://agrilink:${POSTGRES_PASSWORD:-agrilink}@db:5432/agrilink
+      DATABASE_URL: postgresql+psycopg2://harvestiq:${POSTGRES_PASSWORD:-harvestiq}@db:5432/harvestiq
     command: ["sh", "-c", "alembic upgrade head && python -m scripts.seed_demo_users"]
 
 volumes:
-  agrilink_pgdata:
+  harvestiq_pgdata:
   caddy_data:
   caddy_config:

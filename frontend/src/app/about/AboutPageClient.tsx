@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /about — AgriLink's story, mission, values, and the team behind the platform.
+ * /about — HarvestIQ's story, mission, values, and the team behind the platform.
  *
  * Layout: Hero → Mission & Vision cards → Impact numbers → Values grid →
  * Problem statement → Team/SIH context → Closing CTA.

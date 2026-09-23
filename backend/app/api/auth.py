@@ -132,7 +132,7 @@ def register(
             detail="An account with this phone number already exists. Please sign in.",
         )
     db.refresh(user)
-    logger.info("[AgriLink] new account: %s (%s)", _mask_phone(body.phone), body.role)
+    logger.info("[HarvestIQ] new account: %s (%s)", _mask_phone(body.phone), body.role)
     return _tokens_for(user)
 
 
@@ -246,7 +246,7 @@ def forgot_password(
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=_OTP_TTL_MINUTES)
         db.commit()
         send_otp_sms(user.phone, otp)
-        logger.info("[AgriLink] password-reset OTP issued for %s", _mask_phone(body.phone))
+        logger.info("[HarvestIQ] password-reset OTP issued for %s", _mask_phone(body.phone))
     return ForgotPasswordResponse(message=_GENERIC_FORGOT_MESSAGE)
 
 
@@ -287,7 +287,7 @@ def reset_password(
     user.otp_expires_at = None
     db.commit()
     db.refresh(user)
-    logger.info("[AgriLink] password reset completed for %s", _mask_phone(body.phone))
+    logger.info("[HarvestIQ] password reset completed for %s", _mask_phone(body.phone))
     return _tokens_for(user)
 
 
@@ -355,5 +355,5 @@ def request_verification(
         current_user.verification_ref = body.reference
     db.commit()
     db.refresh(current_user)
-    logger.info("[AgriLink] verification requested by user %d", current_user.id)
+    logger.info("[HarvestIQ] verification requested by user %d", current_user.id)
     return UserResponse.model_validate(current_user)

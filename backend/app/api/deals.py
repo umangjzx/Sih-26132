@@ -641,7 +641,7 @@ def get_receipt(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgriLink Deal Receipt — #{deal.id}</title>
+<title>HarvestIQ Deal Receipt — #{deal.id}</title>
 <style>
   body {{ font-family: Arial, sans-serif; font-size: 13px; color: #1c2128; max-width: 680px; margin: 24px auto; padding: 0 16px; }}
   h1 {{ font-size: 20px; margin-bottom: 2px; }}
@@ -655,7 +655,7 @@ def get_receipt(
 </style>
 </head>
 <body>
-<h1>AgriLink — Deal Receipt</h1>
+<h1>HarvestIQ — Deal Receipt</h1>
 <div class="sub">Deal #{deal.id} · Generated {datetime.now(_IST).strftime('%d %b %Y %H:%M')} IST</div>
 
 <table>
@@ -690,9 +690,9 @@ def get_receipt(
 {"<table><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr>" + payment_rows + f"<tr class='highlight'><td colspan='2'><b>Total paid: ₹{total_paid:,.2f}</b></td><td colspan='2'>Outstanding: ₹{max(0, agreed_value - total_paid):,.2f}</td></tr></table>" if payments else "<p><i>No payment records yet.</i></p>"}
 
 <div class="footer">
-  This receipt is an AgriLink platform record only. It is not a legally enforceable
+  This receipt is an HarvestIQ platform record only. It is not a legally enforceable
   contract. Both parties should retain signed paper documentation.
-  AgriLink · SIH 2026 · PS-26132
+  HarvestIQ · SIH 2026 · PS-26132
 </div>
 
 <p class="no-print" style="margin-top:16px">

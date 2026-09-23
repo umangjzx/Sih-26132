@@ -1,9 +1,9 @@
-# AgriLink reverse proxy — one origin for the whole app.
+# HarvestIQ reverse proxy — one origin for the whole app.
 #   /api/*, /health, /docs, /openapi.json, /redoc  ->  backend:8000
 #   everything else                                ->  frontend:3000
 #
 # SITE_ADDRESS controls TLS:
-#   a hostname (agrilink.example.com)  -> Caddy gets a Let's Encrypt cert automatically
+#   a hostname (harvestiq.example.com)  -> Caddy gets a Let's Encrypt cert automatically
 #   :80                               -> plain HTTP, for an IP-only demo box
 
 {$SITE_ADDRESS} {

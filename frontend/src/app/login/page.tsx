@@ -208,7 +208,7 @@ export default function LoginPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--amber-500)] shadow-lg shadow-amber-900/30">
               <Icon name="leaf" size={22} className="text-white" />
             </div>
-            <span className="font-heading text-2xl font-extrabold text-white">AgriLink</span>
+            <span className="font-heading text-2xl font-extrabold text-white">HarvestIQ</span>
           </Link>
 
           <h2 className="font-heading text-3xl font-extrabold leading-snug text-white xl:text-4xl">
@@ -266,7 +266,7 @@ export default function LoginPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--green-700)] shadow-md">
               <Icon name="leaf" size={18} className="text-white" />
             </div>
-            <span className="font-heading text-xl font-extrabold text-[var(--green-700)]">AgriLink</span>
+            <span className="font-heading text-xl font-extrabold text-[var(--green-700)]">HarvestIQ</span>
           </Link>
 
           <h1 className="font-heading text-2xl font-extrabold text-[var(--ink)] sm:text-3xl">

@@ -61,7 +61,7 @@ def chat(
                 headers={
                     "Authorization": f"Bearer {settings.openrouter_api_key}",
                     "HTTP-Referer": "https://github.com/umangjzx/Sih-26132",
-                    "X-Title": "AgriLink",
+                    "X-Title": "HarvestIQ",
                     "Content-Type": "application/json",
                 },
                 content=json.dumps({
@@ -105,7 +105,7 @@ def vision(system: str, user: str, image_data_url: str, *, max_tokens: int = 400
                 headers={
                     "Authorization": f"Bearer {settings.openrouter_api_key}",
                     "HTTP-Referer": "https://github.com/umangjzx/Sih-26132",
-                    "X-Title": "AgriLink",
+                    "X-Title": "HarvestIQ",
                     "Content-Type": "application/json",
                 },
                 content=json.dumps({

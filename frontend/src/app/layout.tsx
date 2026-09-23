@@ -7,7 +7,7 @@ import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { LocationProvider } from "@/lib/useLocation";
 import "./globals.css";
 
-// Poppins — single family for both headings and body, matching the AgriLink
+// Poppins — single family for both headings and body, matching the HarvestIQ
 // design reference exactly. Weights 400/500/600/700 cover all type sizes.
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -24,7 +24,7 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "AgriLink — mandi prices & market linkage for Maharashtra",
+  title: "HarvestIQ — mandi prices & market linkage for Maharashtra",
   description:
     "Live mandi prices, an explainable sell-now-or-wait call, weather & MSP context, and verified buyers for Maharashtra farmers and FPOs.",
   icons: {
