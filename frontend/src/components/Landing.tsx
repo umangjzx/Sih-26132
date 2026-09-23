@@ -16,6 +16,7 @@
  * (-mx-4 etc.) are used to break out for full-bleed hero/CTA sections.
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
@@ -242,16 +243,17 @@ export function Landing() {
             "linear-gradient(145deg, #071a0f 0%, #0e3421 30%, #1a4a2e 60%, #2E7D32 100%)",
         }}
       >
-        {/* Background image overlay */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: "url('/bg-image.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.08,
-          }}
-        />
+        {/* Background image overlay — served through next/image so it's resized
+            and format-converted (WebP/AVIF) instead of shipping the full-size PNG */}
+        <div className="pointer-events-none absolute inset-0" style={{ opacity: 0.08 }}>
+          <Image
+            src="/bg-image.png"
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
         {/* Decorative grid overlay */}
         <div className="al-grid-overlay pointer-events-none absolute inset-0" />
         {/* Ambient orbs */}

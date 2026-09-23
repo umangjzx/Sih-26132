@@ -214,6 +214,21 @@ export default function BuyerPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
+
+    // The native `required` attribute accepts whitespace-only text, which
+    // would post a demand with a blank-looking crop name buyers can't search.
+    if (!form.crop.trim()) {
+      flash(td("errorCropRequired"), true);
+      return;
+    }
+    // The browser's native min="1" constraint can't express a cross-field
+    // rule — catch an inverted price band here with a specific message
+    // instead of letting it reach the API as a confusing 4xx.
+    if (!(form.price_band_max >= form.price_band_min)) {
+      flash(td("errorPriceBandOrder"), true);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
@@ -345,8 +360,9 @@ export default function BuyerPage() {
                 required={field.required}
                 min={field.min}
                 step={field.type === "number" ? "any" : undefined}
+                inputMode={field.type === "number" ? "decimal" : undefined}
                 disabled={field.disabled}
-                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors disabled:bg-[var(--paper)] disabled:text-[var(--ink-soft)]"
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30 transition-colors disabled:bg-[var(--paper)] disabled:text-[var(--ink-soft)]"
               />
             </label>
           ))}
@@ -359,7 +375,7 @@ export default function BuyerPage() {
               onChange={(e) => setForm({ ...form, quality_spec: e.target.value })}
               placeholder={td("qualitySpecPlaceholder")}
               required
-              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30 transition-colors"
             />
           </label>
 
@@ -368,7 +384,7 @@ export default function BuyerPage() {
             <select
               value={form.quality_grade_min ?? ""}
               onChange={(e) => setForm({ ...form, quality_grade_min: e.target.value || null })}
-              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30"
             >
               <option value="">{td("minGradeAny")}</option>
               <option value="A">A — {td("gradeADesc")}</option>
@@ -384,7 +400,7 @@ export default function BuyerPage() {
               value={customWindow ? CUSTOM_WINDOW : form.delivery_window}
               onChange={(e) => selectWindow(e.target.value)}
               required={!customWindow}
-              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30"
             >
               <option value="" disabled>{td("deliveryWindowChoose")}</option>
               {DELIVERY_PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -398,7 +414,7 @@ export default function BuyerPage() {
                 placeholder={td("deliveryWindowPlaceholder")}
                 required
                 autoFocus
-                className="mt-1.5 rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+                className="mt-1.5 rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30 transition-colors"
               />
             )}
           </label>
@@ -410,7 +426,7 @@ export default function BuyerPage() {
               value={form.delivery_district ?? ""}
               onChange={(e) => setForm({ ...form, delivery_district: e.target.value })}
               placeholder={user?.district || td("deliverToPlaceholder")}
-              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30 transition-colors"
             />
             <span className="text-xs font-normal text-[var(--ink-soft)]">
               {user?.district
@@ -535,7 +551,13 @@ export default function BuyerPage() {
             {tdash("viewAll")} →
           </Link>
         </div>
-        {matches.length === 0 ? (
+        {loadingDemands ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-28 w-full animate-pulse rounded-2xl bg-white/50" />
+            ))}
+          </div>
+        ) : matches.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] py-10 text-center">
             <Icon name="connection" size={28} className="text-[var(--green-400)]" />
             <p className="text-sm text-[var(--ink-soft)]">{tm("noMatches")}</p>

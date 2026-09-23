@@ -19,7 +19,7 @@ import {
   Cell,
 } from "recharts";
 
-import { Card, EmptyState, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
+import { Card, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { fetchPublicOverview, fetchPublicRealization, type PublicOverview, type PublicRealization } from "@/lib/api";
 import { useLocation } from "@/lib/useLocation";
@@ -125,6 +125,7 @@ function RealizationCard({ data }: { data: PublicRealization }) {
 
 export function OverviewTab() {
   const t = useTranslations("explore");
+  const tc = useTranslations("common");
   const { location, warmTick } = useLocation();
   const [data, setData] = useState<PublicOverview | null>(null);
   const [realization, setRealization] = useState<PublicRealization | null>(null);
@@ -149,7 +150,19 @@ export function OverviewTab() {
     load();
   }, [load]);
 
-  if (error) return <EmptyState icon="map">{t("noData")}</EmptyState>;
+  if (error)
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
+        <Icon name="close" size={16} /> {t("noData")}
+        <button
+          type="button"
+          onClick={() => load()}
+          className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+        >
+          {tc("retry")}
+        </button>
+      </div>
+    );
   if (!data)
     return (
       <div className="flex flex-col gap-4">

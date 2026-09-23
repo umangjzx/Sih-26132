@@ -326,7 +326,9 @@ export default function DealDetailPage() {
 
           {needsRef && viewerCanAdvance && deal.pipeline_status !== "closed" && (
             <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="sr-only" htmlFor="deal-pay-method">{t("method")}</label>
               <select
+                id="deal-pay-method"
                 value={payMethod}
                 onChange={(e) => setPayMethod(e.target.value)}
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm"
@@ -336,12 +338,17 @@ export default function DealDetailPage() {
                 <option>Cash</option>
                 <option>Cheque</option>
               </select>
+              <label className="sr-only" htmlFor="deal-pay-ref">{t("reference")}</label>
               <input
+                id="deal-pay-ref"
                 value={payRef}
                 onChange={(e) => setPayRef(e.target.value)}
                 placeholder={t("payRefPh")}
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm"
               />
+              {!payRef.trim() && (
+                <p className="text-xs font-semibold text-[var(--amber-700)] sm:col-span-2">{t("advanceNeedRef")}</p>
+              )}
             </div>
           )}
 

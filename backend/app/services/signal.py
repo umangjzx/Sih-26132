@@ -109,7 +109,6 @@ def compute_signal(
 
     volume_trend_pct: float | None = None
     volume_score = 0
-    volumes = [r.arrival_volume for r in ordered if r.arrival_volume is not None]
     if len(ordered) >= 14 and all(r.arrival_volume is not None for r in ordered[-14:]):
         recent_week = [r.arrival_volume for r in ordered[-7:]]
         prior_week = [r.arrival_volume for r in ordered[-14:-7]]

@@ -55,24 +55,6 @@ def _serialize(rows) -> list[dict]:
     ]
 
 
-def get_events_for(db, entity_type: str | list[str], entity_id: int) -> list[dict]:
-    """Return all events for an entity (or several entity types that share the
-    same id, e.g. a deal + its payments + its logistics), sorted oldest-first."""
-    from sqlalchemy import select
-    from app.models.transaction_event import TransactionEvent
-
-    types = [entity_type] if isinstance(entity_type, str) else list(entity_type)
-    rows = db.execute(
-        select(TransactionEvent)
-        .where(
-            TransactionEvent.entity_type.in_(types),
-            TransactionEvent.entity_id == entity_id,
-        )
-        .order_by(TransactionEvent.created_at.asc())
-    ).scalars().all()
-    return _serialize(rows)
-
-
 def get_deal_timeline(db, deal_id: int, match_id: int | None) -> list[dict]:
     """The full activity log for a deal: its own deal/payment/logistics events,
     plus the offer/match events from the negotiation that produced it."""

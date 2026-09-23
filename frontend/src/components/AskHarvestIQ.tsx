@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAppLocale } from "@/i18n/LocaleProvider";
 import { askAssistant } from "@/lib/api";
@@ -26,6 +26,21 @@ export function AskHarvestIQ() {
   const [busy, setBusy] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fabRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        fabRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -65,16 +80,23 @@ export function AskHarvestIQ() {
   return (
     <>
       <button
+        ref={fabRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={t("title")}
+        aria-expanded={open}
         className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--green-700)] text-white shadow-lg shadow-green-900/30 transition-transform hover:scale-105 sm:right-6 lg:bottom-6"
       >
         <Icon name={open ? "close" : "spark"} size={24} />
       </button>
 
       {open && (
-        <div className="fixed bottom-36 right-4 z-40 flex h-[26rem] max-h-[70vh] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl sm:right-6 lg:bottom-24">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("title")}
+          className="fixed bottom-36 right-4 z-40 flex h-[26rem] max-h-[70vh] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl sm:right-6 lg:bottom-24"
+        >
           <div className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--green-700)] px-4 py-3 text-white">
             <Icon name="spark" size={16} />
             <span className="font-heading text-sm font-bold">{t("title")}</span>
@@ -122,19 +144,26 @@ export function AskHarvestIQ() {
           </div>
 
           <form onSubmit={send} className="flex gap-2 border-t border-[var(--line)] p-3">
+            <label htmlFor="ask-harvestiq-input" className="sr-only">
+              {t("questionLabel")}
+            </label>
             <input
+              id="ask-harvestiq-input"
+              ref={inputRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("placeholder")}
               maxLength={500}
+              aria-label={t("questionLabel")}
               className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
             />
             <button
               type="submit"
               disabled={busy || !q.trim()}
-              className="shrink-0 rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              aria-busy={busy}
+              className="shrink-0 rounded-xl bg-[var(--green-700)] px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {t("send")}
+              {busy ? "…" : t("send")}
             </button>
           </form>
         </div>

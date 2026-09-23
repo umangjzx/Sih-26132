@@ -5,7 +5,7 @@ without an account: latest average modal price per crop, the biggest 7-day
 movers, the modal-price trend across all crops, and headline platform activity.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select

@@ -12,16 +12,22 @@ import { useLocation } from "@/lib/useLocation";
 
 export default function DirectoryPage() {
   const ts = useTranslations("storage");
+  const tc = useTranslations("common");
   const { location } = useLocation();
   const { user } = useAuth();
 
   const state = location?.state || "Maharashtra";
   const [districts, setDistricts] = useState<string[]>([]);
   const [district, setDistrict] = useState<string>("");
+  const [districtsLoading, setDistrictsLoading] = useState(true);
+  const [districtsErr, setDistrictsErr] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
   // load the district list for whichever state the user is in
   useEffect(() => {
     let live = true;
+    setDistrictsLoading(true);
+    setDistrictsErr(false);
     listDistricts(state)
       .then((ds) => {
         if (!live) return;
@@ -29,12 +35,17 @@ export default function DirectoryPage() {
         setDistrict((cur) => (cur && ds.includes(cur) ? cur : ds[0] ?? ""));
       })
       .catch(() => {
-        if (live) setDistricts([]);
+        if (!live) return;
+        setDistricts([]);
+        setDistrictsErr(true);
+      })
+      .finally(() => {
+        if (live) setDistrictsLoading(false);
       });
     return () => {
       live = false;
     };
-  }, [state]);
+  }, [state, reloadTick]);
 
   // prefer the user's own district when it's in the list
   useEffect(() => {
@@ -53,7 +64,20 @@ export default function DirectoryPage() {
         </p>
       </div>
 
-      {districts.length > 0 ? (
+      {districtsLoading ? (
+        <div className="h-[58px] w-56 max-w-full animate-pulse rounded-xl bg-white/50" />
+      ) : districtsErr ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
+          <Icon name="close" size={16} /> {ts("districtsError")}
+          <button
+            type="button"
+            onClick={() => setReloadTick((n) => n + 1)}
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      ) : districts.length > 0 ? (
         <label className="flex flex-col gap-1.5 text-sm font-semibold">
           {ts("districtLabel")}
           <select

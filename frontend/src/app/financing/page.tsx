@@ -150,9 +150,22 @@ export default function FinancingPage() {
   const selectedLot = eligibleLots.find((l) => String(l.id) === lotId) ?? null;
   const cap = selectedLot ? maxEligible(selectedLot) : null;
 
+  // Client-side amount validation, surfaced inline rather than relying on
+  // the browser's generic HTML5 validation bubble — mirrors the specific,
+  // human-readable error pattern used for load/submit failures on this page.
+  const amountNum = amount.trim() === "" ? null : Number(amount);
+  const amountError =
+    amount.trim() === ""
+      ? null
+      : !Number.isFinite(amountNum) || (amountNum as number) <= 0
+        ? t("amountInvalid")
+        : cap != null && (amountNum as number) > cap
+          ? t("amountExceedsCap")
+          : null;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !selectedLot) return;
+    if (!token || !selectedLot || amountError || amountNum == null) return;
     setSubmitting(true);
     try {
       await createFinancingRequest(
@@ -239,9 +252,10 @@ export default function FinancingPage() {
         <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">{t("newRequest")}</h2>
           <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)] sm:col-span-2">
+            <label htmlFor="financing-lot" className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)] sm:col-span-2">
               {t("lot")}
               <select
+                id="financing-lot"
                 required
                 value={lotId}
                 onChange={(e) => setLotId(e.target.value)}
@@ -260,37 +274,53 @@ export default function FinancingPage() {
                 </span>
               )}
             </label>
-            <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+            <label htmlFor="financing-amount" className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {t("amount")}
               <input
+                id="financing-amount"
                 required
                 type="number"
+                inputMode="numeric"
                 min="1"
                 max={cap ?? undefined}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
+                aria-invalid={amountError ? true : undefined}
+                aria-describedby={amountError ? "financing-amount-error" : undefined}
+                className={`rounded-xl border px-3 py-2.5 text-sm font-normal focus:outline-none ${
+                  amountError
+                    ? "border-[var(--red-500)] focus:border-[var(--red-600)]"
+                    : "border-[var(--line)] focus:border-[var(--green-600)]"
+                }`}
               />
+              {amountError && (
+                <span id="financing-amount-error" className="text-xs font-semibold text-[var(--red-700)]">
+                  {amountError}
+                </span>
+              )}
             </label>
-            <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+            <label htmlFor="financing-warehouse" className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {t("warehouseName")}
               <input
+                id="financing-warehouse"
                 value={warehouseName}
                 onChange={(e) => setWarehouseName(e.target.value)}
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
               />
             </label>
-            <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+            <label htmlFor="financing-receipt" className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {t("receiptRef")}
               <input
+                id="financing-receipt"
                 value={receiptRef}
                 onChange={(e) => setReceiptRef(e.target.value)}
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
               />
             </label>
-            <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
+            <label htmlFor="financing-note" className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {t("note")}
               <input
+                id="financing-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
@@ -299,7 +329,7 @@ export default function FinancingPage() {
             <div className="sm:col-span-2">
               <button
                 type="submit"
-                disabled={submitting || !selectedLot}
+                disabled={submitting || !selectedLot || !!amountError || amountNum == null}
                 className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-60"
               >
                 <Icon name="warehouse" size={18} />

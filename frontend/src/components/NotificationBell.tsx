@@ -5,7 +5,7 @@
  * recent notifications and can mark them all read. Auth only.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -21,9 +21,14 @@ import {
 export function NotificationBell() {
   const { token, isAuthenticated } = useAuth();
   const t = useTranslations("notifications");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<AppNotification[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [listErr, setListErr] = useState(false);
+  const [actionErr, setActionErr] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   const refreshCount = useCallback(async () => {
     if (!token) return;
@@ -68,28 +73,57 @@ export function NotificationBell() {
     };
   }, [isAuthenticated, refreshCount]);
 
+  const fetchItems = useCallback(async () => {
+    if (!token) return;
+    setListLoading(true);
+    setListErr(false);
+    try {
+      setItems(await listNotifications(token));
+    } catch {
+      setListErr(true);
+    } finally {
+      setListLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   if (!isAuthenticated) return null;
 
   async function openDropdown() {
-    setOpen((v) => !v);
-    if (!open && token) {
-      try {
-        setItems(await listNotifications(token));
-      } catch {
-        /* ignore */
-      }
-    }
+    const next = !open;
+    setOpen(next);
+    if (next) fetchItems();
   }
 
   async function markAll() {
     if (!token) return;
-    await markAllNotificationsRead(token);
-    setUnread(0);
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setActionErr(false);
+    try {
+      await markAllNotificationsRead(token);
+      setUnread(0);
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch {
+      setActionErr(true);
+    }
   }
 
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       <button
         type="button"
         onClick={openDropdown}
@@ -105,7 +139,11 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-[var(--color-border)] bg-white p-3 shadow-2xl">
+        <div
+          role="dialog"
+          aria-label={t("title")}
+          className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-[var(--color-border)] bg-white p-3 shadow-2xl"
+        >
           <div className="mb-2 flex items-center justify-between">
             <span className="font-heading text-sm font-bold">{t("title")}</span>
             {items.some((n) => !n.read) && (
@@ -118,7 +156,29 @@ export function NotificationBell() {
               </button>
             )}
           </div>
-          {items.length === 0 ? (
+          {actionErr && (
+            <p role="alert" className="mb-2 text-xs font-semibold text-[var(--red-700)]">
+              {tc("error")}
+            </p>
+          )}
+          {listLoading ? (
+            <div className="flex flex-col gap-1.5 py-1">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-10 w-full animate-pulse rounded-lg bg-black/5" />
+              ))}
+            </div>
+          ) : listErr ? (
+            <div className="flex flex-col items-center gap-2 py-4 text-center">
+              <p className="text-sm font-semibold text-[var(--red-700)]">{tc("error")}</p>
+              <button
+                type="button"
+                onClick={fetchItems}
+                className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold text-[var(--red-700)]"
+              >
+                {tc("retry")}
+              </button>
+            </div>
+          ) : items.length === 0 ? (
             <p className="py-4 text-center text-sm text-stone-500">{t("none")}</p>
           ) : (
             <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto">

@@ -41,6 +41,8 @@ export function DealTransactionPanel({
   const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [receiptBusy, setReceiptBusy] = useState(false);
+  const [receiptErr, setReceiptErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +92,18 @@ export function DealTransactionPanel({
   const inputCls =
     "rounded-lg border border-[var(--line)] px-2.5 py-2 text-sm focus:border-[var(--green-600)] focus:outline-none";
 
+  async function viewReceipt() {
+    setReceiptBusy(true);
+    setReceiptErr(null);
+    try {
+      await openDealReceipt(dealId, token);
+    } catch {
+      setReceiptErr(t("receiptError"));
+    } finally {
+      setReceiptBusy(false);
+    }
+  }
+
   return (
     <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -98,12 +112,17 @@ export function DealTransactionPanel({
         </h2>
         <button
           type="button"
-          onClick={() => openDealReceipt(dealId, token).catch(() => {})}
-          className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--paper)]"
+          onClick={viewReceipt}
+          disabled={receiptBusy}
+          className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--paper)] disabled:opacity-60"
         >
-          <Icon name="chart" size={13} /> {t("viewReceipt")}
+          <Icon name="chart" size={13} /> {receiptBusy ? t("openingReceipt") : t("viewReceipt")}
         </button>
       </div>
+
+      {receiptErr && (
+        <p className="mb-3 text-xs font-semibold text-[var(--color-wait)]">{receiptErr}</p>
+      )}
 
       {/* totals */}
       <div className="mb-4 grid grid-cols-3 gap-3">
@@ -145,18 +164,24 @@ export function DealTransactionPanel({
       {/* record form (buyer only) */}
       {canPay && (
         <form onSubmit={submit} className="grid grid-cols-1 gap-2 border-t border-[var(--line)] pt-4 sm:grid-cols-4">
+          <label className="sr-only" htmlFor="dealtx-amount">{t("amount")}</label>
           <input
+            id="dealtx-amount"
             type="number"
+            inputMode="numeric"
             min="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={t("amount")}
             className={inputCls}
           />
-          <select value={method} onChange={(e) => setMethod(e.target.value)} className={inputCls}>
+          <label className="sr-only" htmlFor="dealtx-method">{t("method")}</label>
+          <select id="dealtx-method" value={method} onChange={(e) => setMethod(e.target.value)} className={inputCls}>
             {METHODS.map((m) => <option key={m}>{m}</option>)}
           </select>
+          <label className="sr-only" htmlFor="dealtx-reference">{t("reference")}</label>
           <input
+            id="dealtx-reference"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             placeholder={t("reference")}

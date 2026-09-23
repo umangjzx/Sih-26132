@@ -4,7 +4,7 @@
  * "Storage near you" + "FPOs near you" (v1.1), styled on the HarvestIQ UI kit.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -14,6 +14,31 @@ import {
   type FpoInfo,
 } from "@/lib/api";
 import { Card, EmptyState, Icon, SectionHeader } from "./ui";
+
+function ResourceListSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      {[1, 2].map((i) => (
+        <div key={i} className="h-14 w-full animate-pulse rounded-xl bg-black/5" />
+      ))}
+    </div>
+  );
+}
+
+function ResourceLoadError({ message, retryLabel, onRetry }: { message: string; retryLabel: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[var(--red-500)]/30 bg-[var(--red-100)]/40 py-6 text-center">
+      <p className="text-sm font-semibold text-[var(--red-700)]">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold text-[var(--red-700)]"
+      >
+        {retryLabel}
+      </button>
+    </div>
+  );
+}
 
 export function NearbyResources({
   district,
@@ -30,17 +55,42 @@ export function NearbyResources({
 }) {
   const ts = useTranslations("storage");
   const tf = useTranslations("fpo");
+  const tc = useTranslations("common");
   const [storage, setStorage] = useState<ColdStorage[]>([]);
   const [fpos, setFpos] = useState<FpoInfo[]>([]);
+  const [storageLoading, setStorageLoading] = useState(false);
+  const [storageErr, setStorageErr] = useState(false);
+  const [fpoLoading, setFpoLoading] = useState(false);
+  const [fpoErr, setFpoErr] = useState(false);
 
   const hasPoint = typeof lat === "number" && typeof lon === "number";
 
-  useEffect(() => {
+  const loadStorage = useCallback(() => {
     if (!district && !state && !hasPoint) return;
     const coords = hasPoint ? { lat: lat as number, lon: lon as number } : undefined;
-    fetchStorageNearby(district ?? "", state, coords).then(setStorage).catch(() => setStorage([]));
-    fetchFpoNearby(district ?? "", crop, state, coords).then(setFpos).catch(() => setFpos([]));
+    setStorageLoading(true);
+    setStorageErr(false);
+    fetchStorageNearby(district ?? "", state, coords)
+      .then(setStorage)
+      .catch(() => setStorageErr(true))
+      .finally(() => setStorageLoading(false));
+  }, [district, state, lat, lon, hasPoint]);
+
+  const loadFpos = useCallback(() => {
+    if (!district && !state && !hasPoint) return;
+    const coords = hasPoint ? { lat: lat as number, lon: lon as number } : undefined;
+    setFpoLoading(true);
+    setFpoErr(false);
+    fetchFpoNearby(district ?? "", crop, state, coords)
+      .then(setFpos)
+      .catch(() => setFpoErr(true))
+      .finally(() => setFpoLoading(false));
   }, [district, crop, state, lat, lon, hasPoint]);
+
+  useEffect(() => {
+    loadStorage();
+    loadFpos();
+  }, [loadStorage, loadFpos]);
 
   if (!district && !state && !hasPoint) return null;
 
@@ -49,7 +99,11 @@ export function NearbyResources({
       <Card>
         <SectionHeader icon="warehouse" title={ts("title")} />
         <p className="-mt-2 mb-2 text-xs text-[var(--ink-soft)]">{ts("subtitle")}</p>
-        {storage.length === 0 ? (
+        {storageLoading ? (
+          <ResourceListSkeleton />
+        ) : storageErr ? (
+          <ResourceLoadError message={tc("error")} retryLabel={tc("retry")} onRetry={loadStorage} />
+        ) : storage.length === 0 ? (
           <EmptyState icon="warehouse">{ts("none")}</EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -76,7 +130,11 @@ export function NearbyResources({
       <Card>
         <SectionHeader icon="users" title={tf("title")} />
         <p className="-mt-2 mb-2 text-xs text-[var(--ink-soft)]">{tf("subtitle")}</p>
-        {fpos.length === 0 ? (
+        {fpoLoading ? (
+          <ResourceListSkeleton />
+        ) : fpoErr ? (
+          <ResourceLoadError message={tc("error")} retryLabel={tc("retry")} onRetry={loadFpos} />
+        ) : fpos.length === 0 ? (
           <EmptyState icon="users">{tf("none")}</EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">

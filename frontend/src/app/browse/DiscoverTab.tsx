@@ -117,7 +117,7 @@ export function DiscoverTab() {
           onChange={(e) => setCrop(e.target.value)}
           placeholder={t("cropFilter")}
           aria-label={t("cropFilter")}
-          className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm focus:border-[var(--green-600)] focus:outline-none"
+          className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30"
         />
         <button
           type="button"

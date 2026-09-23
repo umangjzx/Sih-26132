@@ -57,7 +57,6 @@ class SecondOpinion:
 
 def _linfit(xs: list[float], ys: list[float]) -> tuple[float, float]:
     """Least-squares slope, intercept for y = slope*x + intercept."""
-    n = len(xs)
     mx, my = mean(xs), mean(ys)
     denom = sum((x - mx) ** 2 for x in xs) or 1e-9
     slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / denom

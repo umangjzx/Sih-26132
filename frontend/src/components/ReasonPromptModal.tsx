@@ -28,8 +28,13 @@ export function ReasonPromptModal({
   onCancel,
 }: Props) {
   const [reason, setReason] = useState("");
+  // Guards against a double-click firing onConfirm twice before the caller
+  // has a chance to unmount this modal (the modal itself has no idea whether
+  // onConfirm is sync or an in-flight async call).
+  const [confirmed, setConfirmed] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const titleId = useId();
+  const descId = useId();
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -57,26 +62,34 @@ export function ReasonPromptModal({
         <h2 id={titleId} className="font-heading text-base font-bold">
           {title}
         </h2>
-        <p className="mt-1 text-sm opacity-70">{description}</p>
+        <p id={descId} className="mt-1 text-sm opacity-70">{description}</p>
         <textarea
           ref={textareaRef}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={3}
-          className="mt-3 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          aria-labelledby={titleId}
+          aria-describedby={descId}
+          disabled={confirmed}
+          className="mt-3 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm disabled:opacity-60"
         />
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-bold opacity-80"
+            disabled={confirmed}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-bold opacity-80 disabled:opacity-40"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(reason.trim())}
-            className="rounded-lg bg-[var(--color-brand)] px-3 py-1.5 text-sm font-bold text-white"
+            disabled={confirmed}
+            onClick={() => {
+              setConfirmed(true);
+              onConfirm(reason.trim());
+            }}
+            className="rounded-lg bg-[var(--color-brand)] px-3 py-1.5 text-sm font-bold text-white disabled:opacity-60"
           >
             {confirmLabel}
           </button>

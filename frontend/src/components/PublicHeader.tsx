@@ -155,6 +155,16 @@ export function PublicHeader() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  /* Lock background scroll while the mobile drawer is open */
+  useEffect(() => {
+    if (!open) return;
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, [open]);
+
   const close = useCallback(() => setOpen(false), []);
 
   /*

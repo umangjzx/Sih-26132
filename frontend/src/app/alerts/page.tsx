@@ -35,7 +35,9 @@ export default function AlertsPage() {
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingId, setPendingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -76,12 +78,27 @@ export default function AlertsPage() {
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !crop.trim() || !market.trim() || !threshold) return;
+    if (busy) return;
+    if (!crop.trim()) {
+      setFieldError(t("errorCropRequired"));
+      return;
+    }
+    if (!market.trim()) {
+      setFieldError(t("errorMarketRequired"));
+      return;
+    }
+    const numericThreshold = Number(threshold);
+    if (!threshold || !Number.isFinite(numericThreshold) || numericThreshold <= 0) {
+      setFieldError(t("errorThresholdRequired"));
+      return;
+    }
+    if (!token) return;
+    setFieldError(null);
     setBusy(true);
     setError(null);
     try {
       await createAlert(
-        { crop: crop.trim(), market: market.trim(), direction, threshold: Number(threshold) },
+        { crop: crop.trim(), market: market.trim(), direction, threshold: numericThreshold },
         token,
       );
       setCrop("");
@@ -97,13 +114,16 @@ export default function AlertsPage() {
     }
   }
 
-  async function runAlertAction(fn: Promise<unknown>) {
+  async function runAlertAction(id: number, fn: Promise<unknown>) {
     setError(null);
+    setPendingId(id);
     try {
       await fn;
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : tc("error"));
+    } finally {
+      setPendingId(null);
     }
   }
 
@@ -144,57 +164,69 @@ export default function AlertsPage() {
         </h2>
         <p className="mb-5 text-sm text-[var(--ink-soft)]">{t("createHint")}</p>
 
-        <form onSubmit={add}>
+        <form onSubmit={add} noValidate>
           {/* Visual form builder */}
-          <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper)] p-4 text-sm">
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl bg-[var(--paper)] p-4 text-sm">
             <span className="font-semibold text-[var(--ink-soft)]">{t("builderNotifyWhen")}</span>
+            <label htmlFor="alert-crop" className="sr-only">{t("crop")}</label>
             <input
+              id="alert-crop"
               value={crop}
               onChange={(e) => setCrop(e.target.value)}
               required
               placeholder={t("cropPlaceholder")}
-              aria-label={t("cropPlaceholder")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
             <span className="font-semibold text-[var(--ink-soft)]">{t("builderAt")}</span>
+            <label htmlFor="alert-market" className="sr-only">{t("market")}</label>
             <input
+              id="alert-market"
               value={market}
               onChange={(e) => setMarket(e.target.value)}
               required
               placeholder={t("marketPlaceholder")}
-              aria-label={t("marketPlaceholder")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
             <span className="font-semibold text-[var(--ink-soft)]">{t("builderGoes")}</span>
+            <label htmlFor="alert-direction" className="sr-only">{t("direction")}</label>
             <select
+              id="alert-direction"
               value={direction}
               onChange={(e) => setDirection(e.target.value as "above" | "below")}
-              aria-label={t("builderGoes")}
               className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             >
               <option value="above">{t("above")}</option>
               <option value="below">{t("below")}</option>
             </select>
-            <div className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2">
+            <div className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 focus-within:border-[var(--green-600)]">
               <span className="text-sm font-bold text-[var(--ink-soft)]">₹</span>
+              <label htmlFor="alert-threshold" className="sr-only">{t("thresholdShort")}</label>
               <input
+                id="alert-threshold"
                 type="number"
+                inputMode="numeric"
                 min="1"
                 max="5000000"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
                 required
                 placeholder={t("thresholdShort")}
-                aria-label={t("thresholdShort")}
-                className="w-24 text-sm font-semibold focus:outline-none"
+                className="w-24 text-sm font-semibold outline-none"
               />
             </div>
           </div>
 
+          {fieldError && (
+            <p role="alert" className="mb-4 text-sm font-semibold text-[var(--red-700)]">
+              {fieldError}
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={busy}
-            className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:opacity-50"
+            aria-busy={busy}
+            className="flex items-center gap-2 rounded-xl bg-[var(--green-700)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Icon name="bell" size={16} />
             {busy ? t("adding") : t("add")}
@@ -269,17 +301,19 @@ export default function AlertsPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => token && runAlertAction(toggleAlert(al.id, token))}
-                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--paper)] transition-colors"
+                    disabled={pendingId === al.id}
+                    onClick={() => token && runAlertAction(al.id, toggleAlert(al.id, token))}
+                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {al.active ? t("pause") : t("resume")}
                   </button>
                   <button
                     type="button"
+                    disabled={pendingId === al.id}
                     onClick={() => {
-                      if (token && window.confirm(t("confirmDelete"))) runAlertAction(deleteAlert(al.id, token));
+                      if (token && window.confirm(t("confirmDelete"))) runAlertAction(al.id, deleteAlert(al.id, token));
                     }}
-                    className="rounded-xl border border-[var(--red-500)]/30 bg-[var(--red-100)] px-3 py-1.5 text-xs font-semibold text-[var(--red-700)] hover:bg-[var(--red-100)] transition-colors"
+                    className="rounded-xl border border-[var(--red-500)]/30 bg-[var(--red-100)] px-3 py-1.5 text-xs font-semibold text-[var(--red-700)] transition-colors hover:bg-[var(--red-100)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t("delete")}
                   </button>

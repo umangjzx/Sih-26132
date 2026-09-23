@@ -330,6 +330,21 @@ export default function FarmerPage() {
     e.preventDefault();
     const body = toBody();
 
+    // Defensive re-check behind the browser's native required/min constraints
+    // (which a pasted/autofilled value can slip past on some mobile browsers).
+    if (!body.crop.trim() || !body.location.trim() || !body.available_from) {
+      flash(t("errorMissingFields"), true);
+      return;
+    }
+    if (!(body.quantity_kg > 0) || Number.isNaN(body.quantity_kg)) {
+      flash(t("errorQuantityInvalid"), true);
+      return;
+    }
+    if (!(body.expected_price > 0) || Number.isNaN(body.expected_price)) {
+      flash(t("errorPriceInvalid"), true);
+      return;
+    }
+
     // Offline queue only applies to brand-new lots.
     if (editingId === null && !navigator.onLine) {
       const q = [...getQueue(), body];
@@ -529,9 +544,21 @@ export default function FarmerPage() {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {[
             { key: "crop" as keyof FormState, label: t("cropLabel"), type: "text", placeholder: t("cropPlaceholder"), required: true, min: undefined as string | undefined, step: undefined as string | undefined, disabled: editingId !== null },
-            { key: "quantity_kg" as keyof FormState, label: t("quantityLabel"), type: "number", required: true, min: "1", step: "any" },
-            { key: "expected_price" as keyof FormState, label: t("priceLabel"), type: "number", required: true, min: "1", step: "any" },
-            { key: "available_from" as keyof FormState, label: t("dateLabel"), type: "date", required: true, min: TODAY_ISO },
+            { key: "quantity_kg" as keyof FormState, label: t("quantityLabel"), type: "number", required: true, min: "1", step: "any", inputMode: "decimal" as const },
+            { key: "expected_price" as keyof FormState, label: t("priceLabel"), type: "number", required: true, min: "1", step: "any", inputMode: "decimal" as const },
+            {
+              key: "available_from" as keyof FormState,
+              label: t("dateLabel"),
+              type: "date",
+              required: true,
+              // Editing an existing lot whose date has already passed shouldn't
+              // block saving unrelated changes (price, quantity...) behind the
+              // browser's native min-date validation — only new lots must be
+              // dated today or later.
+              min: editingId !== null && form.available_from && form.available_from < TODAY_ISO
+                ? form.available_from
+                : TODAY_ISO,
+            },
             { key: "location" as keyof FormState, label: t("locationLabel"), type: "text", required: true },
           ].map((field) => (
             <label key={field.key} className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
@@ -545,7 +572,8 @@ export default function FarmerPage() {
                 min={field.min}
                 step={field.step}
                 disabled={field.disabled}
-                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors disabled:bg-[var(--paper)] disabled:text-[var(--ink-soft)]"
+                inputMode={"inputMode" in field ? field.inputMode : undefined}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30 transition-colors disabled:bg-[var(--paper)] disabled:text-[var(--ink-soft)]"
               />
             </label>
           ))}
@@ -555,7 +583,7 @@ export default function FarmerPage() {
             <select
               value={form.quality_grade}
               onChange={(e) => updateField("quality_grade", e.target.value)}
-              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none"
+              className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]/30"
             >
               <option value="A">{t("gradeA")}</option>
               <option value="B">{t("gradeB")}</option>

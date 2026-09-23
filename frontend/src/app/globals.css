@@ -28,7 +28,10 @@
   --amber-400: #f7b731;
   --amber-500: #F4A400;   /* Harvest Gold — CTA, highlights */
   --amber-600: #d48f00;
-  --amber-700: #b37900;
+  --amber-700: #8f6000;   /* WCAG AA fix: was #b37900 (3.28:1 on --amber-100,
+                              fails the 4.5:1 text minimum) — darkened to
+                              4.8:1+ against --amber-100/white/--paper while
+                              staying in the same hue family. */
 
   /* ---- Alert / error ---- */
   --red-50:  #fff0ee;
@@ -42,7 +45,12 @@
   --surface:  #FFFFFF;   /* Card / panel surface */
   --ink:      #1F2A33;   /* Primary text — dark charcoal */
   --ink-soft: #6B7280;   /* Secondary text */
-  --ink-mute: #9CA3AF;   /* Placeholder / disabled */
+  --ink-mute: #64707D;   /* Placeholder / disabled / small labels. WCAG AA fix:
+                             was #9CA3AF (2.5:1 on white — fails 4.5:1); this
+                             component library also uses it for real small
+                             text (dt labels, hints), not just decorative
+                             placeholders, so it needs to pass. Now ~4.7–5:1
+                             on white and --paper. */
   --line:     #E5E7EB;   /* Borders, dividers */
   --line-mid: #D1D5DB;   /* Slightly darker border for inputs */
 
@@ -208,7 +216,10 @@ a[role="button"] {
   font-size: var(--text-sm);
   font-weight: 700;
   line-height: 1.25;
-  color: #ffffff;
+  /* WCAG AA fix: white text on --amber-500 measured 2.07:1 (needs 4.5:1 at
+     this weight/size). Dark ink on the same gold reaches 7:1+, so the brand
+     gold background is unchanged — only the label colour moved. */
+  color: var(--ink);
   background: var(--amber-500);
   box-shadow: 0 4px 14px rgba(244,164,0,0.32);
   transition: filter 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
@@ -306,6 +317,11 @@ a[role="button"] {
   justify-content: center;
   border-radius: 0.5rem;
   padding: 0.5rem;
+  /* Touch target: the base `button { min-height: 44px }` rule (below) only
+     constrains height — at this padding + a 20-22px icon the button was
+     only ~36-38px wide, under the ~44px minimum tap-target guideline. */
+  min-width: 44px;
+  min-height: 44px;
   color: var(--ink-soft);
   background: transparent;
   border: none;

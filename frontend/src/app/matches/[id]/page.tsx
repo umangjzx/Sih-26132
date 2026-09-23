@@ -424,9 +424,9 @@ export default function MatchThreadPage() {
               {t("offerPriceLabel")}
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-[var(--ink-soft)]">₹</span>
-                <input 
-                  type="number" min="1" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} required 
-                  className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-8 pr-3 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors" 
+                <input
+                  type="number" inputMode="numeric" min="1" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} required
+                  className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-8 pr-3 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
                 />
               </div>
             </label>
@@ -434,7 +434,7 @@ export default function MatchThreadPage() {
               {t("offerQuantityLabel")}
               <div className="relative">
                 <input
-                  type="number" min="1" max={lotQty || undefined} step="any"
+                  type="number" inputMode="decimal" min="1" max={lotQty || undefined} step="any"
                   value={offerQty} onChange={(e) => setOfferQty(e.target.value)} required
                   className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-3 pr-10 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none transition-colors"
                 />

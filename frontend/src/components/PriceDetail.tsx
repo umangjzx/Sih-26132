@@ -76,6 +76,7 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
         {DAY_OPTIONS.map((d) => (
           <button
             key={d}
+            type="button"
             onClick={() => setDays(d)}
             className={`rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-all ${
               days === d

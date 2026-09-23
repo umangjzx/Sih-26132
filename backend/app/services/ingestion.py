@@ -29,7 +29,7 @@ import random
 from datetime import date, datetime, timedelta
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 

@@ -207,13 +207,13 @@ export default function PoolsPage() {
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {t("targetQty")}
-              <input required type="number" min="1" value={form.target_quantity_kg}
+              <input required type="number" inputMode="numeric" min="1" value={form.target_quantity_kg}
                 onChange={(e) => upd("target_quantity_kg", e.target.value)}
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
               {t("floorPrice")}
-              <input required type="number" min="1" value={form.floor_price}
+              <input required type="number" inputMode="numeric" min="1" value={form.floor_price}
                 onChange={(e) => upd("floor_price", e.target.value)}
                 className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none" />
               <span className="text-xs font-normal text-[var(--ink-soft)]">{t("floorHint")}</span>

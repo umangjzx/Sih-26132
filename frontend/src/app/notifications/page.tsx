@@ -13,7 +13,6 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/ui";
 import {
-  ApiError,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -39,6 +38,8 @@ export default function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
+  const [markAllErr, setMarkAllErr] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
@@ -71,12 +72,16 @@ export default function NotificationsPage() {
   }
 
   async function markAll() {
-    if (!token) return;
+    if (!token || markingAll) return;
+    setMarkingAll(true);
+    setMarkAllErr(false);
     try {
       await markAllNotificationsRead(token);
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch {
-      /* ignore */
+      setMarkAllErr(true);
+    } finally {
+      setMarkingAll(false);
     }
   }
 
@@ -109,12 +114,20 @@ export default function NotificationsPage() {
           <button
             type="button"
             onClick={markAll}
-            className="text-sm font-bold text-[var(--green-700)] hover:underline"
+            disabled={markingAll}
+            aria-busy={markingAll}
+            className="text-sm font-bold text-[var(--green-700)] hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
           >
             {t("markAllRead")}
           </button>
         )}
       </div>
+
+      {markAllErr && (
+        <p role="alert" className="-mt-3 text-sm font-semibold text-[var(--red-700)]">
+          {tc("error")}
+        </p>
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-3">

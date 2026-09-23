@@ -81,13 +81,13 @@ it("submits to API when online", async () => {
   // Fill all required fields via fireEvent to bypass jsdom date input quirks
   const form = container.querySelector("form") as HTMLFormElement;
   const inputs = form.querySelectorAll("input, select");
-  // crop, quantity_kg, quality_grade (select), expected_price, available_from, location
+  // crop, quantity_kg, expected_price, available_from, location, quality_grade (select)
   fireEvent.change(inputs[0], { target: { value: "Onion" } });       // crop
   fireEvent.change(inputs[1], { target: { value: "500" } });         // quantity_kg
-  // inputs[2] is quality_grade select — already defaulted to "A"
-  fireEvent.change(inputs[3], { target: { value: "2400" } });        // expected_price
-  fireEvent.change(inputs[4], { target: { value: "2026-10-01" } });  // available_from
-  fireEvent.change(inputs[5], { target: { value: "Pune" } });        // location
+  fireEvent.change(inputs[2], { target: { value: "2400" } });        // expected_price
+  fireEvent.change(inputs[3], { target: { value: "2026-10-01" } });  // available_from
+  fireEvent.change(inputs[4], { target: { value: "Pune" } });        // location
+  // inputs[5] is quality_grade select — already defaulted to "A"
   fireEvent.submit(form);
 
   // createLot should be called (async — wait for it)
@@ -106,9 +106,9 @@ it("queues to localStorage when offline instead of calling API", async () => {
   const inputs = form.querySelectorAll("input, select");
   fireEvent.change(inputs[0], { target: { value: "Tomato" } });
   fireEvent.change(inputs[1], { target: { value: "300" } });
-  fireEvent.change(inputs[3], { target: { value: "1800" } });
-  fireEvent.change(inputs[4], { target: { value: "2026-10-01" } });
-  fireEvent.change(inputs[5], { target: { value: "Nashik" } });
+  fireEvent.change(inputs[2], { target: { value: "1800" } });
+  fireEvent.change(inputs[3], { target: { value: "2026-10-01" } });
+  fireEvent.change(inputs[4], { target: { value: "Nashik" } });
   fireEvent.submit(form);
 
   expect(api.createLot).not.toHaveBeenCalled();

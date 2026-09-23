@@ -15,6 +15,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef } from "react";
 
 import { useAuth } from "./AuthProvider";
 import { Logo } from "./Logo";
@@ -121,6 +122,58 @@ export function Sidebar({
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
 
+  /* ── Mobile drawer a11y: Escape to close, focus trap, restore focus ──
+   * isOpen only ever drives the mobile drawer transform (desktop forces
+   * translate-x-0 regardless), so this only engages when the drawer is
+   * actually acting as a modal overlay. */
+  const asideRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  // Desktop-only controls (e.g. the collapse toggle) stay in the DOM with
+  // `hidden lg:flex` on mobile, so filter to actually-visible elements —
+  // otherwise the trap can "focus" something display:none can't receive.
+  const visibleFocusables = () =>
+    Array.from(
+      asideRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ) ?? []
+    ).filter((el) => el.offsetParent !== null);
+
+  useEffect(() => {
+    if (isOpen) {
+      triggerRef.current = document.activeElement as HTMLElement;
+      visibleFocusables()[0]?.focus();
+    } else {
+      triggerRef.current?.focus?.();
+      triggerRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const focusables = visibleFocusables();
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   /* ── Nav groups ── */
   const discoveryLinks: NavItem[] = [
     { href: "/",         labelKey: "home",          icon: "house"     },
@@ -191,7 +244,9 @@ export function Sidebar({
       )}
 
       <aside
-        role="navigation"
+        ref={asideRef}
+        role={isOpen ? "dialog" : "navigation"}
+        aria-modal={isOpen ? true : undefined}
         aria-label="App navigation"
         className={`
           fixed inset-y-0 left-0 z-50 flex flex-col

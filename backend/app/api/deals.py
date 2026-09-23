@@ -38,7 +38,7 @@ from app.models.payment import DealPayment
 from app.models.user import User
 from app.schemas.deal import DealDetailResponse
 from app.schemas.logistics import LogisticsOut, LogisticsUpdate
-from app.services.audit import get_deal_timeline, get_events_for, log_event
+from app.services.audit import get_deal_timeline, log_event
 
 
 class AdvanceBody(BaseModel):

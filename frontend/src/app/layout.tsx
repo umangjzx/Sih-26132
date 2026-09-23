@@ -23,12 +23,35 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
   display: "swap",
 });
 
+// No production domain is hard-coded anywhere in this repo (see robots.ts /
+// sitemap.ts) — only set metadataBase once NEXT_PUBLIC_SITE_URL is
+// configured, rather than inventing a canonical domain.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+const title = "HarvestIQ — mandi prices & market linkage for Maharashtra";
+const description =
+  "Live mandi prices, an explainable sell-now-or-wait call, weather & MSP context, and verified buyers for Maharashtra farmers and FPOs.";
+
 export const metadata: Metadata = {
-  title: "HarvestIQ — mandi prices & market linkage for Maharashtra",
-  description:
-    "Live mandi prices, an explainable sell-now-or-wait call, weather & MSP context, and verified buyers for Maharashtra farmers and FPOs.",
+  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
+  title,
+  description,
   icons: {
     icon: "/logo.png",
+  },
+  openGraph: {
+    title,
+    description,
+    siteName: "HarvestIQ",
+    locale: "en_IN",
+    type: "website",
+    images: ["/logo.png"],
+  },
+  twitter: {
+    card: "summary",
+    title,
+    description,
+    images: ["/logo.png"],
   },
 };
 

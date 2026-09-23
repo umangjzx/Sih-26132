@@ -138,7 +138,7 @@ export default function PoolDetailPage() {
     const q = parseFloat(qty);
     const p = parseFloat(price);
     if (!Number.isFinite(q) || q <= 0 || !Number.isFinite(p) || p <= 0) {
-      flash(t("actionFailed"));
+      flash(t("invalidQtyPrice"));
       return;
     }
     setBusy(true);
@@ -320,12 +320,12 @@ export default function PoolDetailPage() {
             <form onSubmit={doJoin} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
                 {t("myQty")}
-                <input required type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)}
+                <input required type="number" inputMode="numeric" min="1" value={qty} onChange={(e) => setQty(e.target.value)}
                   className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none" />
               </label>
               <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
                 {t("myPrice")}
-                <input required type="number" min="1" value={price} onChange={(e) => setPrice(e.target.value)}
+                <input required type="number" inputMode="numeric" min="1" value={price} onChange={(e) => setPrice(e.target.value)}
                   className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm font-normal focus:border-[var(--green-600)] focus:outline-none" />
               </label>
               <div className="flex items-end gap-2">

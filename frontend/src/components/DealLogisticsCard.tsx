@@ -34,13 +34,18 @@ export function DealLogisticsCard({
   const [form, setForm] = useState<Partial<DealLogistics>>({});
   const [transporters, setTransporters] = useState<Transporter[] | null>(null);
   const [loadingT, setLoadingT] = useState(false);
+  const [transportersErr, setTransportersErr] = useState(false);
 
   async function findTransporters(district: string) {
     setLoadingT(true);
+    setTransportersErr(false);
     try {
       setTransporters(await nearbyTransporters({ district, limit: 6 }, token));
     } catch {
-      setTransporters([]);
+      // Distinct from "found zero transporters" — a request failure
+      // shouldn't be silently presented as an empty result.
+      setTransporters(null);
+      setTransportersErr(true);
     } finally {
       setLoadingT(false);
     }
@@ -217,6 +222,9 @@ export function DealLogisticsCard({
             >
               {t("findTransporter")}
             </button>
+            {transportersErr && (
+              <p className="mt-2 text-xs font-semibold text-[var(--color-wait)]">{t("transportersError")}</p>
+            )}
             {transporters && (
               <ul className="mt-2 flex flex-col gap-1.5">
                 {transporters.length === 0 && (
@@ -260,6 +268,8 @@ export function DealLogisticsCard({
             {t("estCostOverride")}
             <input
               type="number"
+              inputMode="numeric"
+              min="0"
               value={form.est_cost_inr ?? ""}
               onChange={(e) => setForm({ ...form, est_cost_inr: e.target.value ? Number(e.target.value) : null })}
               placeholder={row.est_cost_inr != null ? String(Math.round(row.est_cost_inr)) : ""}

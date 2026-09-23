@@ -301,6 +301,7 @@ def decision_brief(
 
 @router.get("/satellite/ndvi")
 def satellite_ndvi(
+    request: Request,
     market: str | None = None,
     district: str | None = None,
     lat: float | None = None,
@@ -312,6 +313,11 @@ def satellite_ndvi(
     Google Earth Engine isn't configured or the lookup finds no imagery."""
     from app.services import satellite as satellite_svc
 
+    # Like /markets/best and /brief — this calls a quota-limited external
+    # service (Google Earth Engine) on every request with no caching in
+    # satellite.py, so an unthrottled public endpoint could exhaust the
+    # configured GEE service account's quota for the whole app.
+    _heavy_guard(request, "ndvi")
     pt = _resolve_point(market, district, lat, lon, db)
     reading = satellite_svc.get_ndvi(*pt)
     if reading is None:

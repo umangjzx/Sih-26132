@@ -86,6 +86,16 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const priceMin = Number(f.price_min);
+    const priceMax = Number(f.price_max);
+    if (!(priceMin > 0) || !(priceMax > 0) || priceMax < priceMin) {
+      setErr(t("priceRangeInvalid"));
+      return;
+    }
+    if (f.delivery_from && f.delivery_to && f.delivery_to < f.delivery_from) {
+      setErr(t("deliveryRangeInvalid"));
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
@@ -93,8 +103,8 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
         {
           crop: f.crop.trim(),
           quantity_kg: Number(f.quantity_kg),
-          price_min: Number(f.price_min),
-          price_max: Number(f.price_max),
+          price_min: priceMin,
+          price_max: priceMax,
           delivery_from: f.delivery_from,
           delivery_to: f.delivery_to,
           quality_grade_min: f.quality_grade_min || null,
@@ -124,15 +134,15 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold">
           {t("quantityKg")}
-          <input className={input} type="number" min="1" required value={f.quantity_kg} onChange={(e) => setF({ ...f, quantity_kg: e.target.value })} />
+          <input className={input} type="number" inputMode="numeric" min="1" required value={f.quantity_kg} onChange={(e) => setF({ ...f, quantity_kg: e.target.value })} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold">
           {t("priceMin")}
-          <input className={input} type="number" min="1" required value={f.price_min} onChange={(e) => setF({ ...f, price_min: e.target.value })} />
+          <input className={input} type="number" inputMode="numeric" min="1" required value={f.price_min} onChange={(e) => setF({ ...f, price_min: e.target.value })} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold">
           {t("priceMax")}
-          <input className={input} type="number" min="1" required value={f.price_max} onChange={(e) => setF({ ...f, price_max: e.target.value })} />
+          <input className={input} type="number" inputMode="numeric" min="1" required value={f.price_max} onChange={(e) => setF({ ...f, price_max: e.target.value })} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold">
           {t("deliveryFrom")}
@@ -173,6 +183,7 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
 function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string; onChange: () => void }) {
   const t = useTranslations("forward");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [closing, setClosing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function act(id: number, action: "accept" | "decline") {
@@ -191,11 +202,14 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
 
   async function closeBid() {
     setErr(null);
+    setClosing(true);
     try {
       await setForwardBidStatus(bid.id, "closed", token);
       onChange();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : t("actionError"));
+    } finally {
+      setClosing(false);
     }
   }
 
@@ -217,9 +231,10 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
         {bid.status === "open" && (
           <button
             onClick={closeBid}
-            className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--paper)]"
+            disabled={closing}
+            className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--paper)] disabled:opacity-60"
           >
-            {t("closeBid")}
+            {closing ? t("closingBid") : t("closeBid")}
           </button>
         )}
       </div>
@@ -309,14 +324,24 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
 
   async function commit(e: React.FormEvent) {
     e.preventDefault();
+    const qty = Number(f.quantity_kg);
+    const price = Number(f.price_per_qtl);
+    if (!(qty > 0) || qty > bid.remaining_kg) {
+      setErr(t("qtyExceedsRemaining", { max: Math.round(bid.remaining_kg / 100) }));
+      return;
+    }
+    if (!(price >= bid.price_min) || !(price <= bid.price_max)) {
+      setErr(t("priceOutOfRange", { min: bid.price_min, max: bid.price_max }));
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
       await commitToForwardBid(
         bid.id,
         {
-          quantity_kg: Number(f.quantity_kg),
-          price_per_qtl: Number(f.price_per_qtl),
+          quantity_kg: qty,
+          price_per_qtl: price,
           expected_ready: f.expected_ready,
           note: f.note || null,
         },
@@ -422,11 +447,11 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
         <form onSubmit={commit} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-semibold">
             {t("quantityKg")}
-            <input className={input} type="number" min="1" required value={f.quantity_kg} onChange={(e) => setF({ ...f, quantity_kg: e.target.value })} />
+            <input className={input} type="number" inputMode="numeric" min="1" max={bid.remaining_kg} required value={f.quantity_kg} onChange={(e) => setF({ ...f, quantity_kg: e.target.value })} />
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold">
             {t("pricePerQtl")} (₹{bid.price_min}–{bid.price_max})
-            <input className={input} type="number" min={bid.price_min} max={bid.price_max} required value={f.price_per_qtl} onChange={(e) => setF({ ...f, price_per_qtl: e.target.value })} />
+            <input className={input} type="number" inputMode="numeric" min={bid.price_min} max={bid.price_max} required value={f.price_per_qtl} onChange={(e) => setF({ ...f, price_per_qtl: e.target.value })} />
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold sm:col-span-2">
             {t("expectedReady")}
