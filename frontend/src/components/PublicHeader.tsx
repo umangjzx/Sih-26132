@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 import { Icon } from "./ui";
 
 type NavItem = {
@@ -182,13 +183,13 @@ export function PublicHeader() {
     ? { background: "transparent" }
     : scrolled
       ? {
-          background: "rgba(255,255,255,0.92)",
+          background: "var(--surface-glass-90)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           boxShadow: "0 1px 16px rgba(15,37,24,0.10)",
         }
       : {
-          background: "rgba(255,255,255,0.82)",
+          background: "var(--surface-glass-65)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           borderBottom: "1px solid var(--line)",
@@ -197,7 +198,7 @@ export function PublicHeader() {
   return (
     <>
       <header
-        className="fixed inset-x-0 top-0 z-50 w-full transition-all duration-300"
+        className="fixed inset-x-0 top-0 z-50 w-full transition-all duration-300 print:hidden"
         style={headerStyle}
         role="banner"
       >
@@ -220,6 +221,9 @@ export function PublicHeader() {
 
           {/* Right cluster */}
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            <ThemeToggle
+              style={{ color: showLight ? "rgba(255,255,255,0.85)" : undefined }}
+            />
             <div className="hidden sm:block">
               <LanguageSwitcher />
             </div>
@@ -320,7 +324,10 @@ export function PublicHeader() {
 
         {/* Drawer footer */}
         <div className="border-t border-[var(--line)] px-4 py-4">
-          <LanguageSwitcher />
+          <div className="flex items-center justify-between gap-2">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
           <Link
             href="/login"
             onClick={close}

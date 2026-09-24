@@ -58,21 +58,21 @@ export default function DirectoryPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-heading text-3xl font-bold tracking-tight">{ts("title")}</h1>
-        <p className="mt-1 text-stone-600">{ts("subtitle")}</p>
+        <p className="mt-1 text-[var(--ink-soft)]">{ts("subtitle")}</p>
         <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--green-700)]">
           <Icon name="pin" size={14} /> {location?.label ?? state}
         </p>
       </div>
 
       {districtsLoading ? (
-        <div className="h-[58px] w-56 max-w-full animate-pulse rounded-xl bg-white/50" />
+        <div className="h-[58px] w-56 max-w-full animate-pulse rounded-xl bg-[var(--surface)]/50" />
       ) : districtsErr ? (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--red-600)]/30 bg-[var(--red-100)] px-5 py-4 text-sm font-semibold text-[var(--red-700)]">
           <Icon name="close" size={16} /> {ts("districtsError")}
           <button
             type="button"
             onClick={() => setReloadTick((n) => n + 1)}
-            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold"
           >
             {tc("retry")}
           </button>
@@ -112,7 +112,7 @@ export default function DirectoryPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             href="/financing"
-            className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
+            className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
           >
             <Icon name="coins" size={16} className="shrink-0" />
             {ts("ctaFinancing")}
@@ -120,7 +120,7 @@ export default function DirectoryPage() {
           </Link>
           <Link
             href="/pools"
-            className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
+            className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
           >
             <Icon name="handshake" size={16} className="shrink-0" />
             {ts("ctaPools")}

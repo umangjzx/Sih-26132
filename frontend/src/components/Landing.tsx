@@ -245,7 +245,7 @@ export function Landing() {
       >
         {/* Background image overlay — served through next/image so it's resized
             and format-converted (WebP/AVIF) instead of shipping the full-size PNG */}
-        <div className="pointer-events-none absolute inset-0" style={{ opacity: 0.08 }}>
+        <div className="al-decorative pointer-events-none absolute inset-0" style={{ opacity: 0.08 }}>
           <Image
             src="/bg-image.png"
             alt=""
@@ -258,11 +258,11 @@ export function Landing() {
         <div className="al-grid-overlay pointer-events-none absolute inset-0" />
         {/* Ambient orbs */}
         <div
-          className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] rounded-full blur-[120px]"
+          className="al-decorative pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] rounded-full blur-[120px]"
           style={{ background: "rgba(129, 199, 132, 0.08)" }}
         />
         <div
-          className="pointer-events-none absolute -bottom-24 left-1/4 h-80 w-80 rounded-full blur-[100px]"
+          className="al-decorative pointer-events-none absolute -bottom-24 left-1/4 h-80 w-80 rounded-full blur-[100px]"
           style={{ background: "rgba(244, 164, 0, 0.06)" }}
         />
 
@@ -427,7 +427,7 @@ export function Landing() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: "chart", title: t("b1Title"), body: t("b1Body"), iconBg: "bg-[var(--green-100)]", iconColor: "text-[var(--green-700)]" },
-            { icon: "handshake", title: t("b2Title"), body: t("b2Body"), iconBg: "bg-blue-50", iconColor: "text-blue-600" },
+            { icon: "handshake", title: t("b2Title"), body: t("b2Body"), iconBg: "bg-blue-50 dark:bg-blue-500/15", iconColor: "text-blue-600 dark:text-blue-300" },
             { icon: "spark", title: t("b3Title"), body: t("b3Body"), iconBg: "bg-[var(--amber-100)]", iconColor: "text-[var(--amber-700)]" },
             { icon: "coins", title: t("b4Title"), body: t("b4Body"), iconBg: "bg-[var(--green-50)]", iconColor: "text-[var(--green-700)]" },
           ].map((f, i) => (
@@ -525,11 +525,11 @@ export function Landing() {
           <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--green-700)] to-[var(--green-900)] text-white">
             <div className="relative px-8 py-16 text-center sm:px-16 sm:py-20">
               <div
-                className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full blur-[80px]"
+                className="al-decorative pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full blur-[80px]"
                 style={{ background: "rgba(244, 164, 0, 0.08)" }}
               />
               <div
-                className="pointer-events-none absolute -bottom-16 right-1/4 h-64 w-64 rounded-full blur-[80px]"
+                className="al-decorative pointer-events-none absolute -bottom-16 right-1/4 h-64 w-64 rounded-full blur-[80px]"
                 style={{ background: "rgba(74, 157, 107, 0.1)" }}
               />
 

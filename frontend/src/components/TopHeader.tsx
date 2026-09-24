@@ -17,14 +17,22 @@ import { Icon } from "./ui";
 import { LocationChip } from "./LocationChip";
 import { NotificationBell } from "./NotificationBell";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { ThemeToggle } from "./ThemeToggle";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-export function TopHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+export function TopHeader({
+  onOpenSidebar,
+  onOpenSearch,
+}: {
+  onOpenSidebar: () => void;
+  onOpenSearch: () => void;
+}) {
   const t = useTranslations("nav");
+  const tSearch = useTranslations("search");
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
 
@@ -41,6 +49,7 @@ export function TopHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         bg-[var(--surface)]/92 backdrop-blur-md
         shadow-[var(--shadow-xs)]
         px-3 sm:gap-3 sm:px-5
+        print:hidden
       "
     >
       {/* Hamburger — mobile only */}
@@ -58,6 +67,17 @@ export function TopHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <LocationChip />
       </div>
 
+      {/* Global search trigger — also opens on Ctrl+K / Cmd+K / "/" */}
+      <button
+        type="button"
+        onClick={onOpenSearch}
+        aria-label={tSearch("triggerLabel")}
+        title={`${tSearch("triggerLabel")} (Ctrl+K)`}
+        className="al-btn-icon shrink-0"
+      >
+        <Icon name="search" size={20} />
+      </button>
+
       {/* Right cluster */}
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {/* Notification bell */}
@@ -66,6 +86,8 @@ export function TopHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
             <NotificationBell />
           </div>
         )}
+
+        <ThemeToggle />
 
         {/* Language switcher */}
         <div className="hidden sm:block">

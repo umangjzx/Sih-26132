@@ -138,7 +138,7 @@ export function DiscoverTab() {
           <button
             type="button"
             onClick={() => load()}
-            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold"
           >
             {tc("retry")}
           </button>
@@ -147,7 +147,7 @@ export function DiscoverTab() {
 
       {loading ? (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-white/50" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-[var(--surface)]/50" />)}
         </div>
       ) : (isBuyer ? lots : demands).length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--paper)] py-12 text-center">
@@ -158,7 +158,7 @@ export function DiscoverTab() {
         <ul className="flex flex-col gap-3">
           {isBuyer
             ? lots.map((l) => (
-                <li key={l.id} className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-sm">
+                <li key={l.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export function DiscoverTab() {
                 </li>
               ))
             : demands.map((d) => (
-                <li key={d.id} className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-sm">
+                <li key={d.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">

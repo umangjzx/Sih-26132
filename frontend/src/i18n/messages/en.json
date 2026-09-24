@@ -6,7 +6,17 @@
     "retry": "Retry",
     "loginRequired": "Login required",
     "source": "Source",
-    "asOf": "as of"
+    "asOf": "as of",
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode",
+    "skipToContent": "Skip to main content",
+    "backToTop": "Back to top",
+    "cancel": "Cancel",
+    "dismiss": "Dismiss",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "copyFailed": "Copy failed",
+    "copyValue": "Copy {label}"
   },
   "nav": {
     "prices": "Prices",
@@ -120,7 +130,9 @@
     "resetError": "That code is invalid or has expired. Please request a new one.",
     "resetSuccess": "Password updated — signing you in.",
     "backToSignIn": "Back to sign in",
-    "resendCode": "Didn't get a code? Send again"
+    "resendCode": "Didn't get a code? Send again",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "lots": {
     "title": "My Lots",
@@ -308,7 +320,8 @@
     "matchNotFound": "This match doesn't exist, or has been removed.",
     "loadFailed": "Could not load this match.",
     "backToMatches": "Back to matches",
-    "offerQtyHint": "Lot size: {max} kg"
+    "offerQtyHint": "Lot size: {max} kg",
+    "matchedAgo": "Matched {time}"
   },
   "deals": {
     "title": "My Deals",
@@ -379,7 +392,8 @@
     "evt_deal_created": "Deal created",
     "evt_dispute_raised": "Dispute raised",
     "enterAmount": "Enter a payment amount.",
-    "overOutstanding": "That is more than the ₹{amount} outstanding on this deal."
+    "overOutstanding": "That is more than the ₹{amount} outstanding on this deal.",
+    "dealCreatedAgo": "Created {time}"
   },
   "disputes": {
     "title": "Disputes",
@@ -901,7 +915,9 @@
     "status_pending": "Pending",
     "status_approved": "Approved",
     "status_rejected": "Rejected",
-    "status_withdrawn": "Withdrawn"
+    "status_withdrawn": "Withdrawn",
+    "reference": "Financing reference",
+    "withdrawConfirm": "Withdraw this financing request? This cannot be undone — you'll need to submit a new request if you change your mind."
   },
   "pools": {
     "title": "Pooled Requests",
@@ -958,7 +974,9 @@
     "viewDeal": "View deal",
     "actionFailed": "Something went wrong. Please try again.",
     "createFailed": "Could not create the pool.",
-    "invalidQtyPrice": "Enter a valid quantity and price, both greater than zero."
+    "invalidQtyPrice": "Enter a valid quantity and price, both greater than zero.",
+    "withdrawConfirm": "Withdraw from this pool? You can rejoin later if it's still open.",
+    "closePoolConfirm": "Close this pool? Members will no longer be able to join or withdraw."
   },
   "forward": {
     "title": "Forward deals",
@@ -1008,7 +1026,13 @@
     "settlementOverdue": "Overdue — past the agreed settlement date",
     "settlementOnTrack": "On track for settlement",
     "breachFarmerFault": "Farmer found at fault — ₹{amount} penalty",
-    "breachBuyerFault": "Buyer found at fault — ₹{amount} penalty"
+    "breachBuyerFault": "Buyer found at fault — ₹{amount} penalty",
+    "bidPosted": "Bid posted!",
+    "bidReference": "bid reference",
+    "commitmentReference": "commitment reference",
+    "closeBidConfirm": "Close this bid? No further commitments can be made once it's closed.",
+    "withdrawCommitmentConfirm": "Withdraw this commitment? You'll need to commit again if you change your mind.",
+    "commitSuccess": "Commitment sent to the buyer!"
   },
   "profile": {
     "title": "Profile & verification",
@@ -1080,7 +1104,8 @@
     "deactivate": "Deactivate",
     "activate": "Activate",
     "loadError": "Could not load the user list.",
-    "actionError": "That action could not be completed."
+    "actionError": "That action could not be completed.",
+    "joined": "Joined {time}"
   },
   "adminListings": {
     "title": "Listings & Demands",
@@ -1230,7 +1255,8 @@
     "veh_mini_truck": "Mini-truck",
     "veh_truck_6t": "Truck (6t)",
     "veh_truck_10t": "Truck (10t)",
-    "veh_other": "Other"
+    "veh_other": "Other",
+    "lastUpdated": "Last updated {time}"
   },
   "onboarding": {
     "title": "Get started",
@@ -1539,5 +1565,19 @@
     "closingSub": "Whether you're a farmer looking for the best price, a buyer seeking verified sellers, or an FPO pooling volume — HarvestIQ is built for you.",
     "closingCtaStart": "Get Started",
     "closingCtaFeatures": "See All Features"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search pages, tools, and more…",
+    "noResults": "No results for \"{query}\"",
+    "hint": "↑↓ to navigate · Enter to select · Esc to close",
+    "close": "Close search",
+    "triggerLabel": "Search",
+    "judgesPage": "For Judges"
+  },
+  "cookieBanner": {
+    "title": "Storage notice",
+    "message": "HarvestIQ stores your sign-in and preferences on this device (no third-party tracking).",
+    "accept": "OK"
   }
 }

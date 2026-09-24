@@ -7,7 +7,7 @@
  * that doesn't belong in the general product UI kit.
  */
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui";
 
 /* ── Section shell — every top-level section shares this frame ─────────── */
@@ -90,7 +90,7 @@ export type ModuleStatus = "production" | "functional" | "prototype" | "planned"
 
 const STATUS_STYLE: Record<ModuleStatus, { label: string; cls: string }> = {
   production: { label: "Production ready", cls: "bg-[var(--green-100)] text-[var(--green-700)]" },
-  functional: { label: "Functional", cls: "bg-blue-50 text-blue-700" },
+  functional: { label: "Functional", cls: "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" },
   prototype: { label: "Prototype", cls: "bg-[var(--amber-100)] text-[var(--amber-700)]" },
   planned: { label: "Planned", cls: "bg-[var(--line)] text-[var(--ink-soft)]" },
   deferred: { label: "Deferred", cls: "bg-[var(--red-100)] text-[var(--red-700)]" },
@@ -175,12 +175,14 @@ export function ExpandableCard({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
   return (
     <div className="al-card-plain overflow-hidden !bg-[var(--surface)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-[var(--paper)]"
       >
         <div className="min-w-0">
@@ -199,7 +201,7 @@ export function ExpandableCard({
         </div>
       </button>
       {open && (
-        <div className="border-t border-[var(--line)] px-5 py-5">{children}</div>
+        <div id={panelId} className="border-t border-[var(--line)] px-5 py-5">{children}</div>
       )}
     </div>
   );

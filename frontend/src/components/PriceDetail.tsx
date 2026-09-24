@@ -16,6 +16,7 @@ import {
   type PriceTrendResponse,
 } from "@/lib/api";
 import type { CropMarketState } from "@/lib/useCropMarket";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import { DataProvenance } from "./DataProvenance";
 import { BestMarketPanel } from "./intel";
 import { MarketComparisonChart } from "./MarketComparisonChart";
@@ -81,7 +82,7 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
             className={`rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-all ${
               days === d
                 ? "bg-[var(--color-brand)] text-white ring-2 ring-[var(--color-brand)] ring-offset-1"
-                : "bg-[var(--color-surface)] backdrop-blur-md text-[var(--color-text)] border border-[var(--color-border)] hover:bg-white/90"
+                : "bg-[var(--color-surface)] backdrop-blur-md text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--surface)]/90"
             }`}
           >
             {t(`days${d}` as "days7" | "days30" | "days90")}
@@ -90,9 +91,9 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
       </div>
 
       {error && (
-        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-red-800">
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border-2 border-[var(--red-300)] bg-[var(--red-100)] px-4 py-3 text-[var(--red-700)]">
           <p>{tc("error")}</p>
-          <button type="button" onClick={load} className="rounded-lg border-2 border-red-400 bg-white px-4 py-2 text-sm font-semibold">
+          <button type="button" onClick={load} className="rounded-lg border-2 border-[var(--red-300)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold">
             {tc("retry")}
           </button>
         </div>
@@ -112,7 +113,7 @@ export function PriceDetail({ cm }: { cm: CropMarketState }) {
                 title={`${trend.crop} · ${trend.market}`}
                 action={
                   <span className="text-sm text-[var(--ink-soft)]">
-                    {t("asOf")}: {last?.date}
+                    {t("asOf")}: {formatRelativeTime(last?.date) ?? last?.date}
                   </span>
                 }
               />

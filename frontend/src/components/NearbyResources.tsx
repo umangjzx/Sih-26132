@@ -32,7 +32,7 @@ function ResourceLoadError({ message, retryLabel, onRetry }: { message: string; 
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold text-[var(--red-700)]"
+        className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold text-[var(--red-700)]"
       >
         {retryLabel}
       </button>

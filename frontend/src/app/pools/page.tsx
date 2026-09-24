@@ -41,7 +41,7 @@ function PoolCard({ pool }: { pool: PoolSummary }) {
   return (
     <Link
       href={`/pools/${pool.id}`}
-      className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -191,7 +191,7 @@ export default function PoolsPage() {
       </div>
 
       {showForm && (
-        <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
           <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">{t("createTitle")}</h2>
           <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)]">
@@ -252,7 +252,7 @@ export default function PoolsPage() {
 
       {loading ? (
         <div className="flex flex-col gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-36 w-full animate-pulse rounded-2xl bg-white/50" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-36 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />)}
         </div>
       ) : loadErr ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
@@ -261,7 +261,7 @@ export default function PoolsPage() {
           <button
             type="button"
             onClick={() => { setLoading(true); load(); }}
-            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+            className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
           >
             {tc("retry")}
           </button>

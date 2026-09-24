@@ -85,7 +85,7 @@ export function AskHarvestIQ() {
         onClick={() => setOpen((v) => !v)}
         aria-label={t("title")}
         aria-expanded={open}
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--green-700)] text-white shadow-lg shadow-green-900/30 transition-transform hover:scale-105 sm:right-6 lg:bottom-6"
+        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--green-700)] text-white shadow-lg shadow-green-900/30 transition-transform hover:scale-105 print:hidden sm:right-6 lg:bottom-6"
       >
         <Icon name={open ? "close" : "spark"} size={24} />
       </button>
@@ -95,7 +95,7 @@ export function AskHarvestIQ() {
           role="dialog"
           aria-modal="true"
           aria-label={t("title")}
-          className="fixed bottom-36 right-4 z-40 flex h-[26rem] max-h-[70vh] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl sm:right-6 lg:bottom-24"
+          className="fixed bottom-36 right-4 z-40 flex h-[26rem] max-h-[70vh] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl print:hidden sm:right-6 lg:bottom-24"
         >
           <div className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--green-700)] px-4 py-3 text-white">
             <Icon name="spark" size={16} />
@@ -155,7 +155,7 @@ export function AskHarvestIQ() {
               placeholder={t("placeholder")}
               maxLength={500}
               aria-label={t("questionLabel")}
-              className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
+              className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-mute)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
             />
             <button
               type="submit"

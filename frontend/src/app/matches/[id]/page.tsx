@@ -175,8 +175,8 @@ export default function MatchThreadPage() {
   if (!match && loading) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="h-24 w-full animate-pulse rounded-2xl bg-white/50" />
-        <div className="h-64 w-full animate-pulse rounded-2xl bg-white/50" />
+        <div className="h-24 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
+        <div className="h-64 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
       </div>
     );
   }
@@ -189,7 +189,7 @@ export default function MatchThreadPage() {
         <button
           type="button"
           onClick={() => router.push("/matches")}
-          className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+          className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
         >
           {t("backToMatches")}
         </button>
@@ -215,7 +215,7 @@ export default function MatchThreadPage() {
       />
 
       {/* Match header */}
-      <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {match.lot.photo_thumb_url && (
@@ -308,7 +308,7 @@ export default function MatchThreadPage() {
                   className={`flex flex-col gap-3 rounded-2xl border p-5 shadow-sm transition-all ${
                     isMe
                       ? "ml-8 border-[var(--green-200)] bg-[var(--green-50)]"
-                      : "mr-8 border-[var(--line)] bg-white"
+                      : "mr-8 border-[var(--line)] bg-[var(--surface)]"
                   }`}>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] pb-3">
                     <div className="flex flex-col">
@@ -357,7 +357,7 @@ export default function MatchThreadPage() {
                         {t("counter")}
                       </button>
                       <button onClick={() => handleDecline(offer.id)}
-                        className="flex-1 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]">
+                        className="flex-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]">
                         {t("decline")}
                       </button>
                     </div>
@@ -371,7 +371,7 @@ export default function MatchThreadPage() {
 
       {/* Make offer form */}
       {canOffer && (
-        <section ref={formRef} className="mt-4 rounded-2xl border border-[var(--green-200)] bg-white p-6 shadow-sm">
+        <section ref={formRef} className="mt-4 rounded-2xl border border-[var(--green-200)] bg-[var(--surface)] p-6 shadow-sm">
           <h2 className="mb-4 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
             <Icon name="handshake" size={18} className="text-[var(--green-600)]" /> {t("makeOffer")}
           </h2>

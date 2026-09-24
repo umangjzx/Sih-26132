@@ -153,7 +153,7 @@ export default function ProfilePage() {
       )}
 
       {/* Account + location */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h2 className="mb-1 font-heading text-base font-bold text-[var(--ink)]">{t("account")}</h2>
         <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("locationWhy")}</p>
 
@@ -216,7 +216,7 @@ export default function ProfilePage() {
       </section>
 
       {/* Notifications */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h2 className="mb-1 font-heading text-base font-bold text-[var(--ink)]">{t("notifications")}</h2>
         <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("smsDigestWhy")}</p>
         <label htmlFor="profile-sms-digest" className="flex items-center gap-3 text-sm font-semibold text-[var(--ink)]">
@@ -233,7 +233,7 @@ export default function ProfilePage() {
 
       {/* Verification */}
       {user.role !== "admin" && (
-        <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
           <div className="mb-2 flex items-center gap-3">
             <h2 className="font-heading text-base font-bold text-[var(--ink)]">{t("verification")}</h2>
             <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${V_STYLE[v]}`}>

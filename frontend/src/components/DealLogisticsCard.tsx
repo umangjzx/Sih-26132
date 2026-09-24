@@ -12,6 +12,7 @@ import {
   type DealLogistics,
   type Transporter,
 } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 const MODES = ["self_pickup", "hired_transport", "buyer_arranged"] as const;
 const VEHICLES = ["tractor_trailer", "mini_truck", "truck_6t", "truck_10t", "other"] as const;
@@ -114,7 +115,7 @@ export function DealLogisticsCard({
         : "bg-[var(--line)] text-[var(--ink-soft)]";
 
   return (
-    <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
           <Icon name="truck" size={18} className="text-[var(--green-700)]" /> {t("title")}
@@ -123,6 +124,11 @@ export function DealLogisticsCard({
           {!row.is_draft && (
             <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusStyle}`}>
               {t(`status_${row.status}` as "status_planned")}
+            </span>
+          )}
+          {!row.is_draft && row.updated_at && (
+            <span className="text-[11px] font-medium text-[var(--ink-soft)]">
+              {t("lastUpdated", { time: formatRelativeTime(row.updated_at) ?? row.updated_at })}
             </span>
           )}
           {!closed && !editing && (

@@ -10,6 +10,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ReasonPromptModal } from "@/components/ReasonPromptModal";
 import { Icon, SkeletonTableRows } from "@/components/ui";
 import { ApiError, getAdminUsers, setUserActive, verifyUser, type AdminUser } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 const V_STYLE: Record<string, string> = {
   verified: "bg-[var(--green-100)] text-[var(--green-700)]",
@@ -142,6 +143,9 @@ export default function AdminUsersPage() {
                     <div className="text-xs opacity-60">{r.phone}</div>
                     {r.verification_ref && <div className="text-xs opacity-60">ref: {r.verification_ref}</div>}
                     {r.verification_note && <div className="text-xs italic opacity-60">"{r.verification_note}"</div>}
+                    {r.created_at && (
+                      <div className="text-xs opacity-60">{t("joined", { time: formatRelativeTime(r.created_at) ?? r.created_at })}</div>
+                    )}
                   </td>
                   <td className="px-3 py-2 capitalize">{r.role}</td>
                   <td className="px-3 py-2">{[r.district, r.state].filter(Boolean).join(", ") || "—"}</td>

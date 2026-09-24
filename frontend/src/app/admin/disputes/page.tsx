@@ -22,6 +22,7 @@ import {
   type AdminDispute,
   type DisputeOutcome,
 } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 const STATUS_STYLE: Record<string, string> = {
   open: "bg-[var(--color-wait)]/15 text-[var(--color-wait)]",
@@ -78,7 +79,7 @@ function DisputeHistoryRow({
         </td>
         <td className="px-3 py-2 align-top">{d.reason.length > 48 ? `${d.reason.slice(0, 48)}…` : d.reason}</td>
         <td className="px-3 py-2 align-top">{d.raised_by_name}</td>
-        <td className="px-3 py-2 align-top opacity-60">{d.created_at.slice(0, 10)}</td>
+        <td className="px-3 py-2 align-top opacity-60">{formatRelativeTime(d.created_at) ?? d.created_at.slice(0, 10)}</td>
         <td className="px-3 py-2 align-top">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[d.status] ?? STATUS_STYLE.withdrawn}`}>
             {td(`status_${d.status}` as "status_open")}

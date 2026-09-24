@@ -6,7 +6,17 @@
     "retry": "पुन्हा प्रयत्न करा",
     "loginRequired": "लॉगिन आवश्यक",
     "source": "स्रोत",
-    "asOf": "पर्यंत"
+    "asOf": "पर्यंत",
+    "switchToLightMode": "लाइट मोडवर जा",
+    "switchToDarkMode": "डार्क मोडवर जा",
+    "skipToContent": "मुख्य आशयावर जा",
+    "backToTop": "वर जा",
+    "cancel": "रद्द करा",
+    "dismiss": "काढून टाका",
+    "copy": "कॉपी करा",
+    "copied": "कॉपी झाले!",
+    "copyFailed": "कॉपी अयशस्वी झाली",
+    "copyValue": "{label} कॉपी करा"
   },
   "nav": {
     "prices": "भाव",
@@ -120,7 +130,9 @@
     "resetError": "हा कोड अवैध आहे किंवा कालबाह्य झाला आहे. कृपया नवीन कोड मागवा.",
     "resetSuccess": "पासवर्ड अपडेट झाला — साइन इन करत आहोत.",
     "backToSignIn": "साइन इनकडे परत जा",
-    "resendCode": "कोड मिळाला नाही? पुन्हा पाठवा"
+    "resendCode": "कोड मिळाला नाही? पुन्हा पाठवा",
+    "showPassword": "पासवर्ड दाखवा",
+    "hidePassword": "पासवर्ड लपवा"
   },
   "lots": {
     "title": "माझे लॉट",
@@ -308,7 +320,8 @@
     "matchNotFound": "हा मॅच अस्तित्वात नाही, किंवा काढून टाकला गेला आहे.",
     "loadFailed": "हा मॅच लोड करता आला नाही.",
     "backToMatches": "मॅचकडे परत जा",
-    "offerQtyHint": "लॉट आकार: {max} किलो"
+    "offerQtyHint": "लॉट आकार: {max} किलो",
+    "matchedAgo": "{time} जुळले"
   },
   "deals": {
     "title": "माझे व्यवहार",
@@ -379,7 +392,8 @@
     "evt_deal_created": "व्यवहार तयार झाला",
     "evt_dispute_raised": "विवाद उपस्थित केला",
     "enterAmount": "पेमेंट रक्कम टाका.",
-    "overOutstanding": "हे या व्यवहारावरील ₹{amount} थकबाकीपेक्षा जास्त आहे."
+    "overOutstanding": "हे या व्यवहारावरील ₹{amount} थकबाकीपेक्षा जास्त आहे.",
+    "dealCreatedAgo": "{time} तयार केले"
   },
   "disputes": {
     "title": "तक्रारी",
@@ -901,7 +915,9 @@
     "status_pending": "प्रलंबित",
     "status_approved": "मंजूर",
     "status_rejected": "नाकारले",
-    "status_withdrawn": "मागे घेतले"
+    "status_withdrawn": "मागे घेतले",
+    "reference": "वित्तपुरवठा संदर्भ",
+    "withdrawConfirm": "हा वित्तपुरवठा विनंती मागे घ्यायची? हे पूर्ववत करता येणार नाही — तुमचा विचार बदलल्यास नवीन विनंती सादर करावी लागेल."
   },
   "pools": {
     "title": "सामूहिक विनंत्या",
@@ -958,7 +974,9 @@
     "viewDeal": "व्यवहार पहा",
     "actionFailed": "काहीतरी चूक झाली. कृपया पुन्हा प्रयत्न करा.",
     "createFailed": "पूल तयार करता आला नाही.",
-    "invalidQtyPrice": "वैध प्रमाण आणि भाव भरा, दोन्ही शून्यापेक्षा जास्त."
+    "invalidQtyPrice": "वैध प्रमाण आणि भाव भरा, दोन्ही शून्यापेक्षा जास्त.",
+    "withdrawConfirm": "या पूलमधून बाहेर पडायचे? तो अजूनही खुला असल्यास तुम्ही नंतर पुन्हा सामील होऊ शकता.",
+    "closePoolConfirm": "हा पूल बंद करायचा? सदस्य यापुढे सामील होऊ शकणार नाहीत किंवा बाहेर पडू शकणार नाहीत."
   },
   "forward": {
     "title": "फॉरवर्ड व्यवहार",
@@ -1008,7 +1026,13 @@
     "settlementOverdue": "विलंबित — ठरलेली निपटारा तारीख उलटून गेली आहे",
     "settlementOnTrack": "निपटारा वेळेवर आहे",
     "breachFarmerFault": "शेतकरी दोषी आढळला — ₹{amount} दंड",
-    "breachBuyerFault": "खरेदीदार दोषी आढळला — ₹{amount} दंड"
+    "breachBuyerFault": "खरेदीदार दोषी आढळला — ₹{amount} दंड",
+    "bidPosted": "बोली पोस्ट झाली!",
+    "bidReference": "बोली संदर्भ",
+    "commitmentReference": "वचनबद्धता संदर्भ",
+    "closeBidConfirm": "ही बोली बंद करायची? एकदा बंद झाल्यावर आणखी वचनबद्धता करता येणार नाही.",
+    "withdrawCommitmentConfirm": "ही वचनबद्धता मागे घ्यायची? तुमचा विचार बदलल्यास पुन्हा वचनबद्ध व्हावे लागेल.",
+    "commitSuccess": "वचनबद्धता खरेदीदाराला पाठवली!"
   },
   "profile": {
     "title": "प्रोफाइल आणि पडताळणी",
@@ -1080,7 +1104,8 @@
     "deactivate": "निष्क्रिय",
     "activate": "सक्रिय",
     "loadError": "वापरकर्ता यादी लोड करता आली नाही.",
-    "actionError": "ही कृती पूर्ण करता आली नाही."
+    "actionError": "ही कृती पूर्ण करता आली नाही.",
+    "joined": "{time} सामील झाले"
   },
   "adminListings": {
     "title": "लिस्टिंग आणि मागण्या",
@@ -1230,7 +1255,8 @@
     "veh_mini_truck": "Mini-truck",
     "veh_truck_6t": "Truck (6t)",
     "veh_truck_10t": "Truck (10t)",
-    "veh_other": "Other"
+    "veh_other": "Other",
+    "lastUpdated": "शेवटचे {time} अद्ययावत केले"
   },
   "onboarding": {
     "title": "सुरुवात करा",
@@ -1539,5 +1565,19 @@
     "closingSub": "तुम्ही सर्वोत्तम भाव शोधणारे शेतकरी असाल, पडताळलेले विक्रेते शोधणारे खरेदीदार असाल, किंवा प्रमाण एकत्र करणारे FPO असाल — HarvestIQ तुमच्यासाठी बनवलेले आहे.",
     "closingCtaStart": "सुरुवात करा",
     "closingCtaFeatures": "सर्व वैशिष्ट्ये पाहा"
+  },
+  "search": {
+    "title": "शोधा",
+    "placeholder": "पेज, साधने आणि इतर शोधा…",
+    "noResults": "\"{query}\" साठी कोणतेही निकाल नाहीत",
+    "hint": "↑↓ नेव्हिगेट करण्यासाठी · Enter निवडण्यासाठी · Esc बंद करण्यासाठी",
+    "close": "शोध बंद करा",
+    "triggerLabel": "शोधा",
+    "judgesPage": "परीक्षकांसाठी"
+  },
+  "cookieBanner": {
+    "title": "स्टोरेज सूचना",
+    "message": "HarvestIQ तुमची साइन-इन माहिती आणि पसंती या डिव्हाइसवर साठवते (कोणतेही थर्ड-पार्टी ट्रॅकिंग नाही).",
+    "accept": "ठीक आहे"
   }
 }

@@ -19,7 +19,7 @@ import { StatCards, type Stat } from "@/components/StatCards";
 import { CameraCapture } from "@/components/CameraCapture";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { QuickActions } from "@/components/QuickActions";
-import { Icon } from "@/components/ui";
+import { ConfirmDialog, Icon } from "@/components/ui";
 import { compressImageToDataUrl } from "@/lib/image";
 import { useLocation } from "@/lib/useLocation";
 import {
@@ -110,6 +110,12 @@ export default function FarmerPage() {
   const [loadErr, setLoadErr] = useState(false);
   const [loadingLots, setLoadingLots] = useState(true);
   const slipInputRef = useRef<HTMLInputElement>(null);
+  const [withdrawTarget, setWithdrawTarget] = useState<LotResponse | null>(null);
+  // Durable, dismissible confirmation of the last create/update — a toast
+  // that auto-hides after a few seconds isn't enough proof the lot actually
+  // went through, especially on a slow connection where the farmer may have
+  // already scrolled away by the time it fires.
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   // Guard
   useEffect(() => {
@@ -301,6 +307,7 @@ export default function FarmerPage() {
 
   function startEdit(lot: LotResponse) {
     setEditingId(lot.id);
+    setFormSuccess(null);
     setForm({
       crop: lot.crop,
       quantity_kg: String(lot.quantity_kg),
@@ -314,8 +321,10 @@ export default function FarmerPage() {
     document.getElementById("create-lot")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  async function handleWithdraw(lot: LotResponse) {
-    if (!token || !window.confirm(t("withdrawConfirm"))) return;
+  async function confirmWithdraw() {
+    const lot = withdrawTarget;
+    if (!lot || !token) return;
+    setWithdrawTarget(null);
     try {
       await withdrawLot(lot.id, token);
       flash(t("withdrawn"));
@@ -360,9 +369,11 @@ export default function FarmerPage() {
         const { crop: _c, ...patch } = body;
         await updateLot(editingId, patch, token!);
         flash(t("updated"));
+        setFormSuccess(t("updated"));
       } else {
         await createLot(body, token!);
         flash(t("success"));
+        setFormSuccess(t("success"));
       }
       resetForm();
       loadLots();
@@ -426,7 +437,7 @@ export default function FarmerPage() {
       {loadErr && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] px-5 py-3 text-sm font-semibold text-[var(--red-700)]">
           <span className="flex items-center gap-2"><Icon name="close" size={16} /> {tc("error")}</span>
-          <button type="button" onClick={() => loadLots()} className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold">
+          <button type="button" onClick={() => loadLots()} className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold">
             {tc("retry")}
           </button>
         </div>
@@ -467,7 +478,7 @@ export default function FarmerPage() {
           <Link
             key={action.label}
             href={action.href}
-            className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${action.color} text-white`}>
               <Icon name={action.icon} size={22} />
@@ -478,7 +489,7 @@ export default function FarmerPage() {
       </div>
 
       {/* Create lot form */}
-      <section id="create-lot" className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section id="create-lot" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
             <Icon name="leaf" size={20} />
@@ -519,6 +530,23 @@ export default function FarmerPage() {
         </div>
         <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("scanHint")}</p>
 
+        {formSuccess && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-4 py-3 text-sm font-bold text-[var(--green-700)]">
+            <span className="flex items-center gap-2">
+              <Icon name="checkCircle" size={16} />
+              {formSuccess}
+            </span>
+            <button
+              type="button"
+              onClick={() => setFormSuccess(null)}
+              aria-label={tc("dismiss")}
+              className="shrink-0 rounded-lg p-1 text-[var(--green-700)]/70 transition hover:bg-[var(--green-100)]/60 hover:text-[var(--green-700)]"
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+        )}
+
         {form.photo_url && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -534,7 +562,7 @@ export default function FarmerPage() {
             <button
               type="button"
               onClick={removePhoto}
-              className="shrink-0 rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink-soft)] transition hover:bg-white"
+              className="shrink-0 rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink-soft)] transition hover:bg-[var(--surface)]"
             >
               {t("photoRemove")}
             </button>
@@ -617,7 +645,7 @@ export default function FarmerPage() {
       </section>
 
       {/* Lot list */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-heading text-base font-bold text-[var(--ink)]">
             {t("title")}
@@ -634,7 +662,7 @@ export default function FarmerPage() {
         {loadingLots ? (
           <div className="flex flex-col gap-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-white/50" />
+              <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
             ))}
           </div>
         ) : lots.length === 0 ? (
@@ -678,13 +706,13 @@ export default function FarmerPage() {
                       <button
                         type="button"
                         onClick={() => startEdit(lot)}
-                        className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink)] transition hover:bg-white"
+                        className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink)] transition hover:bg-[var(--surface)]"
                       >
                         {t("edit")}
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleWithdraw(lot)}
+                        onClick={() => setWithdrawTarget(lot)}
                         className="rounded-lg border border-[var(--red-500)]/40 px-3 py-1 text-xs font-bold text-[var(--red-600)] transition hover:bg-[var(--red-100)]"
                       >
                         {t("withdraw")}
@@ -722,6 +750,17 @@ export default function FarmerPage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={withdrawTarget !== null}
+        title={t("withdraw")}
+        message={t("withdrawConfirm")}
+        confirmLabel={t("withdraw")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={confirmWithdraw}
+        onCancel={() => setWithdrawTarget(null)}
+      />
     </div>
   );
 }

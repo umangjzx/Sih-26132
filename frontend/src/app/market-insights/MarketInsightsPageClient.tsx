@@ -252,8 +252,8 @@ export default function MarketInsightsPageClient() {
               icon="cloudRain"
               title={t("cap3Title")}
               body={t("cap3Body")}
-              gradient="#1d6fa5"
-              iconColor="text-blue-600"
+              gradient="var(--chart-blue)"
+              iconColor="text-[var(--chart-blue)]"
             />
           </Reveal>
           <Reveal delay={0.2} className="h-full">
@@ -270,8 +270,8 @@ export default function MarketInsightsPageClient() {
               icon="spark"
               title={t("cap5Title")}
               body={t("cap5Body")}
-              gradient="#7c3aed"
-              iconColor="text-purple-600"
+              gradient="var(--chart-purple)"
+              iconColor="text-[var(--chart-purple)]"
             />
           </Reveal>
           <Reveal delay={0.3} className="h-full">

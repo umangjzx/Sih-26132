@@ -48,7 +48,7 @@ export function BottomNav({ onOpenMore }: { onOpenMore: () => void }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-[var(--line)] bg-[var(--surface)]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-[var(--line)] bg-[var(--surface)]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md print:hidden lg:hidden"
       aria-label={t("openMenu")}
     >
       {tabs.map((tab) => {
@@ -58,8 +58,8 @@ export function BottomNav({ onOpenMore }: { onOpenMore: () => void }) {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold transition-colors ${
-              active ? "text-[var(--green-700)]" : "text-[var(--ink-soft)]"
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold outline-none transition-colors focus-visible:bg-[var(--paper)] ${
+              active ? "text-[var(--green-700)]" : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
             }`}
           >
             <Icon name={tab.icon} size={22} className={active ? "opacity-100" : "opacity-70"} />
@@ -71,7 +71,7 @@ export function BottomNav({ onOpenMore }: { onOpenMore: () => void }) {
         <button
           type="button"
           onClick={onOpenMore}
-          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-[var(--ink-soft)]"
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-[var(--ink-soft)] outline-none transition-colors hover:text-[var(--ink)] focus-visible:bg-[var(--paper)]"
         >
           <Icon name="menu" size={22} className="opacity-70" />
           <span>{t("more")}</span>

@@ -17,7 +17,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatCards, type Stat } from "@/components/StatCards";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { QuickActions } from "@/components/QuickActions";
-import { Icon } from "@/components/ui";
+import { ConfirmDialog, Icon } from "@/components/ui";
 import {
   ApiError,
   createDemand,
@@ -113,6 +113,11 @@ export default function BuyerPage() {
     setToastErr(isErr);
     setTimeout(() => setToast(null), isErr ? 6000 : 3500);
   }, []);
+  const [withdrawTarget, setWithdrawTarget] = useState<DemandResponse | null>(null);
+  // Durable, dismissible success confirmation near the form — see farmer
+  // dashboard for the same pattern; a toast alone can flash and vanish
+  // before a buyer notices it.
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (ready && (!isAuthenticated || user?.role !== "buyer")) router.replace("/login");
@@ -172,6 +177,7 @@ export default function BuyerPage() {
 
   function startEdit(d: DemandResponse) {
     setEditingId(d.id);
+    setFormSuccess(null);
     setForm({
       crop: d.crop,
       quantity_kg: d.quantity_kg,
@@ -199,8 +205,10 @@ export default function BuyerPage() {
     }
   }
 
-  async function handleWithdraw(d: DemandResponse) {
-    if (!token || !window.confirm(td("withdrawConfirm"))) return;
+  async function confirmWithdraw() {
+    const d = withdrawTarget;
+    if (!d || !token) return;
+    setWithdrawTarget(null);
     try {
       await withdrawDemand(d.id, token);
       flash(td("withdrawn"));
@@ -239,9 +247,11 @@ export default function BuyerPage() {
         const { crop: _c, ...patch } = payload;
         await updateDemand(editingId, patch, token);
         flash(td("updated"));
+        setFormSuccess(td("updated"));
       } else {
         await createDemand(payload, token);
         flash(td("success"));
+        setFormSuccess(td("success"));
       }
       resetForm();
       loadData();
@@ -289,7 +299,7 @@ export default function BuyerPage() {
       {loadErr && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] px-5 py-3 text-sm font-semibold text-[var(--red-700)]">
           <span className="flex items-center gap-2"><Icon name="close" size={16} /> {tc("error")}</span>
-          <button type="button" onClick={() => loadData()} className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold">
+          <button type="button" onClick={() => loadData()} className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold">
             {tc("retry")}
           </button>
         </div>
@@ -319,7 +329,7 @@ export default function BuyerPage() {
           <Link
             key={action.label}
             href={action.href}
-            className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${action.color} text-white`}>
               <Icon name={action.icon} size={22} />
@@ -330,7 +340,7 @@ export default function BuyerPage() {
       </div>
 
       {/* Post demand form */}
-      <section id="create-demand" className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section id="create-demand" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
             <Icon name="handshake" size={20} />
@@ -342,6 +352,23 @@ export default function BuyerPage() {
             <p className="text-xs text-[var(--ink-soft)]">{tdash("createDemandHint")}</p>
           </div>
         </div>
+
+        {formSuccess && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-4 py-3 text-sm font-bold text-[var(--green-700)]">
+            <span className="flex items-center gap-2">
+              <Icon name="checkCircle" size={16} />
+              {formSuccess}
+            </span>
+            <button
+              type="button"
+              onClick={() => setFormSuccess(null)}
+              aria-label={tc("dismiss")}
+              className="shrink-0 rounded-lg p-1 text-[var(--green-700)]/70 transition hover:bg-[var(--green-100)]/60 hover:text-[var(--green-700)]"
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {[
@@ -465,7 +492,7 @@ export default function BuyerPage() {
       </section>
 
       {/* My demands */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">
           {td("myDemandsTitle")}
           {demands.length > 0 && (
@@ -477,7 +504,7 @@ export default function BuyerPage() {
         {loadingDemands ? (
           <div className="flex flex-col gap-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-white/50" />
+              <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
             ))}
           </div>
         ) : demands.length === 0 ? (
@@ -509,13 +536,13 @@ export default function BuyerPage() {
                       <button
                         type="button"
                         onClick={() => startEdit(d)}
-                        className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink)] transition hover:bg-white"
+                        className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink)] transition hover:bg-[var(--surface)]"
                       >
                         {td("edit")}
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleWithdraw(d)}
+                        onClick={() => setWithdrawTarget(d)}
                         className="rounded-lg border border-[var(--red-500)]/40 px-3 py-1 text-xs font-bold text-[var(--red-600)] transition hover:bg-[var(--red-100)]"
                       >
                         {td("withdraw")}
@@ -537,7 +564,7 @@ export default function BuyerPage() {
       </section>
 
       {/* Matches list */}
-      <section id="matches" className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section id="matches" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-heading text-base font-bold text-[var(--ink)]">
             {tm("title")}
@@ -554,7 +581,7 @@ export default function BuyerPage() {
         {loadingDemands ? (
           <div className="flex flex-col gap-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-28 w-full animate-pulse rounded-2xl bg-white/50" />
+              <div key={i} className="h-28 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
             ))}
           </div>
         ) : matches.length === 0 ? (
@@ -613,6 +640,17 @@ export default function BuyerPage() {
           </ul>
         )}
       </section>
+
+      <ConfirmDialog
+        open={withdrawTarget !== null}
+        title={td("withdraw")}
+        message={td("withdrawConfirm")}
+        confirmLabel={td("withdraw")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={confirmWithdraw}
+        onCancel={() => setWithdrawTarget(null)}
+      />
     </div>
   );
 }

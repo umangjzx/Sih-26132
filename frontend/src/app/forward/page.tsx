@@ -12,7 +12,8 @@ import { useTranslations } from "next-intl";
 
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
-import { Badge, Card, Icon, Skeleton } from "@/components/ui";
+import { Badge, Card, ConfirmDialog, Icon, Skeleton } from "@/components/ui";
+import { CopyButton } from "@/components/CopyButton";
 import { useLocation } from "@/lib/useLocation";
 import {
   ApiError,
@@ -77,12 +78,17 @@ function BreachBadge({ c }: { c: ForwardCommitment }) {
 
 function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void }) {
   const t = useTranslations("forward");
+  const tc = useTranslations("common");
   const [f, setF] = useState({
     crop: "", quantity_kg: "", price_min: "", price_max: "",
     delivery_from: "", delivery_to: "", quality_grade_min: "FAQ", notes: "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Durable, dismissible confirmation that the bid actually posted — the
+  // form resets immediately below, so a toast alone risks the buyer not
+  // noticing before it flashes away.
+  const [posted, setPosted] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,6 +119,7 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
         token,
       );
       setF({ crop: "", quantity_kg: "", price_min: "", price_max: "", delivery_from: "", delivery_to: "", quality_grade_min: "FAQ", notes: "" });
+      setPosted(true);
       onDone();
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("createError"));
@@ -127,6 +134,22 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
       <h2 className="mb-3 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
         <Icon name="calendar" size={18} className="text-[var(--green-600)]" /> {t("postBid")}
       </h2>
+      {posted && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-4 py-3 text-sm font-bold text-[var(--green-700)]">
+          <span className="flex items-center gap-2">
+            <Icon name="checkCircle" size={16} />
+            {t("bidPosted")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPosted(false)}
+            aria-label={tc("dismiss")}
+            className="shrink-0 rounded-lg p-1 text-[var(--green-700)]/70 transition hover:bg-[var(--green-100)]/60 hover:text-[var(--green-700)]"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
       <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-semibold">
           {t("crop")}
@@ -182,12 +205,14 @@ function BuyerCreateForm({ token, onDone }: { token: string; onDone: () => void 
 
 function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string; onChange: () => void }) {
   const t = useTranslations("forward");
+  const tc = useTranslations("common");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [closing, setClosing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [confirmAcceptId, setConfirmAcceptId] = useState<number | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   async function act(id: number, action: "accept" | "decline") {
-    if (action === "accept" && !window.confirm(t("confirmAccept"))) return;
     setBusyId(id);
     setErr(null);
     try {
@@ -200,7 +225,14 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
     }
   }
 
+  function confirmAccept() {
+    const id = confirmAcceptId;
+    setConfirmAcceptId(null);
+    if (id != null) void act(id, "accept");
+  }
+
   async function closeBid() {
+    setConfirmClose(false);
     setErr(null);
     setClosing(true);
     try {
@@ -223,6 +255,10 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
           <div className="flex items-center gap-2">
             <span className="font-heading text-lg font-bold text-[var(--ink)]">{bid.crop}</span>
             <StatusChip status={bid.status} />
+            <span className="flex items-center gap-1 text-xs font-medium text-[var(--ink-soft)]">
+              <span className="font-mono">#{bid.id}</span>
+              <CopyButton value={`FWD-${bid.id}`} label={t("bidReference")} />
+            </span>
           </div>
           <p className="mt-0.5 text-sm text-[var(--ink-soft)]">
             {(bid.quantity_kg / 100).toFixed(0)} qtl · ₹{bid.price_min}–{bid.price_max}/qtl · {bid.delivery_from} → {bid.delivery_to}
@@ -230,7 +266,7 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
         </div>
         {bid.status === "open" && (
           <button
-            onClick={closeBid}
+            onClick={() => setConfirmClose(true)}
             disabled={closing}
             className="rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--paper)] disabled:opacity-60"
           >
@@ -255,10 +291,11 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
           {pending.map((c) => (
             <div key={c.id} className="rounded-xl border border-[var(--amber-500)]/25 bg-[var(--amber-100)]/30 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-semibold">
+                <span className="flex flex-wrap items-center gap-1 text-sm font-semibold">
                   {c.farmer_name}
                   {c.farmer_verified && <Icon name="check" size={12} className="ml-1 inline text-[var(--green-600)]" />}
                   {" · "}{(c.quantity_kg / 100).toFixed(0)} qtl @ ₹{c.price_per_qtl}
+                  <CopyButton value={`FWC-${c.id}`} label={t("commitmentReference")} />
                 </span>
                 <span className="text-xs text-[var(--ink-soft)]">{t("ready")}: {c.expected_ready}</span>
               </div>
@@ -269,7 +306,7 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
               )}
               {c.note && <p className="mt-1 text-xs italic text-[var(--ink-soft)]">&ldquo;{c.note}&rdquo;</p>}
               <div className="mt-2 flex gap-2">
-                <button disabled={busyId === c.id} onClick={() => act(c.id, "accept")} className="flex-1 rounded-lg bg-[var(--green-700)] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
+                <button disabled={busyId === c.id} onClick={() => setConfirmAcceptId(c.id)} className="flex-1 rounded-lg bg-[var(--green-700)] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
                   {t("acceptCommitment")}
                 </button>
                 <button disabled={busyId === c.id} onClick={() => act(c.id, "decline")} className="flex-1 rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink)]">
@@ -300,6 +337,26 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmAcceptId !== null}
+        title={t("acceptCommitment")}
+        message={t("confirmAccept")}
+        confirmLabel={t("acceptCommitment")}
+        cancelLabel={tc("cancel")}
+        onConfirm={confirmAccept}
+        onCancel={() => setConfirmAcceptId(null)}
+      />
+      <ConfirmDialog
+        open={confirmClose}
+        title={t("closeBid")}
+        message={t("closeBidConfirm")}
+        confirmLabel={t("closeBid")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={closeBid}
+        onCancel={() => setConfirmClose(false)}
+      />
     </Card>
   );
 }
@@ -310,10 +367,24 @@ function BuyerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string
 
 function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: string; onChange: () => void }) {
   const t = useTranslations("forward");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ quantity_kg: "", price_per_qtl: "", expected_ready: "", note: "" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [justCommitted, setJustCommitted] = useState(false);
+
+  async function withdrawCommitment() {
+    setConfirmWithdraw(false);
+    setErr(null);
+    try {
+      await actOnCommitment(bid.my_commitment!.id, "withdraw", token);
+      onChange();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("actionError"));
+    }
+  }
 
   const mine = bid.my_commitment;
   // `mine` is the farmer's *most recent* commitment regardless of status — once
@@ -348,6 +419,7 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
         token,
       );
       setOpen(false);
+      setJustCommitted(true);
       onChange();
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("commitError"));
@@ -360,9 +432,13 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-heading text-lg font-bold text-[var(--ink)]">{bid.crop}</span>
             <StatusChip status={bid.status} />
+            <span className="flex items-center gap-1 text-xs font-medium text-[var(--ink-soft)]">
+              <span className="font-mono">#{bid.id}</span>
+              <CopyButton value={`FWD-${bid.id}`} label={t("bidReference")} />
+            </span>
           </div>
           <p className="mt-0.5 text-sm text-[var(--ink-soft)]">
             {bid.buyer_name}
@@ -390,9 +466,26 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
 
       {mineActive ? (
         <div className="mt-3 rounded-xl bg-[var(--green-50)] p-3 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">
+          {justCommitted && (
+            <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-[var(--green-600)]/30 bg-[var(--green-100)] px-3 py-2 text-xs font-bold text-[var(--green-700)]">
+              <span className="flex items-center gap-1.5">
+                <Icon name="checkCircle" size={14} />
+                {t("commitSuccess")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setJustCommitted(false)}
+                aria-label={tc("dismiss")}
+                className="shrink-0 rounded p-0.5 text-[var(--green-700)]/70 hover:text-[var(--green-700)]"
+              >
+                <Icon name="close" size={12} />
+              </button>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="flex flex-wrap items-center gap-1 font-semibold">
               {t("yourCommitment")}: {(mine.quantity_kg / 100).toFixed(0)} qtl @ ₹{mine.price_per_qtl}
+              <CopyButton value={`FWC-${mine.id}`} label={t("commitmentReference")} />
             </span>
             <span className="flex items-center gap-2">
               {mine.settlement_status === "overdue" && <Badge tone="red">{t("settlementOverdue")}</Badge>}
@@ -406,16 +499,8 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
           )}
           {mine.status === "pending" && (
             <button
-              onClick={async () => {
-                setErr(null);
-                try {
-                  await actOnCommitment(mine.id, "withdraw", token);
-                  onChange();
-                } catch (e) {
-                  setErr(e instanceof ApiError ? e.message : t("actionError"));
-                }
-              }}
-              className="mt-2 rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)] hover:bg-white"
+              onClick={() => setConfirmWithdraw(true)}
+              className="mt-2 rounded-lg border border-[var(--line)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--surface)]"
             >
               {t("withdraw")}
             </button>
@@ -474,6 +559,17 @@ function FarmerBidCard({ bid, token, onChange }: { bid: ForwardBid; token: strin
           ) : null}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmWithdraw}
+        title={t("withdraw")}
+        message={t("withdrawCommitmentConfirm")}
+        confirmLabel={t("withdraw")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={withdrawCommitment}
+        onCancel={() => setConfirmWithdraw(false)}
+      />
     </Card>
   );
 }
@@ -544,7 +640,7 @@ export default function ForwardPage() {
           <button
             type="button"
             onClick={() => load()}
-            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+            className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
           >
             {tc("retry")}
           </button>

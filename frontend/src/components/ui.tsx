@@ -7,6 +7,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 /* ── Icon paths ────────────────────────────────────────────────────────── */
 
@@ -151,6 +152,12 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M12 10v5M12 18h.01" {...P} />
     </>
   ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" {...P} />
+      <path d="M21 21l-4.3-4.3" {...P} />
+    </>
+  ),
   check: <path d="M4 12l5 5L20 6" {...P} />,
   checkCircle: (
     <>
@@ -204,6 +211,7 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" {...P} />
     </>
   ),
+  moon: <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" {...P} />,
   wind: <path d="M3 9h11a3 3 0 1 0-3-3M3 15h15a3 3 0 1 1-3 3M3 12h8" {...P} />,
 
   /* ── Auth ── */
@@ -359,9 +367,146 @@ export function EmptyState({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)]/40 px-6 py-10 text-center">
       <Icon name={icon} size={30} className="text-[var(--green-300)]" />
       <p className="text-sm text-[var(--ink-soft)]">{children}</p>
+    </div>
+  );
+}
+
+/**
+ * Reusable confirmation dialog for destructive/irreversible actions
+ * (withdrawing an offer, cancelling a commitment, closing a listing…).
+ * Accessibility pattern mirrors `ReasonPromptModal`: `role="dialog"`,
+ * `aria-modal`, `aria-labelledby`/`aria-describedby`, Escape-to-close,
+ * click-outside-to-close, and focus moved to the (safe) Cancel button on
+ * open so a stray Enter/click never confirms by accident.
+ */
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  danger = false,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message: ReactNode;
+  confirmLabel: string;
+  cancelLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  // Escape-to-close lives on the always-mounted outer component (it only
+  // needs to attach/detach the listener as `open` flips) — the double-click
+  // guard below lives on a component that mounts fresh per confirmation
+  // instead, so it never needs resetting from an effect.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <ConfirmDialogBody
+      title={title}
+      message={message}
+      confirmLabel={confirmLabel}
+      cancelLabel={cancelLabel}
+      danger={danger}
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
+  );
+}
+
+/**
+ * The actual dialog markup, mounted only while `open` is true (the parent
+ * returns null otherwise). Mounting fresh per confirmation means its
+ * `confirmed` double-click guard starts at `false` every time without an
+ * effect-driven reset, and focusing the Cancel button on mount is a plain
+ * DOM side effect (no state involved).
+ */
+function ConfirmDialogBody({
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  danger,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: ReactNode;
+  confirmLabel: string;
+  cancelLabel: string;
+  danger: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  // Guards against a double-click firing onConfirm twice before the caller
+  // has a chance to close this dialog (mirrors ReasonPromptModal).
+  const [confirmed, setConfirmed] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
+  const descId = useId();
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descId}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl">
+        <h2 id={titleId} className="font-heading text-base font-bold text-[var(--ink)]">
+          {title}
+        </h2>
+        <p id={descId} className="mt-1.5 text-sm text-[var(--ink-soft)]">
+          {message}
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={onCancel}
+            disabled={confirmed}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-bold text-[var(--ink)] opacity-80 disabled:opacity-40"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            disabled={confirmed}
+            onClick={() => {
+              setConfirmed(true);
+              onConfirm();
+            }}
+            className={`rounded-lg px-3 py-1.5 text-sm font-bold text-white disabled:opacity-60 ${
+              danger ? "bg-[var(--red-600)] hover:bg-[var(--red-700)]" : "bg-[var(--color-brand)]"
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

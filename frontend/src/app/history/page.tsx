@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { getMyHistory, type HistoryResponse } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import { PageHeader } from "@/components/PageHeader";
 import { PriceRealizationCard } from "@/components/PriceRealizationCard";
 import { Icon } from "@/components/ui";
@@ -121,7 +122,7 @@ export default function HistoryPage() {
           <button
             type="button"
             onClick={() => load()}
-            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold"
           >
             {tc("retry")}
           </button>
@@ -133,7 +134,7 @@ export default function HistoryPage() {
       {!data && !error && (
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-white/50" />
+            <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
           ))}
         </div>
       )}
@@ -144,7 +145,7 @@ export default function HistoryPage() {
               as a permanent "No lots yet" empty state reads as a missing
               feature rather than "not applicable to your role". */}
           {user?.role === "farmer" && (
-          <details className="group rounded-2xl border border-[var(--line)] bg-white shadow-sm transition-all" open>
+          <details className="group rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm transition-all" open>
             <summary className="flex cursor-pointer list-none items-center justify-between p-5 font-heading text-base font-bold text-[var(--ink)]">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-100)] text-[var(--green-700)]">
@@ -191,7 +192,7 @@ export default function HistoryPage() {
 
           {/* Demands — buyers only; same reasoning as Lots above. */}
           {user?.role === "buyer" && (
-          <details className="group rounded-2xl border border-[var(--line)] bg-white shadow-sm transition-all" open>
+          <details className="group rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm transition-all" open>
             <summary className="flex cursor-pointer list-none items-center justify-between p-5 font-heading text-base font-bold text-[var(--ink)]">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--amber-100)] text-[var(--amber-700)]">
@@ -236,7 +237,7 @@ export default function HistoryPage() {
           )}
 
           {/* Deals */}
-          <details className="group rounded-2xl border border-[var(--line)] bg-white shadow-sm transition-all" open>
+          <details className="group rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm transition-all" open>
             <summary className="flex cursor-pointer list-none items-center justify-between p-5 font-heading text-base font-bold text-[var(--ink)]">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--green-700)] text-white">
@@ -278,7 +279,10 @@ export default function HistoryPage() {
                           {deal.agreed_quantity} kg
                         </span>
                       </div>
-                      <Link 
+                      <p className="text-[11px] font-medium text-[var(--green-800)]/70">
+                        {tdeals("dealCreatedAgo", { time: formatRelativeTime(deal.created_at) ?? deal.created_at })}
+                      </p>
+                      <Link
                         href={`/deals/${deal.id}`} 
                         className="mt-1 flex items-center justify-center gap-2 rounded-lg bg-[var(--green-700)] py-2 text-xs font-bold text-white transition hover:bg-[var(--green-800)]"
                       >

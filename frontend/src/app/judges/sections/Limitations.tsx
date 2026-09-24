@@ -36,7 +36,7 @@ const GROUPS: { title: string; icon: string; cls: string; items: string[] }[] = 
   {
     title: "Prototype-level",
     icon: "clock",
-    cls: "border-blue-300 bg-blue-50",
+    cls: "border-blue-300 bg-blue-50 dark:border-blue-700/40 dark:bg-blue-500/10",
     items: [
       "KYC/verification — investigated this session: no free/self-serve e-KYC API (DigiLocker, PM-Kisan, Aadhaar UIDAI) is usable without a paid production tie-up, so admin-manual document review remains the correct approach for this build rather than an unfinished automated flow",
       "Ask HarvestIQ's retrieval is keyword + fuzzy matching, not semantic search — a real gap (a pooling question missing the FPO doc entirely) was found and fixed this session with a curated synonym expansion, but a paraphrase with no shared vocabulary and no hand-curated synonym can still miss (see AI Systems)",

@@ -46,7 +46,7 @@ beforeEach(() => {
 it("defaults to the sign-in form (phone + password, no name field)", () => {
   renderWithIntl(<LoginPage />);
   expect(screen.getByPlaceholderText("+91XXXXXXXXXX")).toBeInTheDocument();
-  expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Password/i, { selector: "input" })).toBeInTheDocument();
   expect(screen.queryByPlaceholderText(/Enter your name/i)).not.toBeInTheDocument();
 });
 
@@ -55,7 +55,7 @@ it("sign in calls login() with phone + password, then redirects", async () => {
   renderWithIntl(<LoginPage />);
 
   await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
-  await userEvent.type(screen.getByLabelText(/Password/i), "s3cret!!");
+  await userEvent.type(screen.getByLabelText(/Password/i, { selector: "input" }), "s3cret!!");
   await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 
   expect(api.login).toHaveBeenCalledWith("+910000000001", "s3cret!!");
@@ -68,7 +68,7 @@ it("wrong credentials show the badCredentials error", async () => {
   renderWithIntl(<LoginPage />);
 
   await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
-  await userEvent.type(screen.getByLabelText(/Password/i), "nope");
+  await userEvent.type(screen.getByLabelText(/Password/i, { selector: "input" }), "nope");
   await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 
   expect(await screen.findByText(/Wrong phone number or password/i)).toBeInTheDocument();
@@ -81,7 +81,7 @@ it("register tab reveals name + role and calls register()", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
   await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
   await userEvent.type(screen.getByPlaceholderText(/Enter your name/i), "Ravi");
-  await userEvent.type(screen.getByLabelText(/Password/i), "s3cret!!");
+  await userEvent.type(screen.getByLabelText(/Password/i, { selector: "input" }), "s3cret!!");
   await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 
   expect(api.register).toHaveBeenCalledWith(
@@ -109,7 +109,7 @@ it("registering a taken phone flips back to sign in with a hint", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
   await userEvent.type(screen.getByPlaceholderText("+91XXXXXXXXXX"), "+910000000001");
   await userEvent.type(screen.getByPlaceholderText(/Enter your name/i), "Ravi");
-  await userEvent.type(screen.getByLabelText(/Password/i), "s3cret!!");
+  await userEvent.type(screen.getByLabelText(/Password/i, { selector: "input" }), "s3cret!!");
   await userEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 
   expect(await screen.findByText(/already has an account/i)).toBeInTheDocument();

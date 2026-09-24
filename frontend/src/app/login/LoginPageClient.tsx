@@ -24,6 +24,40 @@ import { Icon } from "@/components/ui";
 
 type Mode = "signin" | "register" | "forgot" | "reset";
 
+/** Eye / eye-slash toggle icons, built inline here rather than added to
+ * `ui.tsx`'s icon set — that file is being edited concurrently by another
+ * agent and this repo's contract for it is append-only. */
+function EyeGlyph({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true" focusable="false">
+      {open ? (
+        <>
+          <path
+            d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth={1.8} />
+        </>
+      ) : (
+        <>
+          <path
+            d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.36 5.35A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a15.5 15.5 0 0 1-4.1 4.6M6.3 6.3C3.7 8 2 12 2 12s1.6 3.1 4.6 5.06"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+    </svg>
+  );
+}
+
 type DemoAccount = {
   role: "farmer" | "buyer" | "admin";
   name: string;
@@ -77,6 +111,8 @@ export default function LoginPageClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -89,6 +125,8 @@ export default function LoginPageClient() {
     setError(null);
     setOtp("");
     setNewPassword("");
+    setShowPassword(false);
+    setShowNewPassword(false);
   }
 
   async function signIn(p: string, pw: string) {
@@ -383,16 +421,26 @@ export default function LoginPageClient() {
 
             <label className="flex flex-col gap-1.5">
               <span className="al-label">{t("passwordLabel")}</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("passwordPlaceholder")}
-                required
-                minLength={mode === "register" ? 8 : undefined}
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
-                className="al-input"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t("passwordPlaceholder")}
+                  required
+                  minLength={mode === "register" ? 8 : undefined}
+                  autoComplete={mode === "register" ? "new-password" : "current-password"}
+                  className="al-input pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-[var(--ink-soft)] transition-colors hover:text-[var(--ink)]"
+                >
+                  <EyeGlyph open={showPassword} />
+                </button>
+              </div>
               {mode === "register" && (
                 <span className="text-xs text-[var(--ink-mute)]">{t("passwordHint")}</span>
               )}
@@ -489,16 +537,26 @@ export default function LoginPageClient() {
 
               <label className="flex flex-col gap-1.5">
                 <span className="al-label">{t("newPasswordLabel")}</span>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder={t("passwordPlaceholder")}
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  className="al-input"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={t("passwordPlaceholder")}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="al-input pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((s) => !s)}
+                    aria-label={showNewPassword ? t("hidePassword") : t("showPassword")}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-[var(--ink-soft)] transition-colors hover:text-[var(--ink)]"
+                  >
+                    <EyeGlyph open={showNewPassword} />
+                  </button>
+                </div>
                 <span className="text-xs text-[var(--ink-mute)]">{t("newPasswordHint")}</span>
               </label>
 

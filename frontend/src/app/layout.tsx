@@ -4,6 +4,7 @@ import { Poppins, Noto_Sans_Devanagari } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ClientAppShell } from "@/components/ClientAppShell";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
+import { THEME_INIT_SCRIPT, ThemeProvider } from "@/lib/ThemeProvider";
 import { LocationProvider } from "@/lib/useLocation";
 import "./globals.css";
 
@@ -61,16 +62,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${poppins.variable} ${notoSansDevanagari.variable} h-full`}
     >
+      <head>
+        {/* Sets [data-theme] before first paint so there's no flash of the
+            wrong theme — see ThemeProvider.tsx for why this can't just be a
+            React effect. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col text-[var(--ink)] antialiased">
-        <LocaleProvider>
-          <AuthProvider>
-            <LocationProvider>
-              <ClientAppShell>
-                {children}
-              </ClientAppShell>
-            </LocationProvider>
-          </AuthProvider>
-        </LocaleProvider>
+        <ThemeProvider>
+          <LocaleProvider>
+            <AuthProvider>
+              <LocationProvider>
+                <ClientAppShell>
+                  {children}
+                </ClientAppShell>
+              </LocationProvider>
+            </AuthProvider>
+          </LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

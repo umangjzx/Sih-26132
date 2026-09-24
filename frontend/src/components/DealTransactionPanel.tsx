@@ -13,13 +13,12 @@ import {
   type DealEvent,
   type DealPayment,
 } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 const METHODS = ["UPI", "NEFT", "RTGS", "IMPS", "Cheque", "Cash", "Other"];
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  return formatRelativeTime(iso) ?? "—";
 }
 
 export function DealTransactionPanel({
@@ -105,7 +104,7 @@ export function DealTransactionPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
           <Icon name="coins" size={18} className="text-[var(--green-700)]" /> {t("payments")}

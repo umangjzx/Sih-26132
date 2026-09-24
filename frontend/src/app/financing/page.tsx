@@ -12,7 +12,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
-import { Icon } from "@/components/ui";
+import { ConfirmDialog, Icon } from "@/components/ui";
+import { CopyButton } from "@/components/CopyButton";
 import {
   ApiError,
   createFinancingRequest,
@@ -47,18 +48,28 @@ function StatusBadge({ status }: { status: FinancingRequest["status"] }) {
   );
 }
 
-function RequestRow({ req, onWithdraw }: { req: FinancingRequest; onWithdraw: (id: number) => void }) {
+function RequestRow({ req, onWithdraw }: { req: FinancingRequest; onWithdraw: (req: FinancingRequest) => void }) {
   const t = useTranslations("financing");
+  const reference = `FIN-${req.id}`;
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm">
+    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-heading text-base font-bold text-[var(--ink)]">
             {req.crop} · {formatInrExact(req.requested_amount_inr)}
           </div>
-          <div className="mt-0.5 text-xs font-medium text-[var(--ink-soft)]">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-medium text-[var(--ink-soft)]">
+            <span className="font-mono">{reference}</span>
+            <CopyButton value={reference} label={t("reference")} />
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs font-medium text-[var(--ink-soft)]">
             {req.warehouse_name || t("noWarehouse")}
-            {req.receipt_ref ? ` · ${req.receipt_ref}` : ""}
+            {req.receipt_ref ? (
+              <>
+                <span>· {req.receipt_ref}</span>
+                <CopyButton value={req.receipt_ref} label={t("receiptRef")} />
+              </>
+            ) : null}
           </div>
         </div>
         <StatusBadge status={req.status} />
@@ -88,7 +99,7 @@ function RequestRow({ req, onWithdraw }: { req: FinancingRequest; onWithdraw: (i
         {req.status === "pending" && (
           <button
             type="button"
-            onClick={() => onWithdraw(req.id)}
+            onClick={() => onWithdraw(req)}
             className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink-soft)] transition hover:bg-[var(--paper)]"
           >
             {t("withdraw")}
@@ -112,6 +123,11 @@ export default function FinancingPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [withdrawTarget, setWithdrawTarget] = useState<FinancingRequest | null>(null);
+  // Durable, dismissible confirmation of the last submitted request — the
+  // form collapses back to the button immediately, so a pure auto-hiding
+  // toast risks the farmer not noticing it went through at all.
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   const [lotId, setLotId] = useState<string>("");
   const [amount, setAmount] = useState("");
@@ -186,6 +202,7 @@ export default function FinancingPage() {
       setShowForm(false);
       setToast(t("submitted"));
       setTimeout(() => setToast(null), 2500);
+      setFormSuccess(t("submitted"));
       load();
     } catch (err) {
       setToast(err instanceof ApiError ? err.message : t("submitFailed"));
@@ -195,10 +212,12 @@ export default function FinancingPage() {
     }
   }
 
-  async function handleWithdraw(id: number) {
-    if (!token) return;
+  async function confirmWithdraw() {
+    const req = withdrawTarget;
+    if (!req || !token) return;
+    setWithdrawTarget(null);
     try {
-      await withdrawFinancingRequest(id, token);
+      await withdrawFinancingRequest(req.id, token);
       load();
     } catch (err) {
       setToast(err instanceof ApiError ? err.message : t("submitFailed"));
@@ -219,7 +238,7 @@ export default function FinancingPage() {
 
       <Link
         href="/directory"
-        className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
+        className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-5 py-3.5 text-sm font-semibold text-[var(--green-700)] transition hover:border-[var(--green-600)] hover:bg-[var(--green-50)]"
       >
         <Icon name="warehouse" size={16} className="shrink-0" />
         {t("findWarehouse")}
@@ -230,6 +249,23 @@ export default function FinancingPage() {
         <div className="flex items-center gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
           <Icon name="check" size={18} />
           {toast}
+        </div>
+      )}
+
+      {formSuccess && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--green-600)]/30 bg-[var(--green-100)] px-5 py-4 text-sm font-bold text-[var(--green-700)]">
+          <span className="flex items-center gap-2">
+            <Icon name="checkCircle" size={18} />
+            {formSuccess}
+          </span>
+          <button
+            type="button"
+            onClick={() => setFormSuccess(null)}
+            aria-label={tc("dismiss")}
+            className="shrink-0 rounded-lg p-1 text-[var(--green-700)]/70 transition hover:bg-[var(--green-100)]/60 hover:text-[var(--green-700)]"
+          >
+            <Icon name="close" size={14} />
+          </button>
         </div>
       )}
 
@@ -249,7 +285,7 @@ export default function FinancingPage() {
       </div>
 
       {showForm && (
-        <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
           <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">{t("newRequest")}</h2>
           <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label htmlFor="financing-lot" className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ink)] sm:col-span-2">
@@ -342,7 +378,7 @@ export default function FinancingPage() {
 
       {loading ? (
         <div className="flex flex-col gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-32 w-full animate-pulse rounded-2xl bg-white/50" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-32 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />)}
         </div>
       ) : loadErr ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
@@ -351,7 +387,7 @@ export default function FinancingPage() {
           <button
             type="button"
             onClick={() => { setLoading(true); load(); }}
-            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+            className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
           >
             {tc("retry")}
           </button>
@@ -365,10 +401,21 @@ export default function FinancingPage() {
         <section>
           <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--ink-soft)]">{t("myRequests")}</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {requests.map((r) => <RequestRow key={r.id} req={r} onWithdraw={handleWithdraw} />)}
+            {requests.map((r) => <RequestRow key={r.id} req={r} onWithdraw={setWithdrawTarget} />)}
           </div>
         </section>
       )}
+
+      <ConfirmDialog
+        open={withdrawTarget !== null}
+        title={t("withdraw")}
+        message={t("withdrawConfirm")}
+        confirmLabel={t("withdraw")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={confirmWithdraw}
+        onCancel={() => setWithdrawTarget(null)}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useAppLocale } from "@/i18n/LocaleProvider";
 import { fetchBrief, type BriefAction, type DecisionBrief as Brief } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import type { CropMarketState } from "@/lib/useCropMarket";
 import { useLocation } from "@/lib/useLocation";
 import { Card, Icon, SectionHeader, Skeleton } from "./ui";
@@ -195,7 +196,7 @@ export function DecisionBrief({ cm }: { cm: CropMarketState }) {
 
       <p className="mt-3 flex items-start gap-1.5 border-t border-[var(--line)]/60 pt-2 text-xs text-[var(--ink-soft)]">
         <Icon name="shield" size={13} className="mt-0.5 shrink-0" />
-        {t("asOf", { date: brief.as_of, market: brief.reference_market })}. {t("basis")}
+        {t("asOf", { date: formatRelativeTime(brief.as_of) ?? brief.as_of, market: brief.reference_market })}. {t("basis")}
       </p>
     </Card>
   );

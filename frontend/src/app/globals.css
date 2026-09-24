@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Tailwind v4: make `dark:` utilities respond to an explicit [data-theme]
+   attribute (set by ThemeProvider, synced to system preference on first
+   visit) instead of only the OS-level prefers-color-scheme media query —
+   this is what lets the in-app toggle override the system default. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* =========================================================================
    HarvestIQ Design System — v2 (Poppins · September 2026)
    Palette: Deep Forest Green · Primary Green · Soft Agri Green
@@ -54,6 +60,8 @@
   --line:     #E5E7EB;   /* Borders, dividers */
   --line-mid: #D1D5DB;   /* Slightly darker border for inputs */
 
+  color-scheme: light;
+
   /* ---- Semantic aliases (kept for existing Tailwind class names) ---- */
   --color-bg:           var(--paper);
   --color-surface:      var(--surface);
@@ -104,6 +112,59 @@
   --chart-blue:   #1d6fa5;
   --chart-purple: #7c3aed;
   --chart-teal:   #0d7377;
+
+  /* ---- Frosted-glass surfaces (opacity-based, so dark mode can swap the
+     underlying color without touching every .al-card/.al-stat usage) ---- */
+  --surface-glass-90: rgba(255, 255, 255, 0.90);
+  --surface-glass-65: rgba(255, 255, 255, 0.65);
+  --surface-glass-60: rgba(255, 255, 255, 0.60);
+  --surface-glass-shimmer: rgba(255, 255, 255, 0.60);
+}
+
+/* ── 1b. Dark theme ──────────────────────────────────────────────────────
+   Brand accents (green/amber/red hues) stay in the same family for
+   recognizability; only the neutrals (page/surface/text/border) flip, plus
+   the few tokens that were hard-coded near-white. Set via [data-theme] by
+   ThemeProvider (frontend/src/lib/ThemeProvider.tsx), which also seeds it
+   from the OS preference on first visit — see the inline anti-FOUC script
+   in layout.tsx for why this is an attribute, not just a media query. */
+:root[data-theme="dark"] {
+  --paper:    #10241a;   /* page background — deep forest, not pure black */
+  --surface:  #16281d;   /* card / panel surface */
+  --ink:      #EAF2EC;   /* primary text — warm off-white, not pure white */
+  --ink-soft: #A9BBAC;
+  --ink-mute: #8AA091;
+  --line:     #24382c;
+  --line-mid: #33493b;
+
+  --green-50:  #12271a;
+  --green-100: #163a25;
+  --green-natural: #8fd0a1;
+
+  --amber-100: #3a2c0e;
+
+  --red-50:  #2c1613;
+  --red-100: #3a1e19;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 16px -4px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 12px 32px -8px rgba(0, 0, 0, 0.46);
+  --shadow-xl: 0 24px 56px -12px rgba(0, 0, 0, 0.52);
+
+  --chart-green:  #4ade80;
+  --chart-amber:  #fbbf24;
+  --chart-red:    #f87171;
+  --chart-blue:   #60a5fa;
+  --chart-purple: #c084fc;
+  --chart-teal:   #2dd4bf;
+
+  --surface-glass-90: rgba(22, 40, 29, 0.90);
+  --surface-glass-65: rgba(22, 40, 29, 0.72);
+  --surface-glass-60: rgba(22, 40, 29, 0.65);
+  --surface-glass-shimmer: rgba(255, 255, 255, 0.06);
+
+  color-scheme: dark;
 }
 
 /* ── 2. Tailwind theme bridge ───────────────────────────────────────────── */
@@ -170,7 +231,7 @@ a[role="button"] {
 .al-card {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.90);
+  background: var(--surface-glass-90);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: var(--shadow-md);
@@ -180,7 +241,7 @@ a[role="button"] {
 .al-card-plain {
   border: 1px solid var(--line);
   border-radius: calc(var(--radius) - 0.15rem);
-  background: rgba(255, 255, 255, 0.65);
+  background: var(--surface-glass-65);
 }
 
 /* Hover lift transition */
@@ -197,7 +258,7 @@ a[role="button"] {
 .al-stat {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.60);
+  background: var(--surface-glass-60);
   padding: 0.625rem 0.875rem;
   text-align: center;
 }
@@ -403,10 +464,24 @@ a[role="button"] {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.60) 50%,
+    var(--surface-glass-shimmer) 50%,
     transparent 100%
   );
   animation: al-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .al-skeleton::after,
+  .al-fade-up {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── 11. Section divider ────────────────────────────────────────────────── */
@@ -447,4 +522,56 @@ a[role="button"] {
     repeating-linear-gradient(0deg,   rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 44px),
     repeating-linear-gradient(90deg,  rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 44px);
 }
+}
+
+/* ── 15. Print stylesheet ───────────────────────────────────────────────────
+   This is about printing the *frontend* app's own pages — a distinct,
+   legitimate concern from the separate server-rendered deal-receipt popup
+   in backend/app/api/deals.py (that HTML has its own inline styles and never
+   loads this stylesheet at all).
+
+   App chrome (Sidebar, TopHeader/PublicHeader, BottomNav, the floating
+   AskHarvestIQ button, and the new CookieConsentBanner/BackToTopButton/
+   ScrollProgressBar) is hidden via `print:hidden` directly on each
+   component. Anything that can't easily carry a Tailwind class (shared
+   decorative art reused across many hero sections) is targeted here by its
+   existing class name instead. ─────────────────────────────────────────── */
+@media print {
+  /* Force a light, readable palette regardless of the active [data-theme] —
+     printing the dark palette as-is would put near-black ink on a near-black
+     page background on most printers/PDF exports. */
+  :root,
+  :root[data-theme="dark"] {
+    --paper:    #ffffff;
+    --surface:  #ffffff;
+    --ink:      #111827;
+    --ink-soft: #374151;
+    --ink-mute: #4b5563;
+    --line:     #d1d5db;
+    --line-mid: #9ca3af;
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  /* Shared decorative-only elements (hero grid overlay, blurred ambient
+     orbs, the faded hero background photo) — ink and page space, no
+     information. */
+  .al-grid-overlay,
+  .al-decorative {
+    display: none !important;
+  }
+
+  /* Frosted-glass / shadow effects don't survive to paper well and can
+     print as solid grey blocks — flatten to plain surfaces. */
+  .al-card,
+  .al-card-plain {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }

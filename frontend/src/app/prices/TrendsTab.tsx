@@ -26,7 +26,7 @@ export function TrendsTab() {
       />
 
       {/* Filter bar */}
-      <div className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--ink-soft)] mb-3">
           <Icon name="pin" size={14} />
           {t("selectCropMarket")}

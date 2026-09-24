@@ -7,7 +7,7 @@ type Kind = "rule" | "statistical" | "api-ai" | "retrieval";
 
 const KIND_STYLE: Record<Kind, { label: string; cls: string }> = {
   rule: { label: "Rule-based logic — not AI", cls: "bg-[var(--line)] text-[var(--ink-soft)]" },
-  statistical: { label: "Statistical model — not ML", cls: "bg-blue-50 text-blue-700" },
+  statistical: { label: "Statistical model — not ML", cls: "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" },
   "api-ai": { label: "Real AI — external LLM API", cls: "bg-[var(--green-100)] text-[var(--green-700)]" },
   retrieval: { label: "Classical retrieval — not semantic ML", cls: "bg-[var(--amber-100)] text-[var(--amber-700)]" },
 };

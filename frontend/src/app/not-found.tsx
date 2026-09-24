@@ -24,11 +24,11 @@ export default function NotFound() {
       {/* Decorative grid overlay, matching the marketing hero sections */}
       <div className="al-grid-overlay pointer-events-none absolute inset-0" />
       <div
-        className="pointer-events-none absolute right-0 top-0 h-[400px] w-[400px] rounded-full blur-[120px]"
+        className="al-decorative pointer-events-none absolute right-0 top-0 h-[400px] w-[400px] rounded-full blur-[120px]"
         style={{ background: "rgba(129, 199, 132, 0.08)" }}
       />
       <div
-        className="pointer-events-none absolute -bottom-24 left-1/4 h-72 w-72 rounded-full blur-[100px]"
+        className="al-decorative pointer-events-none absolute -bottom-24 left-1/4 h-72 w-72 rounded-full blur-[100px]"
         style={{ background: "rgba(244, 164, 0, 0.08)" }}
       />
 

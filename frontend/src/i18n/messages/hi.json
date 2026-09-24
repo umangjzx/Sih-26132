@@ -6,7 +6,17 @@
     "retry": "पुनः प्रयास करें",
     "loginRequired": "लॉगिन आवश्यक",
     "source": "स्रोत",
-    "asOf": "तक"
+    "asOf": "तक",
+    "switchToLightMode": "लाइट मोड पर जाएँ",
+    "switchToDarkMode": "डार्क मोड पर जाएँ",
+    "skipToContent": "मुख्य सामग्री पर जाएँ",
+    "backToTop": "ऊपर जाएँ",
+    "cancel": "रद्द करें",
+    "dismiss": "खारिज करें",
+    "copy": "कॉपी करें",
+    "copied": "कॉपी हो गया!",
+    "copyFailed": "कॉपी विफल रही",
+    "copyValue": "{label} कॉपी करें"
   },
   "nav": {
     "prices": "भाव",
@@ -120,7 +130,9 @@
     "resetError": "यह कोड अमान्य है या समाप्त हो गया है। कृपया नया कोड मांगें।",
     "resetSuccess": "पासवर्ड अपडेट हो गया — साइन इन किया जा रहा है।",
     "backToSignIn": "साइन इन पर वापस जाएं",
-    "resendCode": "कोड नहीं मिला? फिर से भेजें"
+    "resendCode": "कोड नहीं मिला? फिर से भेजें",
+    "showPassword": "पासवर्ड दिखाएँ",
+    "hidePassword": "पासवर्ड छुपाएँ"
   },
   "lots": {
     "title": "मेरे लॉट",
@@ -308,7 +320,8 @@
     "matchNotFound": "यह मैच मौजूद नहीं है, या हटा दिया गया है।",
     "loadFailed": "यह मैच लोड नहीं हो सका।",
     "backToMatches": "मैचों पर वापस जाएँ",
-    "offerQtyHint": "लॉट आकार: {max} किग्रा"
+    "offerQtyHint": "लॉट आकार: {max} किग्रा",
+    "matchedAgo": "{time} मिलान हुआ"
   },
   "deals": {
     "title": "मेरे सौदे",
@@ -379,7 +392,8 @@
     "evt_deal_created": "सौदा बना",
     "evt_dispute_raised": "विवाद उठाया गया",
     "enterAmount": "भुगतान राशि दर्ज करें।",
-    "overOutstanding": "यह इस सौदे पर बकाया ₹{amount} से अधिक है।"
+    "overOutstanding": "यह इस सौदे पर बकाया ₹{amount} से अधिक है।",
+    "dealCreatedAgo": "{time} बनाया गया"
   },
   "disputes": {
     "title": "विवाद",
@@ -901,7 +915,9 @@
     "status_pending": "लंबित",
     "status_approved": "स्वीकृत",
     "status_rejected": "अस्वीकृत",
-    "status_withdrawn": "वापस लिया गया"
+    "status_withdrawn": "वापस लिया गया",
+    "reference": "वित्तपोषण संदर्भ",
+    "withdrawConfirm": "यह वित्तपोषण अनुरोध वापस लें? इसे पूर्ववत नहीं किया जा सकता — यदि आप अपना मन बदलते हैं तो आपको नया अनुरोध जमा करना होगा।"
   },
   "pools": {
     "title": "सामूहिक अनुरोध",
@@ -958,7 +974,9 @@
     "viewDeal": "सौदा देखें",
     "actionFailed": "कुछ गड़बड़ हो गई। कृपया फिर से प्रयास करें।",
     "createFailed": "पूल नहीं बनाया जा सका।",
-    "invalidQtyPrice": "मान्य मात्रा और भाव दर्ज करें, दोनों शून्य से अधिक।"
+    "invalidQtyPrice": "मान्य मात्रा और भाव दर्ज करें, दोनों शून्य से अधिक।",
+    "withdrawConfirm": "इस पूल से हट जाएँ? यदि यह अभी भी खुला है तो आप बाद में फिर से शामिल हो सकते हैं।",
+    "closePoolConfirm": "यह पूल बंद करें? सदस्य अब शामिल या बाहर नहीं हो पाएँगे।"
   },
   "forward": {
     "title": "फॉरवर्ड सौदे",
@@ -1008,7 +1026,13 @@
     "settlementOverdue": "विलंबित — तय निपटान तिथि निकल चुकी है",
     "settlementOnTrack": "निपटान समय पर है",
     "breachFarmerFault": "किसान दोषी पाया गया — ₹{amount} जुर्माना",
-    "breachBuyerFault": "खरीदार दोषी पाया गया — ₹{amount} जुर्माना"
+    "breachBuyerFault": "खरीदार दोषी पाया गया — ₹{amount} जुर्माना",
+    "bidPosted": "बोली पोस्ट हो गई!",
+    "bidReference": "बोली संदर्भ",
+    "commitmentReference": "प्रतिबद्धता संदर्भ",
+    "closeBidConfirm": "यह बोली बंद करें? एक बार बंद होने के बाद कोई और प्रतिबद्धता नहीं की जा सकती।",
+    "withdrawCommitmentConfirm": "यह प्रतिबद्धता वापस लें? यदि आप अपना मन बदलते हैं तो आपको फिर से प्रतिबद्ध होना होगा।",
+    "commitSuccess": "प्रतिबद्धता खरीदार को भेज दी गई!"
   },
   "profile": {
     "title": "प्रोफ़ाइल और सत्यापन",
@@ -1080,7 +1104,8 @@
     "deactivate": "निष्क्रिय",
     "activate": "सक्रिय",
     "loadError": "उपयोगकर्ता सूची लोड नहीं हो सकी।",
-    "actionError": "यह कार्रवाई पूरी नहीं हो सकी।"
+    "actionError": "यह कार्रवाई पूरी नहीं हो सकी।",
+    "joined": "{time} जुड़े"
   },
   "adminListings": {
     "title": "लिस्टिंग और मांगें",
@@ -1230,7 +1255,8 @@
     "veh_mini_truck": "Mini-truck",
     "veh_truck_6t": "Truck (6t)",
     "veh_truck_10t": "Truck (10t)",
-    "veh_other": "Other"
+    "veh_other": "Other",
+    "lastUpdated": "अंतिम बार {time} अपडेट किया गया"
   },
   "onboarding": {
     "title": "शुरू करें",
@@ -1539,5 +1565,19 @@
     "closingSub": "चाहे आप सर्वोत्तम भाव खोजते किसान हों, सत्यापित विक्रेता खोजते खरीदार हों, या मात्रा जोड़ते FPO — HarvestIQ आपके लिए बना है।",
     "closingCtaStart": "शुरू करें",
     "closingCtaFeatures": "सभी विशेषताएँ देखें"
+  },
+  "search": {
+    "title": "खोजें",
+    "placeholder": "पेज, टूल और अन्य खोजें…",
+    "noResults": "\"{query}\" के लिए कोई परिणाम नहीं",
+    "hint": "↑↓ नेविगेट करने के लिए · Enter चुनने के लिए · Esc बंद करने के लिए",
+    "close": "खोज बंद करें",
+    "triggerLabel": "खोजें",
+    "judgesPage": "जजों के लिए"
+  },
+  "cookieBanner": {
+    "title": "स्टोरेज सूचना",
+    "message": "HarvestIQ आपकी साइन-इन जानकारी और वरीयताएँ इस डिवाइस पर संग्रहीत करता है (कोई थर्ड-पार्टी ट्रैकिंग नहीं)।",
+    "accept": "ठीक है"
   }
 }

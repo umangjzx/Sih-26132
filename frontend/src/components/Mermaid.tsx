@@ -3,12 +3,53 @@
 /**
  * Client-only Mermaid diagram renderer, themed to match the HarvestIQ design
  * tokens in globals.css (mermaid needs literal color values, not CSS vars,
- * since it bakes them into the generated SVG at render time).
+ * since it bakes them into the generated SVG at render time). Re-initializes
+ * and re-renders whenever the light/dark toggle flips, since the SVG's
+ * colors are baked in and won't otherwise follow `[data-theme]`.
  */
 
 import { useEffect, useId, useRef, useState } from "react";
 
-let mermaidInitialized = false;
+import { useTheme } from "@/lib/ThemeProvider";
+
+const THEME_VARIABLES = {
+  light: {
+    primaryColor: "#EDF7F0",
+    primaryBorderColor: "#2E7D32",
+    primaryTextColor: "#1F2A33",
+    secondaryColor: "#FEF0CD",
+    secondaryBorderColor: "#F4A400",
+    tertiaryColor: "#FFFFFF",
+    tertiaryBorderColor: "#E5E7EB",
+    lineColor: "#6B7280",
+    textColor: "#1F2A33",
+    mainBkg: "#EDF7F0",
+    nodeBorder: "#2E7D32",
+    clusterBkg: "#F5F7F5",
+    clusterBorder: "#D1D5DB",
+    edgeLabelBackground: "#FFFFFF",
+    fontSize: "14px",
+  },
+  dark: {
+    primaryColor: "#163a25",
+    primaryBorderColor: "#4a9d6b",
+    primaryTextColor: "#EAF2EC",
+    secondaryColor: "#3a2c0e",
+    secondaryBorderColor: "#f7b731",
+    tertiaryColor: "#16281d",
+    tertiaryBorderColor: "#33493b",
+    lineColor: "#A9BBAC",
+    textColor: "#EAF2EC",
+    mainBkg: "#163a25",
+    nodeBorder: "#4a9d6b",
+    clusterBkg: "#10241a",
+    clusterBorder: "#33493b",
+    edgeLabelBackground: "#16281d",
+    fontSize: "14px",
+  },
+} as const;
+
+let lastInitTheme: "light" | "dark" | null = null;
 
 export function Mermaid({ chart, className = "" }: { chart: string; className?: string }) {
   const rawId = useId();
@@ -16,6 +57,7 @@ export function Mermaid({ chart, className = "" }: { chart: string; className?: 
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const { theme } = useTheme();
 
   useEffect(() => {
     mountedRef.current = true;
@@ -30,31 +72,15 @@ export function Mermaid({ chart, className = "" }: { chart: string; className?: 
     (async () => {
       const { default: mermaid } = await import("mermaid");
 
-      if (!mermaidInitialized) {
+      if (lastInitTheme !== theme) {
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: "strict",
           fontFamily: "var(--font-poppins), sans-serif",
           theme: "base",
-          themeVariables: {
-            primaryColor: "#EDF7F0",
-            primaryBorderColor: "#2E7D32",
-            primaryTextColor: "#1F2A33",
-            secondaryColor: "#FEF0CD",
-            secondaryBorderColor: "#F4A400",
-            tertiaryColor: "#FFFFFF",
-            tertiaryBorderColor: "#E5E7EB",
-            lineColor: "#6B7280",
-            textColor: "#1F2A33",
-            mainBkg: "#EDF7F0",
-            nodeBorder: "#2E7D32",
-            clusterBkg: "#F5F7F5",
-            clusterBorder: "#D1D5DB",
-            edgeLabelBackground: "#FFFFFF",
-            fontSize: "14px",
-          },
+          themeVariables: THEME_VARIABLES[theme],
         });
-        mermaidInitialized = true;
+        lastInitTheme = theme;
       }
 
       try {
@@ -70,7 +96,7 @@ export function Mermaid({ chart, className = "" }: { chart: string; className?: 
     return () => {
       cancelled = true;
     };
-  }, [chart, id]);
+  }, [chart, id, theme]);
 
   if (error) {
     return (

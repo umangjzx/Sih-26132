@@ -17,6 +17,7 @@ import {
   notificationUnreadCount,
   type AppNotification,
 } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 export function NotificationBell() {
   const { token, isAuthenticated } = useAuth();
@@ -128,7 +129,7 @@ export function NotificationBell() {
         type="button"
         onClick={openDropdown}
         aria-label={t("title")}
-        className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--line)] bg-white/70 text-[var(--green-700)] transition-colors hover:bg-white"
+        className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/70 text-[var(--green-700)] transition-colors hover:bg-[var(--surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--green-700)]"
       >
         <Icon name="bell" size={19} />
         {unread > 0 && (
@@ -142,7 +143,7 @@ export function NotificationBell() {
         <div
           role="dialog"
           aria-label={t("title")}
-          className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-[var(--color-border)] bg-white p-3 shadow-2xl"
+          className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-2xl"
         >
           <div className="mb-2 flex items-center justify-between">
             <span className="font-heading text-sm font-bold">{t("title")}</span>
@@ -173,20 +174,23 @@ export function NotificationBell() {
               <button
                 type="button"
                 onClick={fetchItems}
-                className="rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold text-[var(--red-700)]"
+                className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--color-surface)] px-3 py-1 text-xs font-bold text-[var(--red-700)]"
               >
                 {tc("retry")}
               </button>
             </div>
           ) : items.length === 0 ? (
-            <p className="py-4 text-center text-sm text-stone-500">{t("none")}</p>
+            <p className="py-4 text-center text-sm text-[var(--ink-soft)]">{t("none")}</p>
           ) : (
             <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto">
               {items.map((n) => {
                 const body = (
                   <>
                     <div className="text-sm font-semibold">{n.title}</div>
-                    <div className="text-xs text-stone-500">{n.body}</div>
+                    <div className="text-xs text-[var(--ink-soft)]">{n.body}</div>
+                    <div className="text-[10px] text-[var(--ink-soft)]/70">
+                      {formatRelativeTime(n.created_at) ?? n.created_at}
+                    </div>
                   </>
                 );
                 return (

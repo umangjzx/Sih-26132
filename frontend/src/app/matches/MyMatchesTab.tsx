@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { Icon } from "@/components/ui";
 import { listMyMatches, type MatchResponse, type ScoreDetail } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 function parseScoreDetail(raw: string | null): ScoreDetail | null {
   if (!raw) return null;
@@ -113,7 +114,7 @@ export function MyMatchesTab() {
       {loading ? (
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 w-full animate-pulse rounded-2xl bg-white/50" />
+            <div key={i} className="h-32 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
           ))}
         </div>
       ) : loadErr ? (
@@ -123,7 +124,7 @@ export function MyMatchesTab() {
           <button
             type="button"
             onClick={() => { setLoading(true); loadData(); }}
-            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+            className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
           >
             {tc("retry")}
           </button>
@@ -144,7 +145,7 @@ export function MyMatchesTab() {
 
             return (
               <li key={match.id}
-                className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+                className={`rounded-2xl border bg-[var(--surface)] p-5 shadow-sm transition hover:shadow-md ${
                   risk.level === "risk" ? "border-[var(--red-500)]/50" : "border-[var(--line)]"
                 }`}>
                 {risk.level !== "none" && (
@@ -188,10 +189,13 @@ export function MyMatchesTab() {
                           {tm("memberSince", { year: new Date(cp.member_since).getFullYear() })}
                         </div>
                       )}
+                      <div className="mt-1 text-[11px] font-medium text-[var(--ink-soft)]/80">
+                        {tm("matchedAgo", { time: formatRelativeTime(match.created_at) ?? match.created_at })}
+                      </div>
                     </div>
                   </div>
                   <Link href={`/matches/${match.id}`}
-                    className="shrink-0 rounded-xl bg-[var(--green-700)] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)]">
+                    className="shrink-0 rounded-xl bg-[var(--green-700)] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-green-900/20 transition hover:bg-[var(--green-900)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--green-700)]">
                     {tm("viewOffers")}
                   </Link>
                 </div>

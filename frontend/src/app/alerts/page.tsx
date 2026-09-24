@@ -11,7 +11,7 @@ import Link from "next/link";
 
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
-import { Icon } from "@/components/ui";
+import { ConfirmDialog, Icon } from "@/components/ui";
 import {
   ApiError,
   createAlert,
@@ -38,6 +38,7 @@ export default function AlertsPage() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PriceAlert | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -58,7 +59,7 @@ export default function AlertsPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[var(--line)] bg-white p-12 text-center shadow-sm">
+      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-12 text-center shadow-sm">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--green-100)] text-[var(--green-700)]">
           <Icon name="bell" size={32} />
         </div>
@@ -127,6 +128,12 @@ export default function AlertsPage() {
     }
   }
 
+  function confirmDelete() {
+    const al = deleteTarget;
+    setDeleteTarget(null);
+    if (al && token) runAlertAction(al.id, deleteAlert(al.id, token));
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -150,7 +157,7 @@ export default function AlertsPage() {
           <button
             type="button"
             onClick={() => load()}
-            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+            className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold"
           >
             {tc("retry")}
           </button>
@@ -158,7 +165,7 @@ export default function AlertsPage() {
       )}
 
       {/* Alert Creation Form */}
-      <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h2 className="mb-2 font-heading text-base font-bold text-[var(--ink)]">
           {t("create")}
         </h2>
@@ -175,7 +182,7 @@ export default function AlertsPage() {
               onChange={(e) => setCrop(e.target.value)}
               required
               placeholder={t("cropPlaceholder")}
-              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
+              className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
             <span className="font-semibold text-[var(--ink-soft)]">{t("builderAt")}</span>
             <label htmlFor="alert-market" className="sr-only">{t("market")}</label>
@@ -185,7 +192,7 @@ export default function AlertsPage() {
               onChange={(e) => setMarket(e.target.value)}
               required
               placeholder={t("marketPlaceholder")}
-              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
+              className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             />
             <span className="font-semibold text-[var(--ink-soft)]">{t("builderGoes")}</span>
             <label htmlFor="alert-direction" className="sr-only">{t("direction")}</label>
@@ -193,12 +200,12 @@ export default function AlertsPage() {
               id="alert-direction"
               value={direction}
               onChange={(e) => setDirection(e.target.value as "above" | "below")}
-              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
+              className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold focus:border-[var(--green-600)] focus:outline-none"
             >
               <option value="above">{t("above")}</option>
               <option value="below">{t("below")}</option>
             </select>
-            <div className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 focus-within:border-[var(--green-600)]">
+            <div className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 focus-within:border-[var(--green-600)]">
               <span className="text-sm font-bold text-[var(--ink-soft)]">₹</span>
               <label htmlFor="alert-threshold" className="sr-only">{t("thresholdShort")}</label>
               <input
@@ -235,7 +242,7 @@ export default function AlertsPage() {
       </div>
 
       {/* Active Alerts List */}
-      <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-heading text-base font-bold text-[var(--ink)]">
             {t("yourAlerts")}
@@ -250,7 +257,7 @@ export default function AlertsPage() {
         {loading ? (
           <div className="flex flex-col gap-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-white/50" />
+              <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
             ))}
           </div>
         ) : alerts.length === 0 ? (
@@ -303,16 +310,14 @@ export default function AlertsPage() {
                     type="button"
                     disabled={pendingId === al.id}
                     onClick={() => token && runAlertAction(al.id, toggleAlert(al.id, token))}
-                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {al.active ? t("pause") : t("resume")}
                   </button>
                   <button
                     type="button"
                     disabled={pendingId === al.id}
-                    onClick={() => {
-                      if (token && window.confirm(t("confirmDelete"))) runAlertAction(al.id, deleteAlert(al.id, token));
-                    }}
+                    onClick={() => setDeleteTarget(al)}
                     className="rounded-xl border border-[var(--red-500)]/30 bg-[var(--red-100)] px-3 py-1.5 text-xs font-semibold text-[var(--red-700)] transition-colors hover:bg-[var(--red-100)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t("delete")}
@@ -323,6 +328,17 @@ export default function AlertsPage() {
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={t("delete")}
+        message={t("confirmDelete")}
+        confirmLabel={t("delete")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -10,7 +10,7 @@ export function LanguageSwitcher() {
   const t = useTranslations("nav");
 
   return (
-    <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
+    <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text)]">
       <span className="sr-only">{t("language")}</span>
       <select
         value={locale}

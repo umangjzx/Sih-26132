@@ -14,14 +14,20 @@
  */
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "./AuthProvider";
 import { AskHarvestIQ } from "./AskHarvestIQ";
+import { BackToTopButton } from "./BackToTopButton";
 import { BottomNav } from "./BottomNav";
+import { CookieConsentBanner } from "./CookieConsentBanner";
+import { GlobalSearch } from "./GlobalSearch";
 import { PublicHeader } from "./PublicHeader";
+import { ScrollProgressBar } from "./ScrollProgressBar";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import { useUtmCapture } from "@/lib/useUtmCapture";
 
 const COLLAPSE_KEY = "harvestiq.sidebarCollapsed";
 
@@ -49,10 +55,27 @@ function SiteFooter() {
   );
 }
 
+function SkipToContent() {
+  const t = useTranslations("common");
+  return (
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-[var(--green-700)] focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg"
+    >
+      {t("skipToContent")}
+    </a>
+  );
+}
+
 export function ClientAppShell({ children }: { children: React.ReactNode }) {
+  useUtmCapture();
   const { ready, isAuthenticated } = useAuth();
   const [drawerOpen,  setDrawerOpen]  = useState(false);
   const [collapsed,   setCollapsed]   = useState(false);
+  const [searchOpen,  setSearchOpen]  = useState(false);
+
+  const openSearch  = useCallback(() => setSearchOpen(true), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   // Read persisted collapse state on mount (avoids SSR mismatch)
   useEffect(() => {
@@ -79,6 +102,8 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-screen flex-col overflow-x-hidden bg-[var(--paper)]">
+        <ScrollProgressBar />
+        <SkipToContent />
         <PublicHeader />
         {/*
           PublicHeader is `fixed`, not `sticky` — it overlays content instead
@@ -88,13 +113,15 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
           original py-6 top gap (1.5rem). Landing.tsx's Hero cancels this
           same amount with -mt-[5.75rem] to tuck itself back under the header.
         */}
-        <main className="flex-1 px-4 pt-[5.75rem] pb-6 sm:px-6 lg:px-8">
+        <main id="main-content" className="flex-1 px-4 pt-[5.75rem] pb-6 sm:px-6 lg:px-8">
           {/* max-w-screen-xl centres content on ultra-wide displays */}
           <div className="mx-auto w-full min-w-0 max-w-screen-xl al-fade-up">
             {children}
           </div>
         </main>
         <SiteFooter />
+        <BackToTopButton />
+        <CookieConsentBanner />
       </div>
     );
   }
@@ -106,6 +133,8 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[var(--paper)]">
+      <ScrollProgressBar />
+      <SkipToContent />
       <Sidebar
         isOpen={drawerOpen}
         collapsed={collapsed}
@@ -120,9 +149,9 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
           ${mainPaddingLeft}
         `}
       >
-        <TopHeader onOpenSidebar={() => setDrawerOpen(true)} />
+        <TopHeader onOpenSidebar={() => setDrawerOpen(true)} onOpenSearch={openSearch} />
 
-        <main className="flex-1 px-4 pb-24 pt-5 sm:px-6 lg:px-8 lg:pb-8 lg:pt-6">
+        <main id="main-content" className="flex-1 px-4 pb-24 pt-5 sm:px-6 lg:px-8 lg:pb-8 lg:pt-6">
           <div className="mx-auto w-full min-w-0 max-w-screen-xl">
             {children}
           </div>
@@ -138,6 +167,12 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom tab bar */}
       <BottomNav onOpenMore={() => setDrawerOpen(true)} />
+
+      {/* Command-palette-style global search — Ctrl+K / Cmd+K / "/" */}
+      <GlobalSearch open={searchOpen} onOpen={openSearch} onClose={closeSearch} />
+
+      <BackToTopButton />
+      <CookieConsentBanner />
     </div>
   );
 }

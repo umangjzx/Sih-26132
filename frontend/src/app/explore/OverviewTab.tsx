@@ -22,6 +22,7 @@ import {
 import { Card, Icon, SectionHeader, Skeleton, Stat } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { fetchPublicOverview, fetchPublicRealization, type PublicOverview, type PublicRealization } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import { useLocation } from "@/lib/useLocation";
 
 function MoverChart({
@@ -157,7 +158,7 @@ export function OverviewTab() {
         <button
           type="button"
           onClick={() => load()}
-          className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-white px-3 py-1 text-xs font-bold"
+          className="ml-auto rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-3 py-1 text-xs font-bold"
         >
           {tc("retry")}
         </button>
@@ -188,7 +189,7 @@ export function OverviewTab() {
       )}
       {data.as_of && (
         <p className="-mt-4 mb-2 text-xs text-[var(--ink-soft)]/70">
-          {t("asOf")}: {data.as_of}
+          {t("asOf")}: {formatRelativeTime(data.as_of) ?? data.as_of}
         </p>
       )}
 

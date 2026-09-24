@@ -293,7 +293,7 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => load()}
-            className="ml-auto rounded-lg border border-[var(--color-wait)]/40 bg-white px-3 py-1 text-xs font-bold"
+            className="ml-auto rounded-lg border border-[var(--color-wait)]/40 bg-[var(--color-surface)] px-3 py-1 text-xs font-bold"
           >
             {t("retryAction")}
           </button>

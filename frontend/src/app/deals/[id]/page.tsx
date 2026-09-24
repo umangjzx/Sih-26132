@@ -31,6 +31,7 @@ import {
 } from "@/lib/api";
 import { DealLogisticsCard } from "@/components/DealLogisticsCard";
 import { DealTransactionPanel } from "@/components/DealTransactionPanel";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 const STAGES = [
   "matched",
@@ -205,8 +206,8 @@ export default function DealDetailPage() {
   if (!deal) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="h-24 w-full animate-pulse rounded-2xl bg-white/50" />
-        <div className="h-64 w-full animate-pulse rounded-2xl bg-white/50" />
+        <div className="h-24 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
+        <div className="h-64 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />
       </div>
     );
   }
@@ -237,14 +238,18 @@ export default function DealDetailPage() {
       )}
 
       {/* Header Info */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-3 border-b border-[var(--line)] pb-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--green-700)] text-white">
             <Icon name="leaf" size={24} />
           </div>
           <div>
             <h1 className="font-heading text-lg font-extrabold text-[var(--ink)]">{deal.lot.crop}</h1>
-            <p className="text-xs text-[var(--ink-soft)]">Deal ID: #{deal.id}</p>
+            <p className="text-xs text-[var(--ink-soft)]">
+              Deal ID: #{deal.id}
+              {" · "}
+              {t("dealCreatedAgo", { time: formatRelativeTime(deal.created_at) ?? deal.created_at })}
+            </p>
           </div>
         </div>
         
@@ -279,7 +284,7 @@ export default function DealDetailPage() {
       </section>
 
       {/* Pipeline stepper */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h2 className="mb-5 flex items-center gap-2 font-heading text-base font-bold text-[var(--ink)]">
           <Icon name="connection" size={18} className="text-[var(--green-600)]" /> {t("pipeline")}
         </h2>
@@ -448,7 +453,7 @@ export default function DealDetailPage() {
                   </a>
                 )}
                 {d.status === "resolved" && (
-                  <div className="mt-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-xs">
+                  <div className="mt-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs">
                     <p className="font-bold text-[var(--ink)]">
                       {tp("outcomeLabel")}: {outcomeLabel[d.outcome ?? ""] ?? d.outcome ?? "—"}
                     </p>
@@ -481,7 +486,7 @@ export default function DealDetailPage() {
             {tp("duplicateError")}
           </div>
         ) : (
-          <form onSubmit={handleRaise} className="mt-6 flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-white p-5">
+          <form onSubmit={handleRaise} className="mt-6 flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5">
             <label className="flex flex-col gap-2 text-sm font-bold text-[var(--ink)]">
               {tp("reasonLabel")}
               <textarea

@@ -18,7 +18,7 @@ import {
   markNotificationRead,
   type AppNotification,
 } from "@/lib/api";
-import { formatDateTime } from "@/lib/format";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 const KIND_ICON: Record<string, string> = {
   price_alert: "chart",
@@ -94,7 +94,7 @@ export default function NotificationsPage() {
       <PageHeader icon="bell" title={t("pageTitle")} subtitle={t("pageSubtitle")} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex w-fit gap-1 rounded-xl border border-[var(--line)] bg-white p-1 shadow-sm">
+        <div className="inline-flex w-fit gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-sm">
           <button
             type="button"
             onClick={() => setUnreadOnly(false)}
@@ -131,7 +131,7 @@ export default function NotificationsPage() {
 
       {loading ? (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/50" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-[var(--surface)]/50" />)}
         </div>
       ) : loadErr ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--red-600)]/25 bg-[var(--red-100)] py-10 text-center">
@@ -140,7 +140,7 @@ export default function NotificationsPage() {
           <button
             type="button"
             onClick={() => { setLoading(true); load(); }}
-            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+            className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
           >
             {tc("retry")}
           </button>
@@ -157,7 +157,7 @@ export default function NotificationsPage() {
               <div
                 className={`flex items-start gap-3 rounded-2xl border p-4 shadow-sm transition ${
                   n.read
-                    ? "border-[var(--line)] bg-white"
+                    ? "border-[var(--line)] bg-[var(--surface)]"
                     : "border-[var(--green-600)]/30 bg-[var(--green-50)]"
                 }`}
               >
@@ -171,7 +171,7 @@ export default function NotificationsPage() {
                   </div>
                   {n.body && <p className="mt-0.5 text-sm text-[var(--ink-soft)]">{n.body}</p>}
                   <p className="mt-1 text-xs text-[var(--ink-soft)]/70">
-                    {formatDateTime(n.created_at)}
+                    {formatRelativeTime(n.created_at) ?? n.created_at}
                   </p>
                 </div>
               </div>

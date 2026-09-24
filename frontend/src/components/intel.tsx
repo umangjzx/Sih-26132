@@ -14,6 +14,7 @@ import type {
   MspInfo,
   WeatherForecast,
 } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import { Badge, Card, Icon, SectionHeader } from "./ui";
 
 function dayIcon(mm: number, prob: number | null) {
@@ -44,7 +45,7 @@ export function WeatherStrip({ data }: { data: WeatherForecast | null }) {
           <div
             key={d.date}
             className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-center ${
-              i === 0 ? "bg-[var(--green-100)]" : "bg-white/50"
+              i === 0 ? "bg-[var(--green-100)]" : "bg-[var(--surface)]/50"
             }`}
           >
             <span className="text-[11px] font-medium text-[var(--ink-soft)]">{d.date.slice(5)}</span>
@@ -59,7 +60,7 @@ export function WeatherStrip({ data }: { data: WeatherForecast | null }) {
         ))}
       </div>
       {data.current && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white/50 px-3 py-2 text-xs text-[var(--ink-soft)]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-[var(--surface)]/50 px-3 py-2 text-xs text-[var(--ink-soft)]">
           <span className="font-bold uppercase tracking-wide text-[var(--green-700)]">
             {t("now")}
           </span>
@@ -93,7 +94,7 @@ export function MspBanner({ data }: { data: MspInfo | null }) {
 
   if (!data.has_msp) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white/50 px-4 py-3 text-sm text-[var(--ink-soft)]">
+      <div className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)]/50 px-4 py-3 text-sm text-[var(--ink-soft)]">
         <Icon name="scale" size={16} className="shrink-0 text-[var(--ink-soft)]" />
         {t("noMsp", { crop: data.crop })}
       </div>
@@ -128,7 +129,7 @@ export function CalendarChip({ data }: { data: CropCalendar | null }) {
   const t = useTranslations("calendar");
   if (!data) return null;
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-white/50 px-4 py-3">
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)]/50 px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
         <span className="flex items-center gap-2 font-heading font-bold">
           <Icon name="calendar" size={16} className="text-[var(--green-600)]" />
@@ -232,7 +233,7 @@ export function BestMarketPanel({ data }: { data: BestMarketResponse | null }) {
             rate: data.freight.rate_per_qtl_km,
             handling: data.freight.breakdown.handling,
             fuel: data.freight.breakdown.fuel,
-            asOf: data.freight.as_of,
+            asOf: formatRelativeTime(data.freight.as_of) ?? data.freight.as_of,
           })}
         </p>
       )}

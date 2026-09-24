@@ -58,7 +58,7 @@ export function LocationChip() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex max-w-full items-center gap-1.5 rounded-xl border border-[var(--line)] bg-white/70 px-3 py-2 text-sm font-semibold text-[var(--ink)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+        className="flex max-w-full items-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--surface)]/70 px-3 py-2 text-sm font-semibold text-[var(--ink)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--surface)] hover:shadow-md"
       >
         <Icon name="pin" size={14} className="shrink-0" />
         <span className="truncate">
@@ -105,7 +105,7 @@ export function LocationChip() {
                 value={placeText}
                 onChange={(e) => setPlaceText(e.target.value)}
                 placeholder={t("placePlaceholder")}
-                className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
+                className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
               />
             </label>
           </form>
@@ -120,7 +120,7 @@ export function LocationChip() {
                   setOpen(false);
                 }
               }}
-              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
+              className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--green-600)]"
             >
               <option value="">{t("statePlaceholder")}</option>
               {states.map((s) => (

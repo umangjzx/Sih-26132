@@ -320,8 +320,8 @@ export default function FeaturesPageClient() {
               icon="handshake"
               title={t("card4Title")}
               description={t("card4Desc")}
-              iconBg="bg-blue-50"
-              iconColor="text-blue-600"
+              iconBg="bg-blue-50 dark:bg-blue-500/15"
+              iconColor="text-blue-600 dark:text-blue-300"
             />
           </Reveal>
 

@@ -253,6 +253,7 @@ export function Sidebar({
           bg-[var(--sidebar-bg)] text-white
           shadow-[var(--shadow-xl)]
           transition-[transform,width] duration-300 ease-in-out
+          print:hidden
           /* mobile: full-width drawer */
           w-72
           ${isOpen ? "translate-x-0" : "-translate-x-full"}

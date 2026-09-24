@@ -11,7 +11,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/PageHeader";
-import { Icon } from "@/components/ui";
+import { ConfirmDialog, Icon } from "@/components/ui";
 import {
   ApiError,
   acceptDemandForPool,
@@ -93,6 +93,9 @@ export default function PoolDetailPage() {
   const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmAcceptDemandId, setConfirmAcceptDemandId] = useState<number | null>(null);
 
   const flash = useCallback((msg: string) => {
     setToast(msg);
@@ -154,6 +157,7 @@ export default function PoolDetailPage() {
 
   async function doWithdraw() {
     if (!token) return;
+    setConfirmWithdraw(false);
     setBusy(true);
     try {
       await withdrawPool(poolId, token);
@@ -167,6 +171,7 @@ export default function PoolDetailPage() {
 
   async function changeStatus(next: PoolDetail["status"]) {
     if (!token) return;
+    setConfirmClose(false);
     setBusy(true);
     try {
       await setPoolStatus(poolId, next, token);
@@ -180,9 +185,7 @@ export default function PoolDetailPage() {
 
   async function acceptDemand(demandId: number) {
     if (!token) return;
-    // Irreversible: locks the pool to 'matched' and members can no longer
-    // withdraw (see backend/app/api/pools.py accept_demand_for_pool docstring).
-    if (!window.confirm(t("confirmAcceptDemand"))) return;
+    setConfirmAcceptDemandId(null);
     setBusy(true);
     try {
       const r = await acceptDemandForPool(poolId, { demand_id: demandId }, token);
@@ -196,7 +199,7 @@ export default function PoolDetailPage() {
   if (!ready || !isAuthenticated) return null;
 
   if (loading) {
-    return <div className="h-64 w-full animate-pulse rounded-2xl bg-white/50" />;
+    return <div className="h-64 w-full animate-pulse rounded-2xl bg-[var(--surface)]/50" />;
   }
   if (!pool && loadErr) {
     return (
@@ -208,7 +211,7 @@ export default function PoolDetailPage() {
           <button
             type="button"
             onClick={() => { setLoading(true); load(); }}
-            className="rounded-lg border border-[var(--red-500)]/40 bg-white px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
+            className="rounded-lg border border-[var(--red-500)]/40 bg-[var(--surface)] px-4 py-1.5 text-xs font-bold text-[var(--red-700)]"
           >
             {tc("retry")}
           </button>
@@ -278,7 +281,7 @@ export default function PoolDetailPage() {
               </button>
             )}
             {pool.status !== "closed" && (
-              <button type="button" disabled={busy} onClick={() => changeStatus("closed")}
+              <button type="button" disabled={busy} onClick={() => setConfirmClose(true)}
                 className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-bold text-[var(--ink-soft)] disabled:opacity-60">
                 {t("closePool")}
               </button>
@@ -288,7 +291,7 @@ export default function PoolDetailPage() {
       )}
 
       {/* Aggregate position */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">{t("aggregate")}</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
@@ -310,7 +313,7 @@ export default function PoolDetailPage() {
 
       {/* Join / withdraw */}
       {user?.role === "farmer" && (
-        <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
           {isMember && (
             <p className="mb-3 flex items-center gap-2 text-sm font-bold text-[var(--green-700)]">
               <Icon name="check" size={16} /> {t("joined")}
@@ -334,7 +337,7 @@ export default function PoolDetailPage() {
                   {isMember ? t("updateCommitment") : t("join")}
                 </button>
                 {canWithdraw && (
-                  <button type="button" disabled={busy} onClick={doWithdraw}
+                  <button type="button" disabled={busy} onClick={() => setConfirmWithdraw(true)}
                     className="rounded-xl border border-[var(--line)] px-4 py-2.5 text-sm font-bold text-[var(--ink-soft)] disabled:opacity-60">
                     {t("withdraw")}
                   </button>
@@ -345,7 +348,7 @@ export default function PoolDetailPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-[var(--ink-soft)]">{t(`status_${pool.status}` as "status_open")}</p>
               {canWithdraw && (
-                <button type="button" disabled={busy} onClick={doWithdraw}
+                <button type="button" disabled={busy} onClick={() => setConfirmWithdraw(true)}
                   className="rounded-xl border border-[var(--line)] px-4 py-2.5 text-sm font-bold text-[var(--ink-soft)] disabled:opacity-60">
                   {t("withdraw")}
                 </button>
@@ -356,7 +359,7 @@ export default function PoolDetailPage() {
       )}
 
       {/* Members */}
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h2 className="mb-4 font-heading text-base font-bold text-[var(--ink)]">{t("memberList")}</h2>
         <ul className="flex flex-col gap-2">
           {pool.member_list.filter((m) => m.status === "committed").map((m) => (
@@ -375,7 +378,7 @@ export default function PoolDetailPage() {
 
       {/* Matching buyers (organizer only) */}
       {pool.is_organizer && (
-        <section className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
           <h2 className="mb-1 font-heading text-base font-bold text-[var(--ink)]">{t("candidates")}</h2>
           <p className="mb-4 text-xs text-[var(--ink-soft)]">{t("candidatesHint")}</p>
           {pool.candidates.length === 0 ? (
@@ -388,13 +391,43 @@ export default function PoolDetailPage() {
                   c={c}
                   canAccept={(pool.status === "open" || pool.status === "locked") && agg.quantity_kg > 0}
                   busy={busy}
-                  onAccept={acceptDemand}
+                  onAccept={setConfirmAcceptDemandId}
                 />
               ))}
             </ul>
           )}
         </section>
       )}
+
+      <ConfirmDialog
+        open={confirmWithdraw}
+        title={t("withdraw")}
+        message={t("withdrawConfirm")}
+        confirmLabel={t("withdraw")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={doWithdraw}
+        onCancel={() => setConfirmWithdraw(false)}
+      />
+      <ConfirmDialog
+        open={confirmClose}
+        title={t("closePool")}
+        message={t("closePoolConfirm")}
+        confirmLabel={t("closePool")}
+        cancelLabel={tc("cancel")}
+        danger
+        onConfirm={() => changeStatus("closed")}
+        onCancel={() => setConfirmClose(false)}
+      />
+      <ConfirmDialog
+        open={confirmAcceptDemandId !== null}
+        title={t("acceptDemand")}
+        message={t("confirmAcceptDemand")}
+        confirmLabel={t("acceptDemand")}
+        cancelLabel={tc("cancel")}
+        onConfirm={() => confirmAcceptDemandId !== null && acceptDemand(confirmAcceptDemandId)}
+        onCancel={() => setConfirmAcceptDemandId(null)}
+      />
     </div>
   );
 }
